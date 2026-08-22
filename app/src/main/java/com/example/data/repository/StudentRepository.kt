@@ -21,23 +21,12 @@ class StudentRepository(
     val allCourses: Flow<List<Course>> = courseDao.getAllCourses()
     val allSemesters: Flow<List<String>> = courseDao.getAllSemesters()
 
-    fun getCoursesBySemester(semester: String): Flow<List<Course>> =
-        courseDao.getCoursesBySemester(semester)
-
-    suspend fun insertCourse(course: Course): Long = withContext(Dispatchers.IO) {
-        courseDao.insertCourse(course)
-    }
-
     suspend fun updateCourse(course: Course) = withContext(Dispatchers.IO) {
         courseDao.updateCourse(course)
     }
 
     suspend fun deleteCourse(course: Course) = withContext(Dispatchers.IO) {
         courseDao.deleteCourse(course)
-    }
-
-    suspend fun deleteCourseById(id: Long) = withContext(Dispatchers.IO) {
-        courseDao.deleteCourseById(id)
     }
 
     // Graduation Plan & Thresholds
@@ -62,12 +51,6 @@ class StudentRepository(
 
     // Expenses & Budgets
     val allExpenses: Flow<List<ExpenseRecord>> = expenseDao.getAllExpenses()
-
-    fun getExpensesByMonth(yearMonth: String): Flow<List<ExpenseRecord>> =
-        expenseDao.getExpensesByMonth(yearMonth)
-
-    fun getBudgetForMonth(yearMonth: String): Flow<MonthlyBudget?> =
-        expenseDao.getBudgetForMonth(yearMonth)
 
     suspend fun insertExpense(expense: ExpenseRecord): Long = withContext(Dispatchers.IO) {
         expenseDao.insertExpense(expense)

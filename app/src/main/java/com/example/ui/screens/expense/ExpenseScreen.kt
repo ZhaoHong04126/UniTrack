@@ -11,8 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,7 +22,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.ExpenseCategory
 import com.example.data.model.ExpenseRecord
@@ -299,7 +297,7 @@ fun ExpenseScreen(
                             label = { Text("全部") }
                         )
                     }
-                    items(ExpenseCategory.values()) { cat ->
+                    items(ExpenseCategory.entries) { cat ->
                         FilterChip(
                             selected = selectedCategoryFilter == cat,
                             onClick = {
@@ -327,7 +325,7 @@ fun ExpenseScreen(
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.ReceiptLong,
+                                imageVector = Icons.AutoMirrored.Filled.ReceiptLong,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.outline,
                                 modifier = Modifier.size(36.dp)
@@ -347,9 +345,6 @@ fun ExpenseScreen(
                         onClick = {
                             editingExpense = record
                             showAddDialog = true
-                        },
-                        onDelete = {
-                            viewModel.deleteExpense(record)
                         }
                     )
                 }
@@ -387,8 +382,7 @@ fun ExpenseScreen(
 @Composable
 private fun ExpenseRecordItemCard(
     record: ExpenseRecord,
-    onClick: () -> Unit,
-    onDelete: () -> Unit
+    onClick: () -> Unit
 ) {
     val isExpense = record.type == ExpenseType.EXPENSE
 
@@ -417,7 +411,7 @@ private fun ExpenseRecordItemCard(
                 Icon(
                     imageVector = when (record.category) {
                         ExpenseCategory.FOOD -> Icons.Default.Restaurant
-                        ExpenseCategory.BOOKS_STUDY -> Icons.Default.MenuBook
+                        ExpenseCategory.BOOKS_STUDY -> Icons.AutoMirrored.Filled.MenuBook
                         ExpenseCategory.TRANSPORT -> Icons.Default.DirectionsBus
                         ExpenseCategory.RENT_UTILITY -> Icons.Default.Home
                         ExpenseCategory.ENTERTAINMENT -> Icons.Default.SportsEsports

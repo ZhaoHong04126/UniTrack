@@ -5,6 +5,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -177,13 +178,13 @@ fun GraduationPlanDialog(
                         readOnly = true,
                         label = { Text("GPA 計分標準") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = gpaDropdownExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                        modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth()
                     )
                     ExposedDropdownMenu(
                         expanded = gpaDropdownExpanded,
                         onDismissRequest = { gpaDropdownExpanded = false }
                     ) {
-                        GpaScale.values().forEach { scale ->
+                        GpaScale.entries.forEach { scale ->
                             DropdownMenuItem(
                                 text = { Text(scale.label) },
                                 onClick = {

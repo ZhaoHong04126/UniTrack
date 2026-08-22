@@ -9,6 +9,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -155,13 +156,13 @@ fun AddEditExpenseDialog(
                             readOnly = true,
                             label = { Text("分類") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryDropdownExpanded) },
-                            modifier = Modifier.menuAnchor()
+                            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
                         )
                         ExposedDropdownMenu(
                             expanded = categoryDropdownExpanded,
                             onDismissRequest = { categoryDropdownExpanded = false }
                         ) {
-                            ExpenseCategory.values().forEach { cat ->
+                            ExpenseCategory.entries.forEach { cat ->
                                 DropdownMenuItem(
                                     text = { Text(cat.label) },
                                     onClick = {
@@ -184,13 +185,13 @@ fun AddEditExpenseDialog(
                             readOnly = true,
                             label = { Text("支付方式") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = paymentDropdownExpanded) },
-                            modifier = Modifier.menuAnchor()
+                            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
                         )
                         ExposedDropdownMenu(
                             expanded = paymentDropdownExpanded,
                             onDismissRequest = { paymentDropdownExpanded = false }
                         ) {
-                            PaymentMethod.values().forEach { method ->
+                            PaymentMethod.entries.forEach { method ->
                                 DropdownMenuItem(
                                     text = { Text(method.label) },
                                     onClick = {

@@ -347,7 +347,7 @@ fun GraduationScreen(
                     onClick = { selectedCategoryFilter = null },
                     label = { Text("全部 (${allCourses.size})") }
                 )
-                CourseCategory.values().forEach { cat ->
+                CourseCategory.entries.forEach { cat ->
                     FilterChip(
                         selected = selectedCategoryFilter == cat,
                         onClick = {

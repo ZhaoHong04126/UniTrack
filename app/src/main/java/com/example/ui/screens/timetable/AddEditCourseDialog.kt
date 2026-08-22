@@ -5,6 +5,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -134,7 +135,7 @@ fun AddEditCourseDialog(
                             readOnly = true,
                             label = { Text("星期") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dayDropdownExpanded) },
-                            modifier = Modifier.menuAnchor()
+                            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
                         )
                         ExposedDropdownMenu(
                             expanded = dayDropdownExpanded,
@@ -198,13 +199,13 @@ fun AddEditCourseDialog(
                             readOnly = true,
                             label = { Text("學分屬性") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryDropdownExpanded) },
-                            modifier = Modifier.menuAnchor()
+                            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
                         )
                         ExposedDropdownMenu(
                             expanded = categoryDropdownExpanded,
                             onDismissRequest = { categoryDropdownExpanded = false }
                         ) {
-                            CourseCategory.values().forEach { cat ->
+                            CourseCategory.entries.forEach { cat ->
                                 DropdownMenuItem(
                                     text = { Text(cat.label) },
                                     onClick = {
@@ -239,13 +240,13 @@ fun AddEditCourseDialog(
                             readOnly = true,
                             label = { Text("通識領域") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = generalSubtypeDropdownExpanded) },
-                            modifier = Modifier.menuAnchor().fillMaxWidth()
+                            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth()
                         )
                         ExposedDropdownMenu(
                             expanded = generalSubtypeDropdownExpanded,
                             onDismissRequest = { generalSubtypeDropdownExpanded = false }
                         ) {
-                            GeneralEduSubtype.values().forEach { subtype ->
+                            GeneralEduSubtype.entries.forEach { subtype ->
                                 DropdownMenuItem(
                                     text = { Text(subtype.label) },
                                     onClick = {
