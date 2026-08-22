@@ -1,9 +1,6 @@
 package com.example.data.model
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 
 enum class CourseCategory(val label: String, val shortLabel: String, val badgeColor: Color) {
     REQUIRED("必修課程", "必修", Color(0xFFEF4444)),
@@ -31,7 +28,7 @@ enum class ExpenseType(val label: String) {
     INCOME("收入")
 }
 
-enum class ExpenseCategory(val label: String, val iconName: String) {
+enum class ExpenseCategory(val label: String, @Suppress("unused") val iconName: String) {
     FOOD("餐飲美食", "restaurant"),
     BOOKS_STUDY("書籍學業", "menu_book"),
     TRANSPORT("交通出行", "directions_bus"),
@@ -51,7 +48,7 @@ enum class PaymentMethod(val label: String) {
     TRANSFER("銀行轉帳")
 }
 
-enum class GpaScale(val label: String, val maxGpa: Double) {
+enum class GpaScale(val label: String, @Suppress("unused") val maxGpa: Double) {
     SCALE_4_3("4.3 制 (A+=4.3, A=4.0...)", 4.3),
     SCALE_4_0("4.0 制 (A=4.0, B=3.0...)", 4.0),
     PERCENTAGE("百分制 (100分制)", 100.0)

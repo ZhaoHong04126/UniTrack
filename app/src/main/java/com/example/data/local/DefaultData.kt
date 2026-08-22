@@ -5,8 +5,8 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 object DefaultData {
-    private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-    private val monthFormat = SimpleDateFormat("yyyy-MM", Locale.getDefault())
+    private val dateFormat get() = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    private val monthFormat get() = SimpleDateFormat("yyyy-MM", Locale.getDefault())
 
     fun getDefaultGraduationPlan(): GraduationPlan {
         return GraduationPlan(
