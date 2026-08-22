@@ -1,0 +1,6 @@
+{
+  "name": "大學生日常",
+  "description": "專為大學生設計的隱私安全離線管理工具，集結課程表、學分畢業審查、個人記帳本與GPA/學業儀表板。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
