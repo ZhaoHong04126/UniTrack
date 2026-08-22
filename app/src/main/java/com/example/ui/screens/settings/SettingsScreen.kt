@@ -1,5 +1,6 @@
 package com.example.ui.screens.settings
 
+import android.content.ClipData
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -15,7 +16,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
@@ -36,7 +38,7 @@ fun SettingsScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val clipboardManager = LocalClipboardManager.current
+    val clipboardManager = LocalClipboard.current
     val coroutineScope = rememberCoroutineScope()
 
     val plan by viewModel.graduationPlan.collectAsStateWithLifecycle()
@@ -302,9 +304,11 @@ fun SettingsScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        clipboardManager.setText(AnnotatedString(exportedJsonText))
-                        Toast.makeText(context, "已複製 JSON 備份內容到剪貼簿", Toast.LENGTH_SHORT).show()
-                        showExportDialog = false
+                        coroutineScope.launch {
+                            clipboardManager.setClipEntry(ClipEntry(ClipData.newPlainText("UniTrack+ Backup", exportedJsonText)))
+                            Toast.makeText(context, "已複製 JSON 備份內容到剪貼簿", Toast.LENGTH_SHORT).show()
+                            showExportDialog = false
+                        }
                     }
                 ) {
                     Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))

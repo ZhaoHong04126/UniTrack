@@ -21,6 +21,10 @@ class StudentRepository(
     val allCourses: Flow<List<Course>> = courseDao.getAllCourses()
     val allSemesters: Flow<List<String>> = courseDao.getAllSemesters()
 
+    suspend fun insertCourse(course: Course): Long = withContext(Dispatchers.IO) {
+        courseDao.insertCourse(course)
+    }
+
     suspend fun updateCourse(course: Course) = withContext(Dispatchers.IO) {
         courseDao.updateCourse(course)
     }
