@@ -8,7 +8,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -16,9 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -40,14 +37,9 @@ fun DashboardScreen(
     modifier: Modifier = Modifier
 ) {
     val plan by viewModel.graduationPlan.collectAsStateWithLifecycle()
-    val auditSummary by viewModel.graduationAudit.collectAsStateWithLifecycle()
-    val academicSummary by viewModel.cumulativeAcademicSummary.collectAsStateWithLifecycle()
     val todayClasses by viewModel.todayClasses.collectAsStateWithLifecycle()
     val expenseSummary by viewModel.monthlyExpenseSummary.collectAsStateWithLifecycle()
     val semesterGpas by viewModel.semesterGpaList.collectAsStateWithLifecycle()
-
-    val (cumulativeGpa, averageScore) = academicSummary
-    val currentLocale = LocalConfiguration.current.locales[0]
 
     LazyColumn(
         modifier = modifier
@@ -89,165 +81,6 @@ fun DashboardScreen(
             }
         }
 
-
-        // Main Academic Highlight Card
-        item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onNavigateToGraduation() }
-                    .testTag("academic_summary_card"),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            Brush.linearGradient(
-                                listOf(
-                                    SapphirePrimary.copy(alpha = 0.08f),
-                                    TealSecondary.copy(alpha = 0.05f)
-                                )
-                            )
-                        )
-                        .padding(20.dp)
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(CircleShape)
-                                        .background(SapphirePrimary),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.School,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                                Column {
-                                    Text(
-                                        text = "學業與學分概況",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        text = "畢業審查進度 ${auditSummary.overallPercentage.toInt()}%",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = SapphireDark
-                                    )
-                                }
-                            }
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                contentDescription = "查看詳情",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-
-                        // Metrics Grid
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceAround,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    text = if (cumulativeGpa > 0) String.format(currentLocale, "%.2f", cumulativeGpa) else "—",
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = SapphirePrimary
-                                )
-                                Text(
-                                    text = "累計 GPA",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .width(1.dp)
-                                    .height(36.dp)
-                                    .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                            )
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    text = if (averageScore > 0) String.format(currentLocale, "%.1f", averageScore) else "—",
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = TealSecondary
-                                )
-                                Text(
-                                    text = "歷年平均分",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .width(1.dp)
-                                    .height(36.dp)
-                                    .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                            )
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    text = "${auditSummary.totalEarnedCredits.toInt()}",
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = EmeraldAccent
-                                )
-                                Text(
-                                    text = "已修 / ${auditSummary.totalTargetCredits.toInt()} 學分",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-
-                        // Progress Bar
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            LinearProgressIndicator(
-                                progress = { (auditSummary.overallPercentage / 100f).coerceIn(0f, 1f) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(8.dp)
-                                    .clip(RoundedCornerShape(4.dp)),
-                                color = SapphirePrimary,
-                                trackColor = MaterialTheme.colorScheme.surfaceVariant
-                            )
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = "必修: ${auditSummary.requiredSummary.earnedCredits.toInt()}/${plan.targetRequiredCredits.toInt()}　選修: ${auditSummary.electiveSummary.earnedCredits.toInt()}/${plan.targetElectiveCredits.toInt()}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    text = "門檻: ${auditSummary.thresholdsCompletedCount}/${auditSummary.thresholdsTotalCount}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
 
         // Today's Course Schedule
         item {
