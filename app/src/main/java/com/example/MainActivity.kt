@@ -238,8 +238,6 @@ class MainActivity : ComponentActivity() {
                         composable("auth") {
                             AuthScreen(
                                 viewModel = studentViewModel,
-                                showBackButton = navController.previousBackStackEntry != null,
-                                onNavigateBack = { navController.popBackStack() },
                                 onAuthSuccess = {
                                     navController.navigate(AppDestination.Dashboard.route) {
                                         popUpTo("auth") { inclusive = true }
