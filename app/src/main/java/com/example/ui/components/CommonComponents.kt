@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
 import com.example.ui.theme.*
 
+@Suppress("unused")
 @Composable
 fun PrivacySecurityBanner(
     modifier: Modifier = Modifier

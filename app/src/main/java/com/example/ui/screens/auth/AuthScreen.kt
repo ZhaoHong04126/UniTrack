@@ -35,7 +35,6 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -52,7 +51,6 @@ fun AuthScreen(
     onNavigateBack: () -> Unit = {},
     onAuthSuccess: () -> Unit = {}
 ) {
-    val authState by viewModel.authState.collectAsStateWithLifecycle()
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
 
     var showAuthSheet by remember { mutableStateOf(false) }
@@ -120,7 +118,7 @@ fun AuthScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "unitrack",
+                        text = "UniTrack",
                         fontSize = 38.sp,
                         fontWeight = FontWeight.Black,
                         color = Color.White,

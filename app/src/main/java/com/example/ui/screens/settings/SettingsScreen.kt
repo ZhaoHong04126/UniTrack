@@ -53,7 +53,6 @@ fun SettingsScreen(
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
 
     var showEditProfileDialog by remember { mutableStateOf(false) }
-    var showInfoDialog by remember { mutableStateOf(false) }
     var showPlanDialog by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
     var exportedJsonText by remember { mutableStateOf("") }
@@ -178,6 +177,7 @@ fun SettingsScreen(
 
         // Section 2: Data Backup & Security
         SectionHeader(title = "資料備份與安全")
+        PrivacySecurityBanner()
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(18.dp),
@@ -212,20 +212,6 @@ fun SettingsScreen(
                         importJsonInput = ""
                         showImportDialog = true
                     }
-                )
-
-                HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-                )
-
-                SettingTileRow(
-                    icon = Icons.Default.Shield,
-                    title = "系統與 100% 離線隱私保障",
-                    subtitle = "無任何外部伺服器連線・保障資料安全",
-                    iconTint = EmeraldAccent,
-                    badgeText = "已啟用",
-                    onClick = { showInfoDialog = true }
                 )
             }
         }
@@ -282,84 +268,6 @@ fun SettingsScreen(
                 )
                 Toast.makeText(context, "已更新個人與學期資料", Toast.LENGTH_SHORT).show()
                 showEditProfileDialog = false
-            }
-        )
-    }
-
-    // Offline Privacy Info Dialog
-    if (showInfoDialog) {
-        AlertDialog(
-            onDismissRequest = { showInfoDialog = false },
-            title = {
-                Text(
-                    text = "系統與隱私資訊",
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    PrivacySecurityBanner()
-
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(32.dp)
-                                        .clip(CircleShape)
-                                        .background(EmeraldLight),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Lock,
-                                        contentDescription = null,
-                                        tint = EmeraldAccent,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                                Column {
-                                    Text(
-                                        text = "100% 離線隱私保障",
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        text = "無社群功能・本機安全資料庫",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-
-                            Text(
-                                text = "本應用程式採用 Android Room 本機資料庫儲存所有課程表、學分成績與記帳資料，不需註冊帳號，絕不將資料上傳至任何雲端或第三方伺服器，確保您的課業與財務隱私 100% 安全。",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                lineHeight = 18.sp
-                            )
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                Button(onClick = { showInfoDialog = false }) {
-                    Text("關閉")
-                }
             }
         )
     }
