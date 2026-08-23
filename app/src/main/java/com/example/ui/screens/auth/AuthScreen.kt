@@ -1,8 +1,6 @@
 package com.example.ui.screens.auth
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -15,6 +13,9 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -41,7 +42,6 @@ import com.example.data.model.AuthState
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.StudentViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuthScreen(
     viewModel: StudentViewModel,
@@ -111,27 +111,24 @@ fun AuthScreen(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = Color.White.copy(alpha = 0.92f),
-                    fontSize = 20.sp,
                     letterSpacing = 0.5.sp
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(18.dp))
 
-                // App Logo Hero Graphic
-                AppLogoHeroVisual(
-                    modifier = Modifier
-                        .size(240.dp)
-                        .padding(vertical = 8.dp)
-                )
+                // Official UniTrack+ App Logo
+                AuthLogoMascot()
             }
 
-            // Bottom Actions Area
+            // Bottom Actions (Two-Level Action System)
             Column(
-                modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 20.dp)
             ) {
-                // Main Big Action Button ("免費開始" / "免費加入")
+                // Primary Action Button ("免費開始")
                 Button(
                     onClick = {
                         authSheetInitialTab = 1 // 註冊
@@ -140,15 +137,18 @@ fun AuthScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp)
-                        .shadow(12.dp, RoundedCornerShape(18.dp), spotColor = SapphirePrimary),
+                        .shadow(
+                            elevation = 12.dp,
+                            shape = RoundedCornerShape(18.dp),
+                            spotColor = SapphirePrimary.copy(alpha = 0.5f)
+                        ),
                     shape = RoundedCornerShape(18.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF3B82F6) // Sapphire Electric Blue
+                        containerColor = SapphirePrimary
                     )
                 ) {
                     Text(
                         text = "免費開始",
-                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
                         fontSize = 17.sp
@@ -197,44 +197,44 @@ fun AuthScreen(
     }
 }
 
-
 /**
  * UniTrack+ 官方 App Logo 迎賓視覺 (純透明懸浮 / 無方框)
  */
 @Composable
-private fun AppLogoHeroVisual(modifier: Modifier = Modifier) {
+private fun AuthLogoMascot() {
     Box(
-        modifier = modifier,
+        modifier = Modifier.size(240.dp),
         contentAlignment = Alignment.Center
     ) {
-        // Soft Subtle Glow
+        // Soft Ambient Radial Glow
         Box(
             modifier = Modifier
-                .size(210.dp)
+                .size(220.dp)
                 .clip(CircleShape)
                 .background(
                     Brush.radialGradient(
                         colors = listOf(
-                            Color(0xFF3B82F6).copy(alpha = 0.20f),
+                            SapphirePrimary.copy(alpha = 0.28f),
+                            OceanBlue.copy(alpha = 0.12f),
                             Color.Transparent
                         )
                     )
                 )
         )
 
-        // Pure Floating Logo Vector
+        // Official App Logo
         Image(
             painter = painterResource(id = com.example.R.drawable.ic_launcher_foreground),
             contentDescription = "UniTrack+ Logo",
             modifier = Modifier
-                .size(180.dp)
-                .scale(1.4f)
+                .size(230.dp)
+                .scale(1.35f)
         )
     }
 }
 
 /**
- * 彈出式驗證面板 (Auth Bottom Sheet)
+ * Modern Onboarding & Auth Modal Bottom Sheet
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -245,23 +245,81 @@ private fun AuthBottomSheet(
     onAuthSuccess: () -> Unit
 ) {
     val authState by viewModel.authState.collectAsStateWithLifecycle()
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val graduationPlan by viewModel.graduationPlan.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
 
     var selectedTab by remember { mutableIntStateOf(initialTab) }
+    var regStep by remember { mutableIntStateOf(1) } // Step 1: 學業檔案, Step 2: 帳號安全
+
+    // Registration Profile State (專屬固定 國立臺東大學)
+    val university = "國立臺東大學"
+    var department by remember { mutableStateOf("") }
+    var admissionYear by remember { mutableStateOf("114 學年度 (114-1)") }
+
+    // Dropdown expanded states
+    var deptExpanded by remember { mutableStateOf(false) }
+    var yearExpanded by remember { mutableStateOf(false) }
+
+    // 國立臺東大學全校 26 個完整系所與學程
+    val deptOptions = listOf(
+        "體育學系",
+        "競技與運動科學學系",
+        "應用數學系",
+        "應用科學系",
+        "數位媒體與文教產業學系",
+        "綠能與資訊科技學系",
+        "綠色與資訊科技學士學位學程",
+        "運動競技學士學位學程",
+        "資訊管理學系產業管理與數位行銷進修學士班",
+        "資訊管理學系",
+        "資訊工程學系",
+        "華語文學系",
+        "教育學系",
+        "高齡健康與照護管理原住民專班",
+        "特殊教育學系",
+        "音樂學系",
+        "英美語文學系",
+        "美術產業學系",
+        "身心整合與運動休閒產業學系",
+        "全校不分系學士學位學程",
+        "生命科學系",
+        "幼兒教育學系幼兒教育學士後學位學程教保員專班",
+        "幼兒教育學系",
+        "文化資源與休閒產業學系產業經營進修學士班",
+        "文化資源與休閒產業學系",
+        "公共與文化事務學系"
+    )
+
+    val yearOptions = listOf(
+        "114 學年度 (114-1)",
+        "113 學年度 (113-1)",
+        "112 學年度 (112-1)",
+        "111 學年度 (111-1)",
+        "110 學年度 (110-1)"
+    )
+
+    // Form inputs
+    var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var name by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+
     var showResetDialog by remember { mutableStateOf(false) }
     var resetEmail by remember { mutableStateOf("") }
+
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        dragHandle = {
+            BottomSheetDefaults.DragHandle(
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+            )
+        }
     ) {
         Column(
             modifier = Modifier
@@ -272,14 +330,6 @@ private fun AuthBottomSheet(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Sheet Header Drag Title
-            Text(
-                text = if (selectedTab == 0) "歡迎回到 UniTrack+" else "加入 UniTrack+ 智慧學業",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
             // Error Banner
             AnimatedVisibility(
                 visible = authState is AuthState.Error,
@@ -316,48 +366,6 @@ private fun AuthBottomSheet(
                 }
             }
 
-            // Google One-Tap Sign In
-            OutlinedButton(
-                onClick = {
-                    viewModel.signInWithGoogle { success, _ ->
-                        if (success) onAuthSuccess()
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                shape = RoundedCornerShape(14.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.AccountCircle,
-                    contentDescription = "Google",
-                    tint = SapphirePrimary,
-                    modifier = Modifier.size(22.dp)
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                    text = "使用 Google 帳號一鍵繼續",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-
-            // Divider
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                HorizontalDivider(modifier = Modifier.weight(1f))
-                Text(
-                    text = "  或使用電子郵件  ",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                HorizontalDivider(modifier = Modifier.weight(1f))
-            }
-
             // Tab Selector
             PrimaryTabRow(
                 selectedTabIndex = selectedTab,
@@ -372,7 +380,7 @@ private fun AuthBottomSheet(
                     },
                     text = {
                         Text(
-                            text = "登入",
+                            text = "已有帳號登入",
                             fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Medium
                         )
                     }
@@ -385,7 +393,7 @@ private fun AuthBottomSheet(
                     },
                     text = {
                         Text(
-                            text = "註冊帳號",
+                            text = "新學生註冊",
                             fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Medium
                         )
                     }
@@ -394,6 +402,55 @@ private fun AuthBottomSheet(
 
             if (selectedTab == 0) {
                 // ==================== 登入 ====================
+                Text(
+                    text = "歡迎回到 UniTrack+",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                // Google One-Tap Sign In
+                OutlinedButton(
+                    onClick = {
+                        viewModel.signInWithGoogle { success, _ ->
+                            if (success) onAuthSuccess()
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AccountCircle,
+                        contentDescription = "Google",
+                        tint = SapphirePrimary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "使用 Google 帳號一鍵繼續",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                // Divider
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    HorizontalDivider(modifier = Modifier.weight(1f))
+                    Text(
+                        text = "  或使用電子郵件  ",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    HorizontalDivider(modifier = Modifier.weight(1f))
+                }
+
                 OutlinedTextField(
                     value = email,
                     onValueChange = {
@@ -474,7 +531,7 @@ private fun AuthBottomSheet(
                     enabled = email.isNotBlank() && password.isNotBlank() && authState !is AuthState.Loading,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(50.dp),
+                        .height(52.dp),
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = SapphirePrimary)
                 ) {
@@ -485,109 +542,417 @@ private fun AuthBottomSheet(
                     }
                 }
             } else {
-                // ==================== 註冊 ====================
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("姓名 / 稱呼") },
-                    leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = EmeraldAccent) },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp)
-                )
+                // ==================== 多步驟註冊 (Multi-Step Onboarding) ====================
 
-                OutlinedTextField(
-                    value = email,
-                    onValueChange = {
-                        email = it
-                        if (authState is AuthState.Error) viewModel.clearAuthError()
-                    },
-                    label = { Text("電子郵件 (Email)") },
-                    leadingIcon = { Icon(Icons.Default.Email, contentDescription = null, tint = EmeraldAccent) },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(
-                        capitalization = KeyboardCapitalization.None,
-                        keyboardType = KeyboardType.Email,
-                        imeAction = ImeAction.Next
-                    ),
-                    keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
+                // Top Progress Indicator
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp)
-                )
-
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = { Text("設定密碼 (至少 6 位)") },
-                    leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = EmeraldAccent) },
-                    trailingIcon = {
-                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    if (regStep == 2) {
+                        IconButton(
+                            onClick = { regStep = 1 },
+                            modifier = Modifier.size(32.dp)
+                        ) {
                             Icon(
-                                imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                contentDescription = if (passwordVisible) "隱藏密碼" else "顯示密碼"
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "上一步",
+                                tint = MaterialTheme.colorScheme.onSurface
                             )
                         }
-                    },
-                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Password,
-                        imeAction = ImeAction.Next
-                    ),
-                    keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp)
-                )
+                    } else {
+                        Spacer(modifier = Modifier.size(32.dp))
+                    }
 
-                OutlinedTextField(
-                    value = confirmPassword,
-                    onValueChange = { confirmPassword = it },
-                    label = { Text("確認密碼") },
-                    leadingIcon = { Icon(Icons.Default.LockReset, contentDescription = null, tint = EmeraldAccent) },
-                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Password,
-                        imeAction = ImeAction.Done
-                    ),
-                    keyboardActions = KeyboardActions(onDone = {
-                        focusManager.clearFocus()
-                        if (email.isNotBlank() && password.length >= 6 && password == confirmPassword) {
+                    // Step Pills Indicator
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .width(32.dp)
+                                .height(6.dp)
+                                .clip(CircleShape)
+                                .background(if (regStep == 1) SapphirePrimary else SapphirePrimary.copy(alpha = 0.3f))
+                        )
+                        Box(
+                            modifier = Modifier
+                                .width(32.dp)
+                                .height(6.dp)
+                                .clip(CircleShape)
+                                .background(if (regStep == 2) SapphirePrimary else MaterialTheme.colorScheme.outlineVariant)
+                        )
+                    }
+
+                    Text(
+                        text = "步驟 $regStep / 2",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                if (regStep == 1) {
+                    // ----- Step 1: 學業資料設定 -----
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Image(
+                            painter = painterResource(id = com.example.R.drawable.ic_launcher_foreground),
+                            contentDescription = "UniTrack Logo",
+                            modifier = Modifier
+                                .size(42.dp)
+                                .scale(1.2f)
+                        )
+                        Text(
+                            text = "就讀學校與系所設定",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    // 1. 學校選擇 (固定 國立臺東大學)
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = "大學 / 學校名稱",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = SapphirePrimary.copy(alpha = 0.15f)
+                            ) {
+                                Text(
+                                    text = "目前專屬支援",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = SapphirePrimary,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                        OutlinedTextField(
+                            value = university,
+                            onValueChange = {},
+                            readOnly = true,
+                            leadingIcon = { Icon(Icons.Default.School, contentDescription = null, tint = SapphirePrimary) },
+                            trailingIcon = { Icon(Icons.Default.CheckCircle, contentDescription = null, tint = EmeraldAccent) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp)
+                        )
+                    }
+
+                    // 2. 科系選擇 (國立臺東大學各系所)
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "主修科系",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        ExposedDropdownMenuBox(
+                            expanded = deptExpanded,
+                            onExpandedChange = { deptExpanded = it }
+                        ) {
+                            OutlinedTextField(
+                                value = department.ifBlank { "請選擇科系" },
+                                onValueChange = {},
+                                readOnly = true,
+                                leadingIcon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, tint = SapphirePrimary) },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = deptExpanded) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedTextColor = if (department.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurface,
+                                    unfocusedTextColor = if (department.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurface
+                                )
+                            )
+                            ExposedDropdownMenu(
+                                expanded = deptExpanded,
+                                onDismissRequest = { deptExpanded = false }
+                            ) {
+                                deptOptions.forEach { dept ->
+                                    DropdownMenuItem(
+                                        text = { Text(dept) },
+                                        onClick = {
+                                            department = dept
+                                            deptExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // 3. 入學年度選擇
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "入學年度 / 學期",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        ExposedDropdownMenuBox(
+                            expanded = yearExpanded,
+                            onExpandedChange = { yearExpanded = it }
+                        ) {
+                            OutlinedTextField(
+                                value = admissionYear,
+                                onValueChange = {},
+                                readOnly = true,
+                                leadingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = null, tint = SapphirePrimary) },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = yearExpanded) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true),
+                                shape = RoundedCornerShape(14.dp)
+                            )
+                            ExposedDropdownMenu(
+                                expanded = yearExpanded,
+                                onDismissRequest = { yearExpanded = false }
+                            ) {
+                                yearOptions.forEach { year ->
+                                    DropdownMenuItem(
+                                        text = { Text(year) },
+                                        onClick = {
+                                            admissionYear = year
+                                            yearExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Notice Warning Box
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        color = AmberWarning.copy(alpha = 0.1f),
+                        border = BorderStroke(1.dp, AmberWarning.copy(alpha = 0.4f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = null,
+                                tint = AmberWarning,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Text(
+                                text = "學校、學系與入學年度將用於自動建立畢業審查學分門檻與課表排程。註冊後仍可在設定中調整。",
+                                color = AmberWarning,
+                                style = MaterialTheme.typography.bodySmall,
+                                lineHeight = 18.sp,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+
+                    // 下一步按鈕
+                    Button(
+                        onClick = {
+                            val semesterCode = if (admissionYear.contains("114")) "114-1"
+                            else if (admissionYear.contains("113")) "113-1"
+                            else if (admissionYear.contains("112")) "112-1"
+                            else "111-1"
+
+                            viewModel.updateGraduationPlan(
+                                graduationPlan.copy(
+                                    department = department.ifBlank { "資訊工程學系" },
+                                    currentSemester = semesterCode
+                                )
+                            )
+                            regStep = 2
+                        },
+                        enabled = department.isNotBlank(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = SapphirePrimary)
+                    ) {
+                        Text("下一步", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
+                    }
+                } else {
+                    // ----- Step 2: 建立帳號與安全密碼 -----
+                    Text(
+                        text = "建立 UniTrack+ 雲端帳號",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    // Google One-Tap Sign In
+                    OutlinedButton(
+                        onClick = {
+                            viewModel.signInWithGoogle { success, _ ->
+                                if (success) onAuthSuccess()
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AccountCircle,
+                            contentDescription = "Google",
+                            tint = SapphirePrimary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "使用 Google 帳號一鍵繼續",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    // Divider
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        HorizontalDivider(modifier = Modifier.weight(1f))
+                        Text(
+                            text = "  或使用電子郵件  ",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        HorizontalDivider(modifier = Modifier.weight(1f))
+                    }
+
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text("姓名 / 稱呼") },
+                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = EmeraldAccent) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp)
+                    )
+
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = {
+                            email = it
+                            if (authState is AuthState.Error) viewModel.clearAuthError()
+                        },
+                        label = { Text("電子郵件 (Email)") },
+                        leadingIcon = { Icon(Icons.Default.Email, contentDescription = null, tint = EmeraldAccent) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.None,
+                            keyboardType = KeyboardType.Email,
+                            imeAction = ImeAction.Next
+                        ),
+                        keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp)
+                    )
+
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = { Text("設定密碼 (至少 6 位)") },
+                        leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = EmeraldAccent) },
+                        trailingIcon = {
+                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                Icon(
+                                    imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                    contentDescription = if (passwordVisible) "隱藏密碼" else "顯示密碼"
+                                )
+                            }
+                        },
+                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Password,
+                            imeAction = ImeAction.Next
+                        ),
+                        keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp)
+                    )
+
+                    OutlinedTextField(
+                        value = confirmPassword,
+                        onValueChange = { confirmPassword = it },
+                        label = { Text("確認密碼") },
+                        leadingIcon = { Icon(Icons.Default.LockReset, contentDescription = null, tint = EmeraldAccent) },
+                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Password,
+                            imeAction = ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(onDone = {
+                            focusManager.clearFocus()
+                            if (email.isNotBlank() && password.length >= 6 && password == confirmPassword) {
+                                viewModel.signUpWithEmail(name, email, password) { success, _ ->
+                                    if (success) onAuthSuccess()
+                                }
+                            }
+                        }),
+                        isError = confirmPassword.isNotBlank() && password != confirmPassword,
+                        supportingText = {
+                            if (confirmPassword.isNotBlank() && password != confirmPassword) {
+                                Text("兩次輸入密碼不相符", color = RoseAccent)
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp)
+                    )
+
+                    Button(
+                        onClick = {
+                            focusManager.clearFocus()
                             viewModel.signUpWithEmail(name, email, password) { success, _ ->
                                 if (success) onAuthSuccess()
                             }
+                        },
+                        enabled = email.isNotBlank() && password.length >= 6 && password == confirmPassword && authState !is AuthState.Loading,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldAccent)
+                    ) {
+                        if (authState is AuthState.Loading) {
+                            CircularProgressIndicator(modifier = Modifier.size(22.dp), color = Color.White, strokeWidth = 2.5.dp)
+                        } else {
+                            Text("建立帳號並登入", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         }
-                    }),
-                    isError = confirmPassword.isNotBlank() && password != confirmPassword,
-                    supportingText = {
-                        if (confirmPassword.isNotBlank() && password != confirmPassword) {
-                            Text("兩次輸入密碼不相符", color = RoseAccent)
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp)
-                )
-
-                Button(
-                    onClick = {
-                        focusManager.clearFocus()
-                        viewModel.signUpWithEmail(name, email, password) { success, _ ->
-                            if (success) onAuthSuccess()
-                        }
-                    },
-                    enabled = email.isNotBlank() && password.length >= 6 && password == confirmPassword && authState !is AuthState.Loading,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldAccent)
-                ) {
-                    if (authState is AuthState.Loading) {
-                        CircularProgressIndicator(modifier = Modifier.size(22.dp), color = Color.White, strokeWidth = 2.5.dp)
-                    } else {
-                        Text("建立帳號並登入", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     }
                 }
             }

@@ -14,7 +14,10 @@ val TealDark = Color(0xFF0F766E)
 val TealLight = Color(0xFFCCFBF1)
 
 val AmberAccent = Color(0xFFD97706)
+val AmberWarning = Color(0xFFF59E0B)
 val AmberLight = Color(0xFFFEF3C7)
+
+val OceanBlue = Color(0xFF0284C7)
 
 val RoseAccent = Color(0xFFE11D48)
 val RoseLight = Color(0xFFFFE4E6)
