@@ -17,7 +17,8 @@ data class Course(
     val startTime: String = "", // e.g. "09:00"
     val endTime: String = "",   // e.g. "10:00"
     val credits: Double = 3.0,
-    val category: CourseCategory = CourseCategory.REQUIRED,
+    val category: CourseCategory = CourseCategory.GENERAL_EDU,
+    val requirementType: CourseRequirementType = CourseRequirementType.REQUIRED,
     val generalEduSubtype: GeneralEduSubtype = GeneralEduSubtype.NONE,
     val semester: String = "114-1", // e.g. 113-1, 113-2
     val score: Double? = null, // 0~100 or null if currently taking

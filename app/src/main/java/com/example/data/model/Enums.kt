@@ -14,6 +14,12 @@ enum class CourseCategory(val label: String, val shortLabel: String, val badgeCo
     PE("體育課程", "體育", Color(0xFFEC4899))
 }
 
+enum class CourseRequirementType(val label: String, val shortLabel: String) {
+    REQUIRED("必修", "必修"),
+    ELECTIVE("選修", "選修"),
+    REQUIRED_ELECTIVE("必選修", "必選")
+}
+
 enum class GeneralEduSubtype(val label: String) {
     NONE("未指定 / 其他"),
     // 語文課程 (10學分)

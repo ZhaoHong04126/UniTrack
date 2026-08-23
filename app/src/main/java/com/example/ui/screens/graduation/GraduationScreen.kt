@@ -527,7 +527,7 @@ private fun AuditCourseCard(
                         containerColor = course.category.badgeColor.copy(alpha = 0.15f),
                         contentColor = course.category.badgeColor
                     ) {
-                        Text(text = course.category.shortLabel)
+                        Text(text = "${course.category.shortLabel}・${course.requirementType.shortLabel}")
                     }
                 }
                 Text(

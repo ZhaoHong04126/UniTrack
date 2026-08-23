@@ -76,7 +76,7 @@ fun CourseDetailBottomSheet(
                     contentColor = course.category.badgeColor
                 ) {
                     Text(
-                        text = course.category.label,
+                        text = "${course.category.label}・${course.requirementType.label}",
                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
                     )
                 }

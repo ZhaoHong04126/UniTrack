@@ -2,6 +2,7 @@ package com.example.data.local
 
 import androidx.room.TypeConverter
 import com.example.data.model.CourseCategory
+import com.example.data.model.CourseRequirementType
 import com.example.data.model.ExpenseCategory
 import com.example.data.model.ExpenseType
 import com.example.data.model.GeneralEduSubtype
@@ -16,6 +17,13 @@ class Converters {
     @TypeConverter
     fun toCourseCategory(value: String?): CourseCategory? =
         value?.let { enumValueOfOrDefault(it, CourseCategory.REQUIRED) }
+
+    @TypeConverter
+    fun fromCourseRequirementType(value: CourseRequirementType?): String? = value?.name
+
+    @TypeConverter
+    fun toCourseRequirementType(value: String?): CourseRequirementType? =
+        value?.let { enumValueOfOrDefault(it, CourseRequirementType.REQUIRED) }
 
     @TypeConverter
     fun fromGeneralEduSubtype(value: GeneralEduSubtype?): String? = value?.name

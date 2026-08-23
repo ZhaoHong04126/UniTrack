@@ -15,6 +15,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.data.model.Course
 import com.example.data.model.CourseCategory
+import com.example.data.model.CourseRequirementType
 import com.example.data.model.GeneralEduSubtype
 import com.example.ui.components.ColorPickerRow
 
@@ -34,6 +35,7 @@ fun AddEditCourseDialog(
     var endPeriod by remember { mutableIntStateOf(initialCourse?.endPeriod ?: 2) }
     var creditsText by remember { mutableStateOf(initialCourse?.credits?.toString() ?: "3.0") }
     var category by remember { mutableStateOf(initialCourse?.category) }
+    var requirementType by remember { mutableStateOf(initialCourse?.requirementType ?: CourseRequirementType.REQUIRED) }
     var generalEduSubtype by remember { mutableStateOf(initialCourse?.generalEduSubtype ?: GeneralEduSubtype.NONE) }
     var semester by remember { mutableStateOf(initialCourse?.semester ?: defaultSemester) }
     var scoreText by remember { mutableStateOf(initialCourse?.score?.toString() ?: "") }
@@ -41,6 +43,7 @@ fun AddEditCourseDialog(
     var notes by remember { mutableStateOf(initialCourse?.notes ?: "") }
 
     var categoryDropdownExpanded by remember { mutableStateOf(false) }
+    var requirementDropdownExpanded by remember { mutableStateOf(false) }
     var dayDropdownExpanded by remember { mutableStateOf(false) }
     var startPeriodDropdownExpanded by remember { mutableStateOf(false) }
     var endPeriodDropdownExpanded by remember { mutableStateOf(false) }
@@ -230,37 +233,74 @@ fun AddEditCourseDialog(
                     }
                 }
 
-                // Course Category
-                ExposedDropdownMenuBox(
-                    expanded = categoryDropdownExpanded,
-                    onExpandedChange = { categoryDropdownExpanded = !categoryDropdownExpanded },
-                    modifier = Modifier.fillMaxWidth()
+                // Category & Requirement Type (必修 / 選修 / 必選修)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    OutlinedTextField(
-                        value = category?.label ?: "",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("學分屬性 *") },
-                        placeholder = { Text("請選擇學分屬性") },
-                        singleLine = true,
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryDropdownExpanded) },
-                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
-                    )
-                    ExposedDropdownMenu(
+                    // 學分屬性
+                    ExposedDropdownMenuBox(
                         expanded = categoryDropdownExpanded,
-                        onDismissRequest = { categoryDropdownExpanded = false }
+                        onExpandedChange = { categoryDropdownExpanded = !categoryDropdownExpanded },
+                        modifier = Modifier.weight(1.3f)
                     ) {
-                        CourseCategory.entries
-                            .filter { it != CourseCategory.REQUIRED && it != CourseCategory.ELECTIVE && it != CourseCategory.PE }
-                            .forEach { cat ->
+                        OutlinedTextField(
+                            value = category?.label ?: "",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("學分屬性 *") },
+                            placeholder = { Text("請選擇") },
+                            singleLine = true,
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryDropdownExpanded) },
+                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = categoryDropdownExpanded,
+                            onDismissRequest = { categoryDropdownExpanded = false }
+                        ) {
+                            CourseCategory.entries
+                                .filter { it != CourseCategory.REQUIRED && it != CourseCategory.ELECTIVE && it != CourseCategory.PE }
+                                .forEach { cat ->
+                                    DropdownMenuItem(
+                                        text = { Text(cat.label) },
+                                        onClick = {
+                                            category = cat
+                                            categoryDropdownExpanded = false
+                                        }
+                                    )
+                                }
+                        }
+                    }
+
+                    // 修別 (必修 / 選修 / 必選修)
+                    ExposedDropdownMenuBox(
+                        expanded = requirementDropdownExpanded,
+                        onExpandedChange = { requirementDropdownExpanded = !requirementDropdownExpanded },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        OutlinedTextField(
+                            value = requirementType.label,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("修別 *") },
+                            singleLine = true,
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = requirementDropdownExpanded) },
+                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = requirementDropdownExpanded,
+                            onDismissRequest = { requirementDropdownExpanded = false }
+                        ) {
+                            CourseRequirementType.entries.forEach { req ->
                                 DropdownMenuItem(
-                                    text = { Text(cat.label) },
+                                    text = { Text(req.label) },
                                     onClick = {
-                                        category = cat
-                                        categoryDropdownExpanded = false
+                                        requirementType = req
+                                        requirementDropdownExpanded = false
                                     }
                                 )
                             }
+                        }
                     }
                 }
 
@@ -344,6 +384,7 @@ fun AddEditCourseDialog(
                             endPeriod = endPeriod,
                             credits = credits,
                             category = category!!,
+                            requirementType = requirementType,
                             generalEduSubtype = if (category == CourseCategory.GENERAL_EDU) generalEduSubtype else GeneralEduSubtype.NONE,
                             semester = semester.trim(),
                             score = score,
