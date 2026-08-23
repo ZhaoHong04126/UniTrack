@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.math.round
 
 data class SemesterGpa(
     val semester: String,
@@ -60,6 +61,7 @@ data class ExpenseMonthlySummary(
     val categoryBreakdown: Map<ExpenseCategory, Double>
 )
 
+@Suppress("unused")
 class StudentViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: StudentRepository
 
@@ -171,8 +173,8 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             result.add(
                 SemesterGpa(
                     semester = sem,
-                    gpa = (Math.round(semGpa * 100.0) / 100.0),
-                    averageScore = (Math.round(semAvg * 10.0) / 10.0),
+                    gpa = round(semGpa * 100.0) / 100.0,
+                    averageScore = round(semAvg * 10.0) / 10.0,
                     totalCredits = totalCredits,
                     passedCredits = passedCredits,
                     courseCount = semCourses.size
@@ -203,7 +205,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         val gpa = if (totalGradedCredits > 0) totalWeightedGpa / totalGradedCredits else 0.0
         val avg = if (totalGradedCredits > 0) totalWeightedScore / totalGradedCredits else 0.0
 
-        Pair(Math.round(gpa * 100.0) / 100.0, Math.round(avg * 10.0) / 10.0)
+        Pair(round(gpa * 100.0) / 100.0, round(avg * 10.0) / 10.0)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Pair(3.82, 87.5))
 
     // Graduation Audit Summary
@@ -312,7 +314,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             totalEarnedCredits = totalEarned,
             totalInProgressCredits = totalInProgress,
             totalTargetCredits = targetTotal,
-            overallPercentage = (Math.round(overallPercentage * 10f) / 10f).toFloat(),
+            overallPercentage = round(overallPercentage * 10f) / 10f,
             requiredSummary = CreditCategorySummary(CourseCategory.REQUIRED, earnedRequired, inProgressRequired, plan.targetRequiredCredits, reqPercentage),
             electiveSummary = CreditCategorySummary(CourseCategory.ELECTIVE, earnedElective, inProgressElective, plan.targetElectiveCredits, elePercentage),
             generalSummary = CreditCategorySummary(CourseCategory.GENERAL_EDU, earnedGeneral, inProgressGeneral, plan.targetGeneralCredits, genPercentage),
@@ -371,7 +373,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
         val budget = 10000.0 // Default budget or customized
         val remaining = budget - totalExp
-        val usagePercentage = if (budget > 0.0) ((totalExp / budget) * 100.0).coerceIn(0.0, 100.0).toFloat() else 0f
+        val usagePercentage = ((totalExp / budget) * 100.0).coerceIn(0.0, 100.0).toFloat()
 
         ExpenseMonthlySummary(
             yearMonth = month,
@@ -380,7 +382,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             netBalance = totalInc - totalExp,
             budgetAmount = budget,
             remainingBudget = remaining,
-            budgetUsagePercentage = (Math.round(usagePercentage * 10f) / 10f).toFloat(),
+            budgetUsagePercentage = round(usagePercentage * 10f) / 10f,
             categoryBreakdown = catMap
         )
     }.stateIn(

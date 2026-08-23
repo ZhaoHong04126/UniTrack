@@ -23,9 +23,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.graphics.toColorInt
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.Course
-import com.example.ui.theme.SapphireLight
 import com.example.ui.theme.SapphirePrimary
 import com.example.ui.viewmodel.StudentViewModel
 
@@ -329,6 +329,7 @@ private fun WeeklyTimetableGrid(
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
+    val periodHeight = 64.dp
 
     Column(
         modifier = modifier
@@ -368,25 +369,20 @@ private fun WeeklyTimetableGrid(
 
         HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
 
-        // Scrollable Period Rows
-        Column(
+        // Scrollable area combining period numbers and day columns
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .verticalScroll(scrollState)
                 .padding(bottom = 80.dp)
         ) {
-            for (period in 1..maxPeriod) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(64.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Period Number Column
+            // Period Number Column
+            Column(modifier = Modifier.width(40.dp)) {
+                for (period in 1..maxPeriod) {
                     Box(
                         modifier = Modifier
-                            .width(40.dp)
-                            .fillMaxHeight()
+                            .fillMaxWidth()
+                            .height(periodHeight)
                             .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f))
                             .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)),
                         contentAlignment = Alignment.Center
@@ -398,67 +394,75 @@ private fun WeeklyTimetableGrid(
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
+                }
+            }
 
-                    // Day Columns for this period
-                    for (day in 1..daysCount) {
-                        val matchingCourse = courses.find { c ->
-                            c.dayOfWeek == day && period in c.startPeriod..c.endPeriod
+            // Day Columns
+            for (day in 1..daysCount) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(periodHeight * maxPeriod)
+                ) {
+                    // Background horizontal grid lines
+                    Column {
+                        repeat(maxPeriod) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(periodHeight)
+                                    .border(0.5.dp, MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                            )
                         }
+                    }
 
-                        val isFirstPeriodOfCourse = matchingCourse != null && matchingCourse.startPeriod == period
+                    // Courses for this day
+                    val dayCourses = courses.filter { it.dayOfWeek == day }
+                    dayCourses.forEach { course ->
+                        val duration = (course.endPeriod - course.startPeriod + 1).coerceAtLeast(1)
+                        val courseColor = runCatching { Color(course.colorHex.toColorInt()) }
+                            .getOrDefault(SapphirePrimary)
 
                         Box(
                             modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .border(0.5.dp, MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                                 .padding(1.dp)
+                                .offset(y = periodHeight * (course.startPeriod - 1))
+                                .fillMaxWidth()
+                                .height(periodHeight * duration)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(courseColor.copy(alpha = 0.2f))
+                                .border(1.5.dp, courseColor.copy(alpha = 0.7f), RoundedCornerShape(8.dp))
+                                .clickable { onCourseClick(course) }
+                                .padding(4.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            if (matchingCourse != null) {
-                                val courseColor = runCatching { Color(android.graphics.Color.parseColor(matchingCourse.colorHex)) }
-                                    .getOrDefault(SapphirePrimary)
-
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(courseColor.copy(alpha = 0.2f))
-                                        .border(1.5.dp, courseColor.copy(alpha = 0.7f), RoundedCornerShape(8.dp))
-                                        .clickable { onCourseClick(matchingCourse) }
-                                        .padding(4.dp),
-                                    contentAlignment = Alignment.TopCenter
-                                ) {
-                                    if (isFirstPeriodOfCourse) {
-                                        Column(
-                                            horizontalAlignment = Alignment.CenterHorizontally,
-                                            verticalArrangement = Arrangement.Center,
-                                            modifier = Modifier.fillMaxSize()
-                                        ) {
-                                            Text(
-                                                text = matchingCourse.name,
-                                                style = MaterialTheme.typography.labelSmall.copy(
-                                                    fontSize = 11.sp,
-                                                    lineHeight = 13.sp
-                                                ),
-                                                fontWeight = FontWeight.Bold,
-                                                color = courseColor,
-                                                maxLines = 2,
-                                                overflow = TextOverflow.Ellipsis,
-                                                textAlign = TextAlign.Center
-                                            )
-                                            if (matchingCourse.location.isNotBlank()) {
-                                                Spacer(modifier = Modifier.height(2.dp))
-                                                Text(
-                                                    text = matchingCourse.location,
-                                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis,
-                                                    textAlign = TextAlign.Center
-                                                )
-                                            }
-                                        }
-                                    }
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center,
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                Text(
+                                    text = course.name,
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontSize = 11.sp,
+                                        lineHeight = 13.sp
+                                    ),
+                                    fontWeight = FontWeight.Bold,
+                                    color = courseColor,
+                                    maxLines = duration * 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                    textAlign = TextAlign.Center
+                                )
+                                if (course.location.isNotBlank()) {
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = course.location,
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        textAlign = TextAlign.Center
+                                    )
                                 }
                             }
                         }
@@ -474,7 +478,7 @@ private fun CourseListItemCard(
     course: Course,
     onClick: () -> Unit
 ) {
-    val courseColor = runCatching { Color(android.graphics.Color.parseColor(course.colorHex)) }
+    val courseColor = runCatching { Color(course.colorHex.toColorInt()) }
         .getOrDefault(SapphirePrimary)
 
     val days = listOf("星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日")
