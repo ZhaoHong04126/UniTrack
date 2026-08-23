@@ -39,17 +39,31 @@ fun CourseAuditListScreen(
 ) {
     val plan by viewModel.graduationPlan.collectAsStateWithLifecycle()
     val allCourses by viewModel.allCourses.collectAsStateWithLifecycle()
+    val allSemesters by viewModel.allSemesters.collectAsStateWithLifecycle()
 
+    val existingSemesters = remember(allSemesters, allCourses) {
+        (allCourses.map { it.semester } + allSemesters).distinct()
+    }
+
+    var selectedSemesterFilter by remember { mutableStateOf<String?>(null) }
     var selectedCategoryFilter by remember { mutableStateOf<CourseCategory?>(null) }
     var showFilterDialog by remember { mutableStateOf(false) }
     var selectedCourseDetail by remember { mutableStateOf<Course?>(null) }
     var editingCourse by remember { mutableStateOf<Course?>(null) }
     var showEditCourseDialog by remember { mutableStateOf(false) }
 
-    val filteredCourses = if (selectedCategoryFilter != null) {
-        allCourses.filter { it.category == selectedCategoryFilter }
-    } else {
-        allCourses
+    val filteredCourses = allCourses.filter { course ->
+        (selectedSemesterFilter == null || course.semester == selectedSemesterFilter) &&
+        (selectedCategoryFilter == null || course.category == selectedCategoryFilter)
+    }
+
+    val filterButtonLabel = buildString {
+        if (selectedSemesterFilter != null) append(selectedSemesterFilter)
+        if (selectedCategoryFilter != null) {
+            if (isNotEmpty()) append("・")
+            append(selectedCategoryFilter!!.label.removeSuffix("課程"))
+        }
+        if (isEmpty()) append("篩選")
     }
 
     Scaffold(
@@ -90,7 +104,7 @@ fun CourseAuditListScreen(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = if (selectedCategoryFilter == null) "篩選" else selectedCategoryFilter!!.label.removeSuffix("課程"),
+                            text = filterButtonLabel,
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -147,39 +161,99 @@ fun CourseAuditListScreen(
 
         AlertDialog(
             onDismissRequest = { showFilterDialog = false },
-            title = { Text("篩選學分屬性", fontWeight = FontWeight.Bold) },
+            title = { Text("篩選修課清單", fontWeight = FontWeight.Bold) },
             text = {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    // Option: 全部
+                    // Semester Section
+                    Text(
+                        text = "依學期篩選",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
+                    )
+
+                    // 全部學期
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(8.dp))
-                            .clickable {
-                                selectedCategoryFilter = null
-                                showFilterDialog = false
-                            }
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                            .clickable { selectedSemesterFilter = null }
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "全部 (${allCourses.size})",
-                            style = MaterialTheme.typography.bodyLarge,
+                            text = "全部學期 (${allCourses.size})",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (selectedSemesterFilter == null) FontWeight.Bold else FontWeight.Normal,
+                            color = if (selectedSemesterFilter == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        )
+                        if (selectedSemesterFilter == null) {
+                            Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                        }
+                    }
+
+                    existingSemesters.forEach { sem ->
+                        val count = allCourses.count { it.semester == sem }
+                        val isSelected = selectedSemesterFilter == sem
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { selectedSemesterFilter = sem }
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "$sem 學期 ($count)",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            )
+                            if (isSelected) {
+                                Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
+
+                    // Category Section
+                    Text(
+                        text = "依學分屬性篩選",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(bottom = 2.dp)
+                    )
+
+                    // 全部屬性
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { selectedCategoryFilter = null }
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "全部屬性",
+                            style = MaterialTheme.typography.bodyMedium,
                             fontWeight = if (selectedCategoryFilter == null) FontWeight.Bold else FontWeight.Normal,
                             color = if (selectedCategoryFilter == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                         )
                         if (selectedCategoryFilter == null) {
-                            Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                         }
                     }
-
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
                     categories.forEach { cat ->
                         val count = allCourses.count { it.category == cat }
@@ -188,11 +262,8 @@ fun CourseAuditListScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(8.dp))
-                                .clickable {
-                                    selectedCategoryFilter = cat
-                                    showFilterDialog = false
-                                }
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                                .clickable { selectedCategoryFilter = cat }
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
@@ -208,21 +279,31 @@ fun CourseAuditListScreen(
                                 )
                                 Text(
                                     text = "${cat.label} ($count)",
-                                    style = MaterialTheme.typography.bodyLarge,
+                                    style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                     color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                                 )
                             }
                             if (isSelected) {
-                                Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                             }
                         }
                     }
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showFilterDialog = false }) {
-                    Text("關閉")
+                Button(onClick = { showFilterDialog = false }) {
+                    Text("確定")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        selectedSemesterFilter = null
+                        selectedCategoryFilter = null
+                    }
+                ) {
+                    Text("重設全部")
                 }
             }
         )
