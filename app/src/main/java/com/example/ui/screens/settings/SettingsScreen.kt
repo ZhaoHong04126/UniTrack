@@ -2,27 +2,33 @@ package com.example.ui.screens.settings
 
 import android.content.ClipData
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.testTag
+//import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.data.model.GraduationPlan
 import com.example.ui.components.PrivacySecurityBanner
 import com.example.ui.components.SectionHeader
 import com.example.ui.screens.graduation.GraduationPlanDialog
@@ -42,9 +48,7 @@ fun SettingsScreen(
 
     val plan by viewModel.graduationPlan.collectAsStateWithLifecycle()
 
-    var studentName by remember(plan.studentName) { mutableStateOf(plan.studentName) }
-    var currentSemester by remember(plan.currentSemester) { mutableStateOf(plan.currentSemester) }
-
+    var showEditProfileDialog by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
     var showPlanDialog by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
@@ -61,233 +65,175 @@ fun SettingsScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            text = "設定與隱私安全",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
+        // App Header Title
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = "個人設定與資訊",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "UniTrack+ 離線智慧學業助理",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        // Student ID Card Widget (學生證風格卡片)
+        StudentIdCard(
+            plan = plan,
+            onEditClick = { showEditProfileDialog = true }
         )
 
-        // Academic Settings Card
-        SectionHeader(title = "學業與學分設定")
+        // Section 1: Academic & Profile Settings
+        SectionHeader(title = "學業與審查設定")
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(18.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = studentName,
-                        onValueChange = { studentName = it },
-                        label = { Text("學生姓名/稱呼") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                    OutlinedTextField(
-                        value = currentSemester,
-                        onValueChange = { currentSemester = it },
-                        label = { Text("當前學期") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
+            Column {
+                SettingTileRow(
+                    icon = Icons.Default.Person,
+                    title = "編輯姓名與當前學期",
+                    subtitle = "${plan.studentName}・${plan.currentSemester} 學期",
+                    iconTint = SapphirePrimary,
+                    onClick = { showEditProfileDialog = true }
+                )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    Button(
-                        onClick = {
-                            viewModel.updateGraduationPlan(
-                                plan.copy(
-                                    studentName = studentName.trim(),
-                                    currentSemester = currentSemester.trim()
-                                )
-                            )
-                            Toast.makeText(context, "已更新學生與學期設定", Toast.LENGTH_SHORT).show()
-                        },
-                        enabled = studentName.isNotBlank() && currentSemester.isNotBlank() &&
-                                (studentName != plan.studentName || currentSemester != plan.currentSemester),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Text("儲存資料")
-                    }
-                }
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                )
 
-                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = "畢業審查標準",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "畢業目標: ${plan.targetTotalCredits.toInt()} 學分",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Button(
-                        onClick = { showPlanDialog = true },
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Text("修改審查標準")
-                    }
-                }
+                SettingTileRow(
+                    icon = Icons.Default.Tune,
+                    title = "畢業審查標準設定",
+                    subtitle = "總目標 ${plan.targetTotalCredits.toInt()} 學分・各模組門檻",
+                    iconTint = IndigoAccent,
+                    onClick = { showPlanDialog = true }
+                )
             }
         }
 
-        // Offline Data Backup & Restore
-        SectionHeader(title = "資料備份與還原")
+        // Section 2: Data Backup & Security
+        SectionHeader(title = "資料備份與安全")
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(18.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = {
-                            coroutineScope.launch {
-                                exportedJsonText = viewModel.exportJson()
-                                showExportDialog = true
-                            }
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("export_backup_button")
-                    ) {
-                        Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("匯出備份 JSON")
+            Column {
+                SettingTileRow(
+                    icon = Icons.Default.CloudDownload,
+                    title = "匯出本機備份 JSON",
+                    subtitle = "複製完整資料至剪貼簿以供備份",
+                    iconTint = SapphirePrimary,
+                    onClick = {
+                        coroutineScope.launch {
+                            exportedJsonText = viewModel.exportJson()
+                            showExportDialog = true
+                        }
                     }
+                )
 
-                    OutlinedButton(
-                        onClick = {
-                            importJsonInput = ""
-                            showImportDialog = true
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("import_backup_button")
-                    ) {
-                        Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("匯入還原 JSON")
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                )
+
+                SettingTileRow(
+                    icon = Icons.Default.CloudUpload,
+                    title = "匯入還原 JSON",
+                    subtitle = "從先前備份的 JSON 內容還原資料",
+                    iconTint = TealSecondary,
+                    onClick = {
+                        importJsonInput = ""
+                        showImportDialog = true
                     }
-                }
+                )
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                )
+
+                SettingTileRow(
+                    icon = Icons.Default.Shield,
+                    title = "系統與 100% 離線隱私保障",
+                    subtitle = "無任何外部伺服器連線・保障資料安全",
+                    iconTint = EmeraldAccent,
+                    badgeText = "已啟用",
+                    onClick = { showInfoDialog = true }
+                )
             }
         }
 
-        // Data Reset Section
+        // Section 3: Data Management
         SectionHeader(title = "資料管理")
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(18.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                // Info item
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "系統與隱私資訊",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "100% 離線隱私保障・技術規格說明",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    TextButton(onClick = { showInfoDialog = true }) {
-                        Text("查看資訊", color = SapphirePrimary)
-                    }
-                }
+            Column {
+                SettingTileRow(
+                    icon = Icons.Default.RestartAlt,
+                    title = "重置為大學生範例資料",
+                    subtitle = "重新載入預設課程、記帳與審查範例",
+                    iconTint = SapphirePrimary,
+                    titleColor = SapphirePrimary,
+                    onClick = { showResetConfirmDialog = true }
+                )
 
-                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "重置為大學生範例資料",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "重新載入預設之課程表、記帳紀錄與畢業檢核",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    TextButton(onClick = { showResetConfirmDialog = true }) {
-                        Text("重置範例", color = SapphirePrimary)
-                    }
-                }
-
-                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "清空所有本機資料",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = RoseAccent
-                        )
-                        Text(
-                            text = "清除所有課表、記帳與學分記錄",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    TextButton(onClick = { showClearConfirmDialog = true }) {
-                        Text("清空資料", color = RoseAccent)
-                    }
-                }
+                SettingTileRow(
+                    icon = Icons.Default.DeleteOutline,
+                    title = "清空所有本機資料",
+                    subtitle = "清除所有課表、記帳明細與學分記錄",
+                    iconTint = RoseAccent,
+                    titleColor = RoseAccent,
+                    onClick = { showClearConfirmDialog = true }
+                )
             }
         }
 
         Spacer(modifier = Modifier.height(72.dp))
     }
 
+    // Edit Profile & Semester Dialog
+    if (showEditProfileDialog) {
+        EditProfileDialog(
+            currentName = plan.studentName,
+            currentSemester = plan.currentSemester,
+            onDismiss = { showEditProfileDialog = false },
+            onSave = { newName, newSemester ->
+                viewModel.updateGraduationPlan(
+                    plan.copy(
+                        studentName = newName.trim(),
+                        currentSemester = newSemester.trim()
+                    )
+                )
+                Toast.makeText(context, "已更新個人與學期資料", Toast.LENGTH_SHORT).show()
+                showEditProfileDialog = false
+            }
+        )
+    }
+
+    // Offline Privacy Info Dialog
     if (showInfoDialog) {
         AlertDialog(
             onDismissRequest = { showInfoDialog = false },
@@ -365,6 +311,7 @@ fun SettingsScreen(
         )
     }
 
+    // Graduation Plan Thresholds Dialog
     if (showPlanDialog) {
         GraduationPlanDialog(
             currentPlan = plan,
@@ -376,6 +323,7 @@ fun SettingsScreen(
         )
     }
 
+    // JSON Export Dialog
     if (showExportDialog) {
         AlertDialog(
             onDismissRequest = { showExportDialog = false },
@@ -418,6 +366,7 @@ fun SettingsScreen(
         )
     }
 
+    // JSON Import Dialog
     if (showImportDialog) {
         AlertDialog(
             onDismissRequest = { showImportDialog = false },
@@ -458,6 +407,7 @@ fun SettingsScreen(
         )
     }
 
+    // Reset Confirm Dialog
     if (showResetConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showResetConfirmDialog = false },
@@ -481,6 +431,7 @@ fun SettingsScreen(
         )
     }
 
+    // Clear Confirm Dialog
     if (showClearConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showClearConfirmDialog = false },
@@ -504,4 +455,350 @@ fun SettingsScreen(
             }
         )
     }
+}
+
+/**
+ * 數位學生證風格卡片 (Digital Student ID Card)
+ */
+@Composable
+private fun StudentIdCard(
+    plan: GraduationPlan,
+    onEditClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onEditClick),
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(
+                            Color(0xFF1E3A8A), // Royal Navy Blue
+                            Color(0xFF2563EB), // Sapphire Primary
+                            Color(0xFF0284C7)  // Ocean Blue
+                        )
+                    )
+                )
+                .padding(18.dp)
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                // Top Badge Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color.White.copy(alpha = 0.2f)
+                        ) {
+                            Text(
+                                text = "在校生",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                        Text(
+                            text = "UniTrack+ 數位學生證",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color.White.copy(alpha = 0.85f),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = EmeraldAccent.copy(alpha = 0.3f),
+                        border = BorderStroke(1.dp, EmeraldAccent.copy(alpha = 0.5f))
+                    ) {
+                        Text(
+                            text = "100% 離線",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFF6EE7B7),
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
+                    }
+                }
+
+                // Middle Profile Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Avatar Container with Edit Camera Badge
+                    Box(
+                        contentAlignment = Alignment.BottomEnd
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color.White.copy(alpha = 0.18f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(38.dp)
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(22.dp)
+                                .clip(CircleShape)
+                                .background(Color.White),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "編輯",
+                                tint = SapphirePrimary,
+                                modifier = Modifier.size(13.dp)
+                            )
+                        }
+                    }
+
+                    // Student Information
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "學生姓名",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White.copy(alpha = 0.7f)
+                        )
+                        Text(
+                            text = plan.studentName,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "當前學期：${plan.currentSemester}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.9f)
+                        )
+                    }
+                }
+
+                // Bottom 3 Metric Pills inside Card
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    MetricPill(
+                        label = "當前學期",
+                        value = plan.currentSemester,
+                        modifier = Modifier.weight(1f)
+                    )
+                    MetricPill(
+                        label = "畢業學分目標",
+                        value = "${plan.targetTotalCredits.toInt()} 學分",
+                        modifier = Modifier.weight(1f)
+                    )
+                    MetricPill(
+                        label = "資料庫狀態",
+                        value = "本機安全",
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MetricPill(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.White.copy(alpha = 0.12f))
+            .padding(vertical = 8.dp, horizontal = 6.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                maxLines = 1
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White.copy(alpha = 0.75f),
+                fontSize = 10.sp,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+/**
+ * 分組式設定項目列 (Grouped Setting Tile)
+ */
+@Composable
+private fun SettingTileRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String,
+    iconTint: Color = SapphirePrimary,
+    titleColor: Color = MaterialTheme.colorScheme.onSurface,
+    badgeText: String? = null,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(iconTint.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = titleColor
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            if (badgeText != null) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = EmeraldLight
+                ) {
+                    Text(
+                        text = badgeText,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = EmeraldAccent,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+/**
+ * 編輯姓名與學期對話框
+ */
+@Composable
+private fun EditProfileDialog(
+    currentName: String,
+    currentSemester: String,
+    onDismiss: () -> Unit,
+    onSave: (String, String) -> Unit
+) {
+    var name by remember { mutableStateOf(currentName) }
+    var semester by remember { mutableStateOf(currentSemester) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "編輯個人與學期資料",
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("學生姓名/稱呼") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = semester,
+                    onValueChange = { semester = it },
+                    label = { Text("當前學期") },
+                    placeholder = { Text("例如：114-1") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (name.isNotBlank() && semester.isNotBlank()) {
+                        onSave(name, semester)
+                    }
+                },
+                enabled = name.isNotBlank() && semester.isNotBlank()
+            ) {
+                Text("儲存")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    )
 }
