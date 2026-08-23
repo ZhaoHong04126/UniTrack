@@ -75,7 +75,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
     // Selected semester in timetable
-    private val _selectedSemester = MutableStateFlow("114-1")
+    private val _selectedSemester = MutableStateFlow(DefaultData.getCurrentAcademicSemester())
     val selectedSemester: StateFlow<String> = _selectedSemester.asStateFlow()
 
     // Selected month in expense tracker
@@ -135,8 +135,9 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         _customSemesters
     ) { dbSemesters, plan, currentSem, customSemesters ->
         val set = dbSemesters.toMutableSet()
-        val rawAdmission = plan?.currentSemester ?: DefaultData.getCurrentAcademicSemester()
-        val startYear = rawAdmission.substringBefore("-").filter { it.isDigit() }.toIntOrNull() ?: (Calendar.getInstance().get(Calendar.YEAR) - 1911)
+        val rawAdmission = plan?.admissionSemester ?: DefaultData.getCurrentAcademicSemester()
+        val startYear = rawAdmission.substringBefore("-").filter { it.isDigit() }.toIntOrNull()
+            ?: (Calendar.getInstance().get(Calendar.YEAR) - 1911)
         // Automatically generate 4 college years (8 semesters) starting from admission year
         for (y in startYear until startYear + 4) {
             set.add("$y-1")

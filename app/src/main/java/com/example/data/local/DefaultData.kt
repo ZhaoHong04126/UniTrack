@@ -70,6 +70,7 @@ object DefaultData {
     }
 
     fun getDefaultGraduationPlan(): GraduationPlan {
+        val currentAcademicSem = getCurrentAcademicSemester()
         return GraduationPlan(
             id = 1,
             department = "尚未設定系所",
@@ -85,7 +86,8 @@ object DefaultData {
             targetFreeCredits = 20.0,
             minPassingScore = 60.0,
             gpaScale = GpaScale.PERCENTAGE,
-            currentSemester = getCurrentAcademicSemester()
+            admissionSemester = currentAcademicSem,
+            currentSemester = currentAcademicSem
         )
     }
 

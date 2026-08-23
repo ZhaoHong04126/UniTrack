@@ -91,7 +91,7 @@ class StudentRepository(
         val sampleNames = setOf("數學導論", "基礎機率與統計", "微積分演習(一)", "資料科學概論", "微積分(一)")
         val sampleTeachers = setOf("何友文", "張永明", "吳慶堂", "高嘉宏")
         val allExisting = courseDao.getAllCoursesOnce()
-        allExisting.filter { it.name in sampleNames && it.teacher in sampleTeachers && it.semester == "114-1" }
+        allExisting.filter { it.name in sampleNames && it.teacher in sampleTeachers }
             .forEach { courseDao.deleteCourse(it) }
     }
 
@@ -133,6 +133,7 @@ class StudentRepository(
             put("targetElectiveCredits", plan.targetElectiveCredits)
             put("targetGeneralCredits", plan.targetGeneralCredits)
             put("targetFreeCredits", plan.targetFreeCredits)
+            put("admissionSemester", plan.admissionSemester)
             put("currentSemester", plan.currentSemester)
             put("gpaScale", plan.gpaScale.name)
         }
@@ -210,7 +211,8 @@ class StudentRepository(
                     targetElectiveCredits = planObj.optDouble("targetElectiveCredits", 36.0),
                     targetGeneralCredits = planObj.optDouble("targetGeneralCredits", 28.0),
                     targetFreeCredits = planObj.optDouble("targetFreeCredits", 6.0),
-                    currentSemester = planObj.optString("currentSemester", "114-1"),
+                    admissionSemester = planObj.optString("admissionSemester", DefaultData.getCurrentAcademicSemester()),
+                    currentSemester = planObj.optString("currentSemester", DefaultData.getCurrentAcademicSemester()),
                     gpaScale = runCatching { GpaScale.valueOf(planObj.optString("gpaScale", "PERCENTAGE")) }.getOrDefault(GpaScale.PERCENTAGE)
                 )
                 graduationDao.insertOrUpdatePlan(plan)

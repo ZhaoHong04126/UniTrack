@@ -35,8 +35,8 @@ fun SemesterManageDialog(
     onDismiss: () -> Unit
 ) {
     var showAddSection by remember { mutableStateOf(false) }
-    var newYearInput by remember(admissionSemester) {
-        mutableStateOf(admissionSemester.substringBefore("-").filter { it.isDigit() }.ifBlank { "114" })
+    var newYearInput by remember {
+        mutableStateOf((java.util.Calendar.getInstance().get(java.util.Calendar.YEAR) - 1911).toString())
     }
     var selectedTerm by remember { mutableStateOf("上學期") }
     var setAsPrimaryChecked by remember { mutableStateOf(false) }
@@ -44,10 +44,10 @@ fun SemesterManageDialog(
     val termOptions = listOf("上學期", "下學期", "暑期")
 
     fun formatSemesterLabel(sem: String): String {
-        val startYear = admissionSemester.substringBefore("-").filter { it.isDigit() }.toIntOrNull() ?: 114
+        val startYear = admissionSemester.substringBefore("-").filter { it.isDigit() }.toIntOrNull()
         val year = sem.substringBefore("-").filter { it.isDigit() }.toIntOrNull()
         val term = sem.substringAfter("-").filter { it.isDigit() }.toIntOrNull() ?: 1
-        if (year != null) {
+        if (startYear != null && year != null) {
             val grade = when (val diff = year - startYear) {
                 0 -> "大一"
                 1 -> "大二"

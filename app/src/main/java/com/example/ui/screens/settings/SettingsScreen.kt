@@ -258,12 +258,14 @@ fun SettingsScreen(
     if (showEditProfileDialog) {
         EditProfileDialog(
             currentName = plan.studentName,
+            currentAdmissionSemester = plan.admissionSemester,
             currentSemester = plan.currentSemester,
             onDismiss = { showEditProfileDialog = false },
-            onSave = { newName, newSemester ->
+            onSave = { newName, newAdmissionSem, newSemester ->
                 viewModel.updateGraduationPlan(
                     plan.copy(
                         studentName = newName.trim(),
+                        admissionSemester = newAdmissionSem.trim(),
                         currentSemester = newSemester.trim()
                     )
                 )
@@ -595,9 +597,9 @@ private fun StudentIdCard(
                     }
 
                     // Student Information
-                    val admissionYearDisplay = remember(plan.currentSemester) {
-                        val code = plan.currentSemester.substringBefore("-").trim()
-                        if (plan.currentSemester.contains("學年度")) plan.currentSemester else "$code 學年度 (${plan.currentSemester})"
+                    val admissionYearDisplay = remember(plan.admissionSemester) {
+                        val code = plan.admissionSemester.substringBefore("-").trim()
+                        if (plan.admissionSemester.contains("學年度")) plan.admissionSemester else "$code 學年度 (${plan.admissionSemester})"
                     }
 
                     Column(
@@ -780,11 +782,13 @@ private fun SettingTileRow(
 @Composable
 private fun EditProfileDialog(
     currentName: String,
+    currentAdmissionSemester: String,
     currentSemester: String,
     onDismiss: () -> Unit,
-    onSave: (String, String) -> Unit
+    onSave: (String, String, String) -> Unit
 ) {
     var name by remember { mutableStateOf(currentName) }
+    var admissionSem by remember { mutableStateOf(currentAdmissionSemester) }
     var semester by remember { mutableStateOf(currentSemester) }
 
     AlertDialog(
@@ -808,9 +812,17 @@ private fun EditProfileDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
+                    value = admissionSem,
+                    onValueChange = { admissionSem = it },
+                    label = { Text("入學學期（大一基準）") },
+                    placeholder = { Text("例如：114-1") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
                     value = semester,
                     onValueChange = { semester = it },
-                    label = { Text("當前學期") },
+                    label = { Text("主要學期（儀表板當前顯示）") },
                     placeholder = { Text("例如：114-1") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -820,11 +832,11 @@ private fun EditProfileDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    if (name.isNotBlank() && semester.isNotBlank()) {
-                        onSave(name, semester)
+                    if (name.isNotBlank() && admissionSem.isNotBlank() && semester.isNotBlank()) {
+                        onSave(name, admissionSem, semester)
                     }
                 },
-                enabled = name.isNotBlank() && semester.isNotBlank()
+                enabled = name.isNotBlank() && admissionSem.isNotBlank() && semester.isNotBlank()
             ) {
                 Text("儲存")
             }

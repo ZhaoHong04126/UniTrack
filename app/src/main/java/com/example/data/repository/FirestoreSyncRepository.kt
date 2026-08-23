@@ -3,6 +3,7 @@ package com.example.data.repository
 import android.content.Context
 import android.util.Log
 import com.example.data.local.CourseDao
+import com.example.data.local.DefaultData
 import com.example.data.local.ExpenseDao
 import com.example.data.local.GraduationDao
 import com.example.data.model.*
@@ -62,6 +63,7 @@ class FirestoreSyncRepository(
                     "targetFreeCredits" to plan.targetFreeCredits,
                     "minPassingScore" to plan.minPassingScore,
                     "gpaScale" to plan.gpaScale.name,
+                    "admissionSemester" to plan.admissionSemester,
                     "currentSemester" to plan.currentSemester,
                     "lastUpdated" to System.currentTimeMillis()
                 )
@@ -177,12 +179,11 @@ class FirestoreSyncRepository(
                     targetProfessionalModuleCredits = planSnapshot.getDouble("targetProfessionalModuleCredits") ?: 23.0,
                     targetFreeCredits = planSnapshot.getDouble("targetFreeCredits") ?: 20.0,
                     minPassingScore = planSnapshot.getDouble("minPassingScore") ?: 60.0,
-                    gpaScale = try {
+                    gpaScale = runCatching {
                         GpaScale.valueOf(planSnapshot.getString("gpaScale") ?: GpaScale.PERCENTAGE.name)
-                    } catch (e: Exception) {
-                        GpaScale.PERCENTAGE
-                    },
-                    currentSemester = planSnapshot.getString("currentSemester") ?: "114-1"
+                    }.getOrDefault(GpaScale.PERCENTAGE),
+                    admissionSemester = planSnapshot.getString("admissionSemester") ?: DefaultData.getCurrentAcademicSemester(),
+                    currentSemester = planSnapshot.getString("currentSemester") ?: DefaultData.getCurrentAcademicSemester()
                 )
                 graduationDao.insertOrUpdatePlan(plan)
             }
@@ -206,22 +207,16 @@ class FirestoreSyncRepository(
                         startTime = doc.getString("startTime") ?: "",
                         endTime = doc.getString("endTime") ?: "",
                         credits = doc.getDouble("credits") ?: 3.0,
-                        category = try {
+                        category = runCatching {
                             CourseCategory.valueOf(doc.getString("category") ?: CourseCategory.GENERAL_EDU.name)
-                        } catch (e: Exception) {
-                            CourseCategory.GENERAL_EDU
-                        },
-                        requirementType = try {
+                        }.getOrDefault(CourseCategory.GENERAL_EDU),
+                        requirementType = runCatching {
                             CourseRequirementType.valueOf(doc.getString("requirementType") ?: CourseRequirementType.REQUIRED.name)
-                        } catch (e: Exception) {
-                            CourseRequirementType.REQUIRED
-                        },
-                        generalEduSubtype = try {
+                        }.getOrDefault(CourseRequirementType.REQUIRED),
+                        generalEduSubtype = runCatching {
                             GeneralEduSubtype.valueOf(doc.getString("generalEduSubtype") ?: GeneralEduSubtype.NONE.name)
-                        } catch (e: Exception) {
-                            GeneralEduSubtype.NONE
-                        },
-                        semester = doc.getString("semester") ?: "114-1",
+                        }.getOrDefault(GeneralEduSubtype.NONE),
+                        semester = doc.getString("semester") ?: DefaultData.getCurrentAcademicSemester(),
                         score = doc.getDouble("score"),
                         letterGrade = doc.getString("letterGrade"),
                         isCompleted = doc.getBoolean("isCompleted") ?: false,
@@ -268,21 +263,15 @@ class FirestoreSyncRepository(
                         id = id,
                         title = title,
                         amount = doc.getDouble("amount") ?: 0.0,
-                        type = try {
+                        type = runCatching {
                             ExpenseType.valueOf(doc.getString("type") ?: ExpenseType.EXPENSE.name)
-                        } catch (e: Exception) {
-                            ExpenseType.EXPENSE
-                        },
-                        category = try {
+                        }.getOrDefault(ExpenseType.EXPENSE),
+                        category = runCatching {
                             ExpenseCategory.valueOf(doc.getString("category") ?: ExpenseCategory.FOOD.name)
-                        } catch (e: Exception) {
-                            ExpenseCategory.FOOD
-                        },
-                        paymentMethod = try {
+                        }.getOrDefault(ExpenseCategory.FOOD),
+                        paymentMethod = runCatching {
                             PaymentMethod.valueOf(doc.getString("paymentMethod") ?: PaymentMethod.CASH.name)
-                        } catch (e: Exception) {
-                            PaymentMethod.CASH
-                        },
+                        }.getOrDefault(PaymentMethod.CASH),
                         timestamp = doc.getLong("timestamp") ?: System.currentTimeMillis(),
                         dateString = doc.getString("dateString") ?: "",
                         note = doc.getString("note") ?: ""

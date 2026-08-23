@@ -218,7 +218,7 @@ fun GradeEntryScreen(
             selectedSemester = selectedSemester,
             primarySemester = plan.currentSemester,
             allSemesters = allSemesters,
-            admissionSemester = plan.currentSemester,
+            admissionSemester = plan.admissionSemester,
             onSelectSemester = { sem ->
                 viewModel.setSelectedSemester(sem)
             },

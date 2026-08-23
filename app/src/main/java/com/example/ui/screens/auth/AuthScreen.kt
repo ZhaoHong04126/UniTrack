@@ -63,7 +63,8 @@ fun AuthScreen(
 
     // Registration Profile State
     var department by remember { mutableStateOf("") }
-    var admissionYear by remember { mutableStateOf("114 學年度 (114-1)") }
+    val initialTaiwanYear = remember { java.util.Calendar.getInstance().get(java.util.Calendar.YEAR) - 1911 }
+    var admissionYear by remember { mutableStateOf("$initialTaiwanYear 學年度 ($initialTaiwanYear-1)") }
 
     // Form inputs
     var name by remember { mutableStateOf("") }
@@ -162,14 +163,13 @@ fun AuthScreen(
                             currentPage = AuthPage.WELCOME
                         },
                         onNext = {
-                            val semesterCode = if (admissionYear.contains("114")) "114-1"
-                            else if (admissionYear.contains("113")) "113-1"
-                            else if (admissionYear.contains("112")) "112-1"
-                            else "111-1"
+                            val yearNum = admissionYear.filter { it.isDigit() }.take(3).ifBlank { (java.util.Calendar.getInstance().get(java.util.Calendar.YEAR) - 1911).toString() }
+                            val semesterCode = "$yearNum-1"
 
                             viewModel.updateGraduationPlan(
                                 graduationPlan.copy(
                                     department = department.ifBlank { "尚未設定系所" },
+                                    admissionSemester = semesterCode,
                                     currentSemester = semesterCode
                                 )
                             )
@@ -711,13 +711,13 @@ private fun RegisterStep1PageView(
         )
     )
 
-    val yearOptions = listOf(
-        "114 學年度 (114-1)",
-        "113 學年度 (113-1)",
-        "112 學年度 (112-1)",
-        "111 學年度 (111-1)",
-        "110 學年度 (110-1)"
-    )
+    val currentTaiwanYear = remember { java.util.Calendar.getInstance().get(java.util.Calendar.YEAR) - 1911 }
+    val yearOptions = remember(currentTaiwanYear) {
+        (0 until 5).map { offset ->
+            val y = currentTaiwanYear - offset
+            "$y 學年度 ($y-1)"
+        }
+    }
 
     Column(
         modifier = Modifier

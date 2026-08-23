@@ -43,10 +43,10 @@ fun TimetableScreen(
     val graduationPlan by viewModel.graduationPlan.collectAsStateWithLifecycle()
 
     fun formatSemesterLabel(sem: String): String {
-        val startYear = graduationPlan.currentSemester.substringBefore("-").filter { it.isDigit() }.toIntOrNull() ?: 114
+        val startYear = graduationPlan.admissionSemester.substringBefore("-").filter { it.isDigit() }.toIntOrNull()
         val year = sem.substringBefore("-").filter { it.isDigit() }.toIntOrNull()
         val term = sem.substringAfter("-").filter { it.isDigit() }.toIntOrNull() ?: 1
-        if (year != null) {
+        if (startYear != null && year != null) {
             val grade = when (val diff = year - startYear) {
                 0 -> "大一"
                 1 -> "大二"
@@ -288,7 +288,7 @@ fun TimetableScreen(
             selectedSemester = selectedSemester,
             primarySemester = graduationPlan.currentSemester,
             allSemesters = allSemesters,
-            admissionSemester = graduationPlan.currentSemester,
+            admissionSemester = graduationPlan.admissionSemester,
             onSelectSemester = { sem ->
                 viewModel.setSelectedSemester(sem)
             },
