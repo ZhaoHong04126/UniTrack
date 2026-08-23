@@ -1,12 +1,9 @@
 package com.example.ui.screens.dashboard
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,16 +18,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.core.graphics.toColorInt
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.Course
-import com.example.data.model.CourseCategory
 import com.example.ui.components.PrivacySecurityBanner
 import com.example.ui.components.SectionHeader
-import com.example.ui.components.StatMetricCard
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.StudentViewModel
 import java.util.Calendar
@@ -52,6 +48,7 @@ fun DashboardScreen(
     val semesterGpas by viewModel.semesterGpaList.collectAsStateWithLifecycle()
 
     val (cumulativeGpa, averageScore) = academicSummary
+    val currentLocale = LocalConfiguration.current.locales[0]
 
     LazyColumn(
         modifier = modifier
@@ -174,7 +171,7 @@ fun DashboardScreen(
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    text = if (cumulativeGpa > 0) String.format("%.2f", cumulativeGpa) else "—",
+                                    text = if (cumulativeGpa > 0) String.format(currentLocale, "%.2f", cumulativeGpa) else "—",
                                     style = MaterialTheme.typography.headlineMedium,
                                     fontWeight = FontWeight.ExtraBold,
                                     color = SapphirePrimary
@@ -193,7 +190,7 @@ fun DashboardScreen(
                             )
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    text = if (averageScore > 0) String.format("%.1f", averageScore) else "—",
+                                    text = if (averageScore > 0) String.format(currentLocale, "%.1f", averageScore) else "—",
                                     style = MaterialTheme.typography.headlineMedium,
                                     fontWeight = FontWeight.ExtraBold,
                                     color = TealSecondary
@@ -477,7 +474,7 @@ fun DashboardScreen(
 
 @Composable
 private fun TodayCourseItemCard(course: Course) {
-    val courseColor = runCatching { Color(android.graphics.Color.parseColor(course.colorHex)) }
+    val courseColor = runCatching { Color(course.colorHex.toColorInt()) }
         .getOrDefault(SapphirePrimary)
 
     Card(
