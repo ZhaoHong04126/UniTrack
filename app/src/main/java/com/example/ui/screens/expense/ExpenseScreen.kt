@@ -2,11 +2,14 @@ package com.example.ui.screens.expense
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -47,6 +50,7 @@ fun ExpenseScreen(
     var editingExpense by remember { mutableStateOf<ExpenseRecord?>(null) }
     var showBudgetDialog by remember { mutableStateOf(false) }
     var showClearConfirmDialog by remember { mutableStateOf(false) }
+    var showFilterBottomSheet by remember { mutableStateOf(false) }
     var selectedCategoryFilter by remember { mutableStateOf<ExpenseCategory?>(null) }
 
     val locale = LocalConfiguration.current.locales[0]
@@ -301,29 +305,57 @@ fun ExpenseScreen(
                 }
             }
 
-            // Category Filter Chips
+            // Category Filter Section Header
             item {
-                SectionHeader(title = "收支明細清單")
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.fillMaxWidth()
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    item {
-                        FilterChip(
-                            selected = selectedCategoryFilter == null,
-                            onClick = { selectedCategoryFilter = null },
-                            label = { Text("全部") }
+                    Text(
+                        text = "收支明細清單",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    FilterChip(
+                        selected = selectedCategoryFilter != null,
+                        onClick = { showFilterBottomSheet = true },
+                        label = {
+                            Text(
+                                text = selectedCategoryFilter?.label ?: "篩選",
+                                fontWeight = if (selectedCategoryFilter != null) FontWeight.SemiBold else FontWeight.Normal
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Tune,
+                                contentDescription = "篩選",
+                                modifier = Modifier.size(16.dp)
+                            )
+                        },
+                        trailingIcon = if (selectedCategoryFilter != null) {
+                            {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "清除篩選",
+                                    modifier = Modifier
+                                        .size(16.dp)
+                                        .clickable { selectedCategoryFilter = null }
+                                )
+                            }
+                        } else null,
+                        shape = RoundedCornerShape(20.dp),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = SapphirePrimary.copy(alpha = 0.12f),
+                            selectedLabelColor = SapphirePrimary,
+                            selectedLeadingIconColor = SapphirePrimary,
+                            selectedTrailingIconColor = SapphirePrimary
                         )
-                    }
-                    items(ExpenseCategory.entries) { cat ->
-                        FilterChip(
-                            selected = selectedCategoryFilter == cat,
-                            onClick = {
-                                selectedCategoryFilter = if (selectedCategoryFilter == cat) null else cat
-                            },
-                            label = { Text(cat.label) }
-                        )
-                    }
+                    )
                 }
             }
 
@@ -422,6 +454,129 @@ fun ExpenseScreen(
                 showBudgetDialog = false
             }
         )
+    }
+
+    if (showFilterBottomSheet) {
+        ExpenseCategoryFilterBottomSheet(
+            selectedCategory = selectedCategoryFilter,
+            onSelectCategory = { cat ->
+                selectedCategoryFilter = cat
+            },
+            onDismiss = { showFilterBottomSheet = false }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ExpenseCategoryFilterBottomSheet(
+    selectedCategory: ExpenseCategory?,
+    onSelectCategory: (ExpenseCategory?) -> Unit,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "收支類別篩選",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                if (selectedCategory != null) {
+                    TextButton(
+                        onClick = {
+                            onSelectCategory(null)
+                            onDismiss()
+                        }
+                    ) {
+                        Text("重設為全部", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            }
+
+            val allFilterItems = listOf<ExpenseCategory?>(null) + ExpenseCategory.entries
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(3),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(allFilterItems) { cat ->
+                    val isSelected = selectedCategory == cat
+                    val icon = when (cat) {
+                        null -> Icons.Default.Apps
+                        ExpenseCategory.FOOD -> Icons.Default.Restaurant
+                        ExpenseCategory.BOOKS_STUDY -> Icons.AutoMirrored.Filled.MenuBook
+                        ExpenseCategory.TRANSPORT -> Icons.Default.DirectionsBus
+                        ExpenseCategory.RENT_UTILITY -> Icons.Default.Home
+                        ExpenseCategory.ENTERTAINMENT -> Icons.Default.SportsEsports
+                        ExpenseCategory.DAILY -> Icons.Default.ShoppingBag
+                        ExpenseCategory.SALARY_JOB -> Icons.Default.Work
+                        ExpenseCategory.SCHOLARSHIP -> Icons.Default.School
+                        ExpenseCategory.OTHER -> Icons.Default.MoreHoriz
+                    }
+                    val label = cat?.label ?: "全部"
+
+                    Card(
+                        onClick = {
+                            onSelectCategory(cat)
+                            onDismiss()
+                        },
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isSelected) {
+                                SapphirePrimary.copy(alpha = 0.12f)
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                            }
+                        ),
+                        border = if (isSelected) {
+                            BorderStroke(1.5.dp, SapphirePrimary)
+                        } else null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(72.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = label,
+                                tint = if (isSelected) SapphirePrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isSelected) SapphirePrimary else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
