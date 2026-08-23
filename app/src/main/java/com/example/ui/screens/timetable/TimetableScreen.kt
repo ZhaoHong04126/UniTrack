@@ -35,8 +35,8 @@ import com.example.ui.viewmodel.StudentViewModel
 @Composable
 fun TimetableScreen(
     viewModel: StudentViewModel,
-    onNavigateToGrades: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onNavigateToGrades: () -> Unit = {}
 ) {
     val selectedSemester by viewModel.selectedSemester.collectAsStateWithLifecycle()
     val allSemesters by viewModel.allSemesters.collectAsStateWithLifecycle()
