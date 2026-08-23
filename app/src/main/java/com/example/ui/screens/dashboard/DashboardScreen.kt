@@ -63,7 +63,7 @@ fun DashboardScreen(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "${plan.department}・${plan.currentSemester} 學期",
+                        text = "${plan.currentSemester} 學期",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

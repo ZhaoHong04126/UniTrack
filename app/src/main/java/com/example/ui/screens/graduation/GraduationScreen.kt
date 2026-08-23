@@ -85,7 +85,7 @@ fun GraduationScreen(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "${plan.department}・畢業審查檢核表",
+                            text = "畢業審查檢核表",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
