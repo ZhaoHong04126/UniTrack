@@ -42,6 +42,8 @@ fun AddEditCourseDialog(
 
     var categoryDropdownExpanded by remember { mutableStateOf(false) }
     var dayDropdownExpanded by remember { mutableStateOf(false) }
+    var startPeriodDropdownExpanded by remember { mutableStateOf(false) }
+    var endPeriodDropdownExpanded by remember { mutableStateOf(false) }
     var generalSubtypeDropdownExpanded by remember { mutableStateOf(false) }
 
     val days = listOf("星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日")
@@ -151,34 +153,66 @@ fun AddEditCourseDialog(
                         }
                     }
 
-                    OutlinedTextField(
-                        value = startPeriod.toString(),
-                        onValueChange = { str ->
-                            str.toIntOrNull()?.let {
-                                if (it in 1..14) {
-                                    startPeriod = it
-                                    if (endPeriod < it) endPeriod = it
-                                }
+                    // Start Period
+                    ExposedDropdownMenuBox(
+                        expanded = startPeriodDropdownExpanded,
+                        onExpandedChange = { startPeriodDropdownExpanded = !startPeriodDropdownExpanded },
+                        modifier = Modifier.weight(0.9f)
+                    ) {
+                        OutlinedTextField(
+                            value = "第 $startPeriod 節",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("起始節") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = startPeriodDropdownExpanded) },
+                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                        )
+                        ExposedDropdownMenu(
+                            expanded = startPeriodDropdownExpanded,
+                            onDismissRequest = { startPeriodDropdownExpanded = false }
+                        ) {
+                            (1..14).forEach { p ->
+                                DropdownMenuItem(
+                                    text = { Text("第 $p 節") },
+                                    onClick = {
+                                        startPeriod = p
+                                        if (endPeriod < p) endPeriod = p
+                                        startPeriodDropdownExpanded = false
+                                    }
+                                )
                             }
-                        },
-                        label = { Text("起始節") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true,
-                        modifier = Modifier.weight(0.8f)
-                    )
+                        }
+                    }
 
-                    OutlinedTextField(
-                        value = endPeriod.toString(),
-                        onValueChange = { str ->
-                            str.toIntOrNull()?.let {
-                                if (it in startPeriod..14) endPeriod = it
+                    // End Period
+                    ExposedDropdownMenuBox(
+                        expanded = endPeriodDropdownExpanded,
+                        onExpandedChange = { endPeriodDropdownExpanded = !endPeriodDropdownExpanded },
+                        modifier = Modifier.weight(0.9f)
+                    ) {
+                        OutlinedTextField(
+                            value = "第 $endPeriod 節",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("結束節") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = endPeriodDropdownExpanded) },
+                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                        )
+                        ExposedDropdownMenu(
+                            expanded = endPeriodDropdownExpanded,
+                            onDismissRequest = { endPeriodDropdownExpanded = false }
+                        ) {
+                            (startPeriod..14).forEach { p ->
+                                DropdownMenuItem(
+                                    text = { Text("第 $p 節") },
+                                    onClick = {
+                                        endPeriod = p
+                                        endPeriodDropdownExpanded = false
+                                    }
+                                )
                             }
-                        },
-                        label = { Text("結束節") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true,
-                        modifier = Modifier.weight(0.8f)
-                    )
+                        }
+                    }
                 }
 
                 // Category & Credits
