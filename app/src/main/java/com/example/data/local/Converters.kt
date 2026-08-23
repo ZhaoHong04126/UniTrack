@@ -22,7 +22,16 @@ class Converters {
 
     @TypeConverter
     fun toGeneralEduSubtype(value: String?): GeneralEduSubtype? =
-        value?.let { enumValueOfOrDefault(it, GeneralEduSubtype.NONE) }
+        value?.let {
+            when (it) {
+                "HUMANITIES" -> GeneralEduSubtype.CORE_HUMANITIES
+                "SOCIAL_SCIENCE" -> GeneralEduSubtype.CORE_SOCIAL
+                "NATURAL_SCIENCE" -> GeneralEduSubtype.CORE_NATURAL
+                "CORE" -> GeneralEduSubtype.CHINESE
+                "INTERDISCIPLINARY" -> GeneralEduSubtype.CORE_HUMANITIES
+                else -> enumValueOfOrDefault(it, GeneralEduSubtype.NONE)
+            }
+        }
 
     @TypeConverter
     fun fromExpenseType(value: ExpenseType?): String? = value?.name

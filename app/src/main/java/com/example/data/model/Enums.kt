@@ -15,12 +15,23 @@ enum class CourseCategory(val label: String, val shortLabel: String, val badgeCo
 }
 
 enum class GeneralEduSubtype(val label: String) {
-    NONE("無 / 核心必修"),
-    HUMANITIES("人文藝術"),
-    SOCIAL_SCIENCE("社會科學"),
-    NATURAL_SCIENCE("自然科學"),
-    CORE("核心通識"),
-    INTERDISCIPLINARY("跨領域 / 融合通識")
+    NONE("未指定 / 其他"),
+    // 語文課程 (10學分)
+    CHINESE("語文：國語文能力"),
+    ENGLISH("語文：英語文能力"),
+    // 資訊能力課程 (2學分)
+    PROGRAMMING_AI("資訊能力"),
+    // 跨領域核心課程 (6學分)
+    CORE_HUMANITIES("跨領域核心：人文藝術領域"),
+    CORE_SOCIAL("跨領域核心：社會科學領域"),
+    CORE_NATURAL("跨領域核心：自然科學領域"),
+    // 博雅課程 (8學分)
+    LIBERAL_1("博雅：【向度一】美學、哲學與文化實踐"),
+    LIBERAL_2("博雅：【向度二】公民、社會與全球視野"),
+    LIBERAL_3("博雅：【向度三】科技、自然與環境生態"),
+    LIBERAL_4("博雅：【向度四】自我、人際與成長調適"),
+    // 體適能課程 (2學分)
+    FITNESS("體適能：運動與健康")
 }
 
 enum class ExpenseType(val label: String) {

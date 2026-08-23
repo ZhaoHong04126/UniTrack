@@ -223,7 +223,16 @@ class StudentRepository(
                             endTime = o.optString("endTime", ""),
                             credits = o.optDouble("credits", 3.0),
                             category = runCatching { CourseCategory.valueOf(o.optString("category", "REQUIRED")) }.getOrDefault(CourseCategory.REQUIRED),
-                            generalEduSubtype = runCatching { GeneralEduSubtype.valueOf(o.optString("generalEduSubtype", "NONE")) }.getOrDefault(GeneralEduSubtype.NONE),
+                            generalEduSubtype = runCatching {
+                                when (val s = o.optString("generalEduSubtype", "NONE")) {
+                                    "HUMANITIES" -> GeneralEduSubtype.CORE_HUMANITIES
+                                    "SOCIAL_SCIENCE" -> GeneralEduSubtype.CORE_SOCIAL
+                                    "NATURAL_SCIENCE" -> GeneralEduSubtype.CORE_NATURAL
+                                    "CORE" -> GeneralEduSubtype.CHINESE
+                                    "INTERDISCIPLINARY" -> GeneralEduSubtype.CORE_HUMANITIES
+                                    else -> GeneralEduSubtype.valueOf(s)
+                                }
+                            }.getOrDefault(GeneralEduSubtype.NONE),
                             semester = o.optString("semester", "113-2"),
                             score = if (o.isNull("score")) null else o.optDouble("score"),
                             letterGrade = if (o.isNull("letterGrade")) null else o.optString("letterGrade"),
