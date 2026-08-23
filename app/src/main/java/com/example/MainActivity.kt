@@ -22,7 +22,9 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.ui.screens.dashboard.DashboardScreen
 import com.example.ui.screens.expense.ExpenseScreen
+import com.example.ui.screens.graduation.CourseAuditListScreen
 import com.example.ui.screens.graduation.GraduationScreen
+import com.example.ui.screens.graduation.GraduationThresholdsScreen
 import com.example.ui.screens.settings.SettingsScreen
 import com.example.ui.screens.timetable.TimetableScreen
 import com.example.ui.theme.MyApplicationTheme
@@ -173,7 +175,29 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable(AppDestination.Graduation.route) {
-                            GraduationScreen(viewModel = studentViewModel)
+                            GraduationScreen(
+                                viewModel = studentViewModel,
+                                onNavigateToThresholds = {
+                                    navController.navigate("graduation_thresholds")
+                                },
+                                onNavigateToCourseAudit = {
+                                    navController.navigate("course_audit_list")
+                                }
+                            )
+                        }
+
+                        composable("graduation_thresholds") {
+                            GraduationThresholdsScreen(
+                                viewModel = studentViewModel,
+                                onNavigateBack = { navController.popBackStack() }
+                            )
+                        }
+
+                        composable("course_audit_list") {
+                            CourseAuditListScreen(
+                                viewModel = studentViewModel,
+                                onNavigateBack = { navController.popBackStack() }
+                            )
                         }
 
                         composable(AppDestination.Expense.route) {
