@@ -15,14 +15,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.components.PrivacySecurityBanner
 import com.example.ui.components.SectionHeader
@@ -114,7 +113,7 @@ fun SettingsScreen(
                     text = "本應用程式採用 Android Room 本機資料庫儲存所有課程表、學分成績與記帳資料，不需註冊帳號，絕不將資料上傳至任何雲端或第三方伺服器，確保您的課業與財務隱私 100% 安全。",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = MaterialTheme.typography.bodySmall.lineHeight * 1.2
+                    lineHeight = 18.sp
                 )
             }
         }
