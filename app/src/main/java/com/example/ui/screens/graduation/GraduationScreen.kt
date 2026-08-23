@@ -318,15 +318,17 @@ fun GraduationScreen(
                     onClick = { selectedCategoryFilter = null },
                     label = { Text("全部 (${allCourses.size})") }
                 )
-                CourseCategory.entries.forEach { cat ->
-                    FilterChip(
-                        selected = selectedCategoryFilter == cat,
-                        onClick = {
-                            selectedCategoryFilter = if (selectedCategoryFilter == cat) null else cat
-                        },
-                        label = { Text(cat.shortLabel) }
-                    )
-                }
+                CourseCategory.entries
+                    .filter { it != CourseCategory.REQUIRED && it != CourseCategory.ELECTIVE && it != CourseCategory.PE }
+                    .forEach { cat ->
+                        FilterChip(
+                            selected = selectedCategoryFilter == cat,
+                            onClick = {
+                                selectedCategoryFilter = if (selectedCategoryFilter == cat) null else cat
+                            },
+                            label = { Text(cat.shortLabel) }
+                        )
+                    }
             }
         }
 
@@ -552,7 +554,7 @@ private fun AuditCourseCard(
                 ) {
                     Text(
                         text = when {
-                            isPassed -> if (course.letterGrade != null) "${course.letterGrade} 通過" else "${course.score?.toInt()}分 通過"
+                            isPassed -> if (course.score != null) "${course.score.toInt()}分 通過" else if (course.letterGrade != null) "${course.letterGrade} 通過" else "通過"
                             isInProgress -> "修習中"
                             else -> "未通過"
                         },

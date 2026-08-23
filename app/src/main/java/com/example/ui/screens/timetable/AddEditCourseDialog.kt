@@ -6,6 +6,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -31,11 +33,10 @@ fun AddEditCourseDialog(
     var startPeriod by remember { mutableIntStateOf(initialCourse?.startPeriod ?: 1) }
     var endPeriod by remember { mutableIntStateOf(initialCourse?.endPeriod ?: 2) }
     var creditsText by remember { mutableStateOf(initialCourse?.credits?.toString() ?: "3.0") }
-    var category by remember { mutableStateOf(initialCourse?.category ?: CourseCategory.REQUIRED) }
+    var category by remember { mutableStateOf(initialCourse?.category?.takeIf { it != CourseCategory.REQUIRED && it != CourseCategory.ELECTIVE && it != CourseCategory.PE } ?: CourseCategory.GENERAL_EDU) }
     var generalEduSubtype by remember { mutableStateOf(initialCourse?.generalEduSubtype ?: GeneralEduSubtype.NONE) }
     var semester by remember { mutableStateOf(initialCourse?.semester ?: defaultSemester) }
     var scoreText by remember { mutableStateOf(initialCourse?.score?.toString() ?: "") }
-    var letterGrade by remember { mutableStateOf(initialCourse?.letterGrade ?: "") }
     var colorHex by remember { mutableStateOf(initialCourse?.colorHex ?: "#2563EB") }
     var notes by remember { mutableStateOf(initialCourse?.notes ?: "") }
 
@@ -50,11 +51,30 @@ fun AddEditCourseDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(
-                text = if (initialCourse == null) "新增課程" else "編輯課程",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = if (initialCourse == null) "新增課程" else "編輯課程",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                if (semester.isNotBlank()) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                    ) {
+                        Text(
+                            text = "$semester 學期",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+            }
         },
         text = {
             Column(
@@ -96,17 +116,7 @@ fun AddEditCourseDialog(
                     )
                 }
 
-                // Semester
-                OutlinedTextField(
-                    value = semester,
-                    onValueChange = { semester = it },
-                    label = { Text("學期") },
-                    placeholder = { Text("例如：113-2") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // Day of Week & Periods
+                // Day of Week & Credits
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -120,9 +130,10 @@ fun AddEditCourseDialog(
                             value = days.getOrElse(dayOfWeek - 1) { "星期一" },
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("星期") },
+                            label = { Text("上課星期") },
+                            singleLine = true,
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dayDropdownExpanded) },
-                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
                         )
                         ExposedDropdownMenu(
                             expanded = dayDropdownExpanded,
@@ -140,19 +151,35 @@ fun AddEditCourseDialog(
                         }
                     }
 
+                    OutlinedTextField(
+                        value = creditsText,
+                        onValueChange = { creditsText = it },
+                        label = { Text("學分數") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true,
+                        modifier = Modifier.weight(0.8f)
+                    )
+                }
+
+                // Start & End Periods
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     // Start Period
                     ExposedDropdownMenuBox(
                         expanded = startPeriodDropdownExpanded,
                         onExpandedChange = { startPeriodDropdownExpanded = !startPeriodDropdownExpanded },
-                        modifier = Modifier.weight(0.9f)
+                        modifier = Modifier.weight(1f)
                     ) {
                         OutlinedTextField(
                             value = "第 $startPeriod 節",
                             onValueChange = {},
                             readOnly = true,
                             label = { Text("起始節") },
+                            singleLine = true,
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = startPeriodDropdownExpanded) },
-                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
                         )
                         ExposedDropdownMenu(
                             expanded = startPeriodDropdownExpanded,
@@ -175,15 +202,16 @@ fun AddEditCourseDialog(
                     ExposedDropdownMenuBox(
                         expanded = endPeriodDropdownExpanded,
                         onExpandedChange = { endPeriodDropdownExpanded = !endPeriodDropdownExpanded },
-                        modifier = Modifier.weight(0.9f)
+                        modifier = Modifier.weight(1f)
                     ) {
                         OutlinedTextField(
                             value = "第 $endPeriod 節",
                             onValueChange = {},
                             readOnly = true,
                             label = { Text("結束節") },
+                            singleLine = true,
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = endPeriodDropdownExpanded) },
-                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
                         )
                         ExposedDropdownMenu(
                             expanded = endPeriodDropdownExpanded,
@@ -202,29 +230,28 @@ fun AddEditCourseDialog(
                     }
                 }
 
-                // Category & Credits
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                // Course Category
+                ExposedDropdownMenuBox(
+                    expanded = categoryDropdownExpanded,
+                    onExpandedChange = { categoryDropdownExpanded = !categoryDropdownExpanded },
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    ExposedDropdownMenuBox(
+                    OutlinedTextField(
+                        value = category.label,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("學分屬性") },
+                        singleLine = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryDropdownExpanded) },
+                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
                         expanded = categoryDropdownExpanded,
-                        onExpandedChange = { categoryDropdownExpanded = !categoryDropdownExpanded },
-                        modifier = Modifier.weight(1.2f)
+                        onDismissRequest = { categoryDropdownExpanded = false }
                     ) {
-                        OutlinedTextField(
-                            value = category.label,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("學分屬性") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryDropdownExpanded) },
-                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
-                        )
-                        ExposedDropdownMenu(
-                            expanded = categoryDropdownExpanded,
-                            onDismissRequest = { categoryDropdownExpanded = false }
-                        ) {
-                            CourseCategory.entries.forEach { cat ->
+                        CourseCategory.entries
+                            .filter { it != CourseCategory.REQUIRED && it != CourseCategory.ELECTIVE && it != CourseCategory.PE }
+                            .forEach { cat ->
                                 DropdownMenuItem(
                                     text = { Text(cat.label) },
                                     onClick = {
@@ -233,17 +260,7 @@ fun AddEditCourseDialog(
                                     }
                                 )
                             }
-                        }
                     }
-
-                    OutlinedTextField(
-                        value = creditsText,
-                        onValueChange = { creditsText = it },
-                        label = { Text("學分數") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        singleLine = true,
-                        modifier = Modifier.weight(0.8f)
-                    )
                 }
 
                 // General Education Subtype if Category == GENERAL_EDU
@@ -278,29 +295,16 @@ fun AddEditCourseDialog(
                     }
                 }
 
-                // Grade / Score (Optional for completed courses)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = scoreText,
-                        onValueChange = { scoreText = it },
-                        label = { Text("成績分數 (選填)") },
-                        placeholder = { Text("0~100") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                    OutlinedTextField(
-                        value = letterGrade,
-                        onValueChange = { letterGrade = it.uppercase() },
-                        label = { Text("等第 (選填)") },
-                        placeholder = { Text("A+, A, B...") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
+                // Score (Optional for completed courses)
+                OutlinedTextField(
+                    value = scoreText,
+                    onValueChange = { scoreText = it },
+                    label = { Text("成績分數 (選填)") },
+                    placeholder = { Text("例如：85 (0~100)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
 
                 // Color Picker
                 Text(
@@ -342,8 +346,8 @@ fun AddEditCourseDialog(
                             generalEduSubtype = generalEduSubtype,
                             semester = semester.trim(),
                             score = score,
-                            letterGrade = if (letterGrade.isNotBlank()) letterGrade.trim() else null,
-                            isCompleted = score != null || letterGrade.isNotBlank(),
+                            letterGrade = initialCourse?.letterGrade,
+                            isCompleted = score != null,
                             colorHex = colorHex,
                             notes = notes.trim()
                         )
