@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.data.local.AppDatabase
 import com.example.data.local.DefaultData
 import com.example.data.model.*
+import com.example.data.repository.AuthRepository
 import com.example.data.repository.StudentRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -64,6 +65,10 @@ data class ExpenseMonthlySummary(
 @Suppress("unused")
 class StudentViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: StudentRepository
+    private val authRepository: AuthRepository = AuthRepository(application.applicationContext)
+
+    val authState: StateFlow<AuthState> = authRepository.authState
+    val currentUser: StateFlow<UserProfile?> = authRepository.currentUser
 
     val monthFormat = SimpleDateFormat("yyyy-MM", Locale.getDefault())
     val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
@@ -85,6 +90,16 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         repository = StudentRepository(db.courseDao(), db.graduationDao(), db.expenseDao())
         viewModelScope.launch {
             repository.seedInitialDataIfEmpty()
+        }
+        viewModelScope.launch {
+            currentUser.collect { profile ->
+                if (profile != null && !profile.displayName.isNullOrBlank()) {
+                    val currentPlan = graduationPlan.value
+                    if (currentPlan.studentName == "同學" || currentPlan.studentName == "王大明") {
+                        updateGraduationPlan(currentPlan.copy(studentName = profile.displayName))
+                    }
+                }
+            }
         }
     }
 
@@ -422,6 +437,10 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         _userMessage.value = null
     }
 
+    fun showToast(msg: String) {
+        _userMessage.value = msg
+    }
+
     fun addCourse(course: Course) = viewModelScope.launch {
         repository.insertCourse(course)
         _userMessage.value = "已成功新增課程：${course.name}"
@@ -596,5 +615,85 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             "E", "F" -> 40.0
             else -> null
         }
+    }
+
+    // ==========================================
+    // 帳號與身分認證 (Authentication Actions)
+    // ==========================================
+
+    fun signInWithGoogle(webClientId: String = "", onResult: ((Boolean, String?) -> Unit)? = null) {
+        viewModelScope.launch {
+            val result = authRepository.signInWithGoogle(webClientId)
+            result.onSuccess { user ->
+                showToast("歡迎，${user.displayName ?: "同學"}！")
+                onResult?.invoke(true, null)
+            }.onFailure { e ->
+                showToast(e.message ?: "Google 登入失敗")
+                onResult?.invoke(false, e.message)
+            }
+        }
+    }
+
+    fun signInWithEmail(email: String, pass: String, onResult: ((Boolean, String?) -> Unit)? = null) {
+        viewModelScope.launch {
+            val result = authRepository.signInWithEmail(email, pass)
+            result.onSuccess { user ->
+                showToast("歡迎回來，${user.displayName ?: "同學"}！")
+                onResult?.invoke(true, null)
+            }.onFailure { e ->
+                showToast(e.message ?: "登入失敗")
+                onResult?.invoke(false, e.message)
+            }
+        }
+    }
+
+    fun signUpWithEmail(name: String, email: String, pass: String, onResult: ((Boolean, String?) -> Unit)? = null) {
+        viewModelScope.launch {
+            val result = authRepository.signUpWithEmail(name, email, pass)
+            result.onSuccess { user ->
+                showToast("註冊成功！歡迎加入 UniTrack+，${user.displayName ?: "同學"}")
+                onResult?.invoke(true, null)
+            }.onFailure { e ->
+                showToast(e.message ?: "註冊失敗")
+                onResult?.invoke(false, e.message)
+            }
+        }
+    }
+
+    fun sendPasswordReset(email: String, onResult: ((Boolean, String?) -> Unit)? = null) {
+        viewModelScope.launch {
+            val result = authRepository.sendPasswordResetEmail(email)
+            result.onSuccess {
+                showToast("密碼重設信已寄送至 $email")
+                onResult?.invoke(true, null)
+            }.onFailure { e ->
+                showToast(e.message ?: "寄送重設信失敗")
+                onResult?.invoke(false, e.message)
+            }
+        }
+    }
+
+    fun signInAsGuest(onResult: ((Boolean) -> Unit)? = null) {
+        viewModelScope.launch {
+            val result = authRepository.signInAsGuest()
+            result.onSuccess {
+                showToast("已進入訪客模式（本機離線儲存）")
+                onResult?.invoke(true)
+            }.onFailure {
+                showToast("訪客模式切換失敗")
+                onResult?.invoke(false)
+            }
+        }
+    }
+
+    fun signOut() {
+        viewModelScope.launch {
+            authRepository.signOut()
+            showToast("已成功登出帳號")
+        }
+    }
+
+    fun clearAuthError() {
+        authRepository.clearError()
     }
 }

@@ -1,0 +1,25 @@
+package com.example.data.model
+
+enum class AuthProvider {
+    GOOGLE,
+    EMAIL,
+    GUEST,
+    OFFLINE_DEMO
+}
+
+data class UserProfile(
+    val uid: String,
+    val displayName: String?,
+    val email: String?,
+    val photoUrl: String? = null,
+    val isAnonymous: Boolean = false,
+    val provider: AuthProvider = AuthProvider.EMAIL
+)
+
+sealed interface AuthState {
+    object Initial : AuthState
+    object Loading : AuthState
+    data class Authenticated(val user: UserProfile) : AuthState
+    object Unauthenticated : AuthState
+    data class Error(val message: String) : AuthState
+}

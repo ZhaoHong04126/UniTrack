@@ -11,7 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,7 +28,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.data.model.AuthProvider
 import com.example.data.model.GraduationPlan
+import com.example.data.model.UserProfile
 import com.example.ui.components.PrivacySecurityBanner
 import com.example.ui.components.SectionHeader
 import com.example.ui.screens.graduation.GraduationPlanDialog
@@ -40,13 +42,15 @@ import kotlinx.coroutines.launch
 @Composable
 fun SettingsScreen(
     viewModel: StudentViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onNavigateToAuth: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val clipboardManager = LocalClipboard.current
     val coroutineScope = rememberCoroutineScope()
 
     val plan by viewModel.graduationPlan.collectAsStateWithLifecycle()
+    val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
 
     var showEditProfileDialog by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
@@ -57,6 +61,7 @@ fun SettingsScreen(
     var importJsonInput by remember { mutableStateOf("") }
     var showResetConfirmDialog by remember { mutableStateOf(false) }
     var showClearConfirmDialog by remember { mutableStateOf(false) }
+    var showSignOutConfirmDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -88,8 +93,56 @@ fun SettingsScreen(
         // Student ID Card Widget (學生證風格卡片)
         StudentIdCard(
             plan = plan,
-            onEditClick = { showEditProfileDialog = true }
+            currentUser = currentUser,
+            onEditClick = { showEditProfileDialog = true },
+            onAuthClick = onNavigateToAuth
         )
+
+        // Section 0: Account & Security
+        SectionHeader(title = "帳號與雲端同步")
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        ) {
+            Column {
+                val user = currentUser
+                if (user != null && !user.isAnonymous) {
+                    SettingTileRow(
+                        icon = Icons.Default.AccountCircle,
+                        title = user.displayName ?: "已登入學生",
+                        subtitle = user.email ?: "已綁定帳號",
+                        iconTint = EmeraldAccent,
+                        badgeText = "已登入",
+                        onClick = onNavigateToAuth
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                    )
+
+                    SettingTileRow(
+                        icon = Icons.AutoMirrored.Filled.Logout,
+                        title = "登出目前帳號",
+                        subtitle = "切換回訪客模式或更換其他帳號",
+                        iconTint = RoseAccent,
+                        titleColor = RoseAccent,
+                        onClick = { showSignOutConfirmDialog = true }
+                    )
+                } else {
+                    SettingTileRow(
+                        icon = Icons.AutoMirrored.Filled.Login,
+                        title = "登入 / 註冊 UniTrack+ 帳號",
+                        subtitle = "使用 Google 或 Email 登入以保存學業紀錄",
+                        iconTint = SapphirePrimary,
+                        badgeText = "訪客模式",
+                        onClick = onNavigateToAuth
+                    )
+                }
+            }
+        }
 
         // Section 1: Academic & Profile Settings
         SectionHeader(title = "學業與審查設定")
@@ -455,6 +508,31 @@ fun SettingsScreen(
             }
         )
     }
+    // Sign Out Confirm Dialog
+    if (showSignOutConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showSignOutConfirmDialog = false },
+            title = { Text("確認登出帳號？") },
+            text = { Text("登出後將切換為訪客模式，您的本機資料仍會安全保存在這台裝置上。") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.signOut()
+                        showSignOutConfirmDialog = false
+                        onNavigateToAuth()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = RoseAccent)
+                ) {
+                    Text("確認登出")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSignOutConfirmDialog = false }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
 }
 
 /**
@@ -463,12 +541,16 @@ fun SettingsScreen(
 @Composable
 private fun StudentIdCard(
     plan: GraduationPlan,
-    onEditClick: () -> Unit
+    currentUser: UserProfile?,
+    onEditClick: () -> Unit,
+    onAuthClick: () -> Unit
 ) {
+    val isLoggedIn = currentUser != null && !currentUser.isAnonymous
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onEditClick),
+            .clickable(onClick = if (isLoggedIn) onEditClick else onAuthClick),
         shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
@@ -520,13 +602,17 @@ private fun StudentIdCard(
 
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = EmeraldAccent.copy(alpha = 0.3f),
-                        border = BorderStroke(1.dp, EmeraldAccent.copy(alpha = 0.5f))
+                        color = if (isLoggedIn) EmeraldAccent.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.2f),
+                        border = BorderStroke(1.dp, if (isLoggedIn) EmeraldAccent.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.3f))
                     ) {
                         Text(
-                            text = "100% 離線",
+                            text = when {
+                                isLoggedIn && currentUser.provider == AuthProvider.GOOGLE -> "Google 認證"
+                                isLoggedIn -> "Email 帳號"
+                                else -> "訪客/本機"
+                            },
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFF6EE7B7),
+                            color = if (isLoggedIn) Color(0xFF6EE7B7) else Color.White,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                         )
@@ -539,7 +625,7 @@ private fun StudentIdCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Avatar Container with Edit Camera Badge
+                    // Avatar Container with Edit / Login Badge
                     Box(
                         contentAlignment = Alignment.BottomEnd
                     ) {
@@ -551,7 +637,7 @@ private fun StudentIdCard(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Person,
+                                imageVector = if (isLoggedIn) Icons.Default.AccountCircle else Icons.Default.Person,
                                 contentDescription = null,
                                 tint = Color.White,
                                 modifier = Modifier.size(38.dp)
@@ -565,8 +651,8 @@ private fun StudentIdCard(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = "編輯",
+                                imageVector = if (isLoggedIn) Icons.Default.Edit else Icons.AutoMirrored.Filled.Login,
+                                contentDescription = "操作",
                                 tint = SapphirePrimary,
                                 modifier = Modifier.size(13.dp)
                             )
@@ -579,9 +665,10 @@ private fun StudentIdCard(
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Text(
-                            text = "學生姓名",
+                            text = if (isLoggedIn && !currentUser.email.isNullOrBlank()) currentUser.email else "學生姓名",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color.White.copy(alpha = 0.7f)
+                            color = Color.White.copy(alpha = 0.7f),
+                            maxLines = 1
                         )
                         Text(
                             text = plan.studentName,

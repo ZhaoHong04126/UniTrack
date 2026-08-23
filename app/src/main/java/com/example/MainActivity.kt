@@ -20,6 +20,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.ui.screens.auth.AuthScreen
 import com.example.ui.screens.dashboard.DashboardScreen
 import com.example.ui.screens.expense.ExpenseScreen
 import com.example.ui.screens.graduation.CourseAuditListScreen
@@ -108,47 +109,51 @@ class MainActivity : ComponentActivity() {
                     AppDestination.Settings
                 )
 
+                val isMainTab = items.any { it.route == currentRoute }
+
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
                     bottomBar = {
-                        NavigationBar(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("main_bottom_nav"),
-                            windowInsets = NavigationBarDefaults.windowInsets
-                        ) {
-                            items.forEach { dest ->
-                                val selected = currentRoute == dest.route
-                                NavigationBarItem(
-                                    selected = selected,
-                                    onClick = {
-                                        if (currentRoute != dest.route) {
-                                            navController.navigate(dest.route) {
-                                                popUpTo(navController.graph.findStartDestination().id) {
-                                                    saveState = true
+                        if (isMainTab) {
+                            NavigationBar(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("main_bottom_nav"),
+                                windowInsets = NavigationBarDefaults.windowInsets
+                            ) {
+                                items.forEach { dest ->
+                                    val selected = currentRoute == dest.route
+                                    NavigationBarItem(
+                                        selected = selected,
+                                        onClick = {
+                                            if (currentRoute != dest.route) {
+                                                navController.navigate(dest.route) {
+                                                    popUpTo(navController.graph.findStartDestination().id) {
+                                                        saveState = true
+                                                    }
+                                                    launchSingleTop = true
+                                                    restoreState = true
                                                 }
-                                                launchSingleTop = true
-                                                restoreState = true
                                             }
-                                        }
-                                    },
-                                    icon = {
-                                        Icon(
-                                            imageVector = if (selected) dest.selectedIcon else dest.unselectedIcon,
-                                            contentDescription = dest.title
-                                        )
-                                    },
-                                    label = { Text(dest.title) },
-                                    modifier = Modifier.testTag(dest.testTag)
-                                )
+                                        },
+                                        icon = {
+                                            Icon(
+                                                imageVector = if (selected) dest.selectedIcon else dest.unselectedIcon,
+                                                contentDescription = dest.title
+                                            )
+                                        },
+                                        label = { Text(dest.title) },
+                                        modifier = Modifier.testTag(dest.testTag)
+                                    )
+                                }
                             }
                         }
                     }
                 ) { innerPadding ->
                     NavHost(
                         navController = navController,
-                        startDestination = AppDestination.Dashboard.route,
+                        startDestination = "auth",
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(innerPadding)
@@ -222,7 +227,26 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable(AppDestination.Settings.route) {
-                            SettingsScreen(viewModel = studentViewModel)
+                            SettingsScreen(
+                                viewModel = studentViewModel,
+                                onNavigateToAuth = {
+                                    navController.navigate("auth")
+                                }
+                            )
+                        }
+
+                        composable("auth") {
+                            AuthScreen(
+                                viewModel = studentViewModel,
+                                showBackButton = navController.previousBackStackEntry != null,
+                                onNavigateBack = { navController.popBackStack() },
+                                onAuthSuccess = {
+                                    navController.navigate(AppDestination.Dashboard.route) {
+                                        popUpTo("auth") { inclusive = true }
+                                        launchSingleTop = true
+                                    }
+                                }
+                            )
                         }
                     }
                 }
