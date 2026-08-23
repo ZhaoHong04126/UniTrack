@@ -19,6 +19,9 @@ interface CourseDao {
     @Query("SELECT * FROM courses WHERE id = :id")
     suspend fun getCourseById(id: Long): Course?
 
+    @Query("SELECT COUNT(*) FROM courses")
+    suspend fun getCourseCount(): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCourse(course: Course): Long
 

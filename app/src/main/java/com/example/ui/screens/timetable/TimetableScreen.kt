@@ -136,15 +136,14 @@ fun TimetableScreen(
                     }
                 }
 
-                // Add Course Button (Relocated from FAB)
-                Button(
+                // Add Course Button (Icon only)
+                FilledIconButton(
                     onClick = {
                         editingCourse = null
                         showAddDialog = true
                     },
                     shape = RoundedCornerShape(12.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    colors = ButtonDefaults.buttonColors(
+                    colors = IconButtonDefaults.filledIconButtonColors(
                         containerColor = SapphirePrimary,
                         contentColor = Color.White
                     ),
@@ -152,14 +151,8 @@ fun TimetableScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "新增課程",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold
+                        contentDescription = "新增課程",
+                        modifier = Modifier.size(22.dp)
                     )
                 }
             }
@@ -428,6 +421,14 @@ private fun WeeklyTimetableGrid(
             // Period Number Column
             Column(modifier = Modifier.width(40.dp)) {
                 for (period in 1..maxPeriod) {
+                    val periodLabel = when (period) {
+                        10 -> "A"
+                        11 -> "B"
+                        12 -> "C"
+                        13 -> "D"
+                        14 -> "E"
+                        else -> "$period"
+                    }
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -437,7 +438,7 @@ private fun WeeklyTimetableGrid(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "$period",
+                            text = periodLabel,
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
@@ -533,6 +534,17 @@ private fun CourseListItemCard(
     val days = listOf("星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日")
     val dayName = days.getOrElse(course.dayOfWeek - 1) { "星期一" }
 
+    val formatPeriod = { p: Int ->
+        when (p) {
+            10 -> "A"
+            11 -> "B"
+            12 -> "C"
+            13 -> "D"
+            14 -> "E"
+            else -> "$p"
+        }
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -573,7 +585,7 @@ private fun CourseListItemCard(
                     }
                 }
                 Text(
-                    text = "$dayName 第 ${course.startPeriod} ~ ${course.endPeriod} 節" +
+                    text = "$dayName 第 ${formatPeriod(course.startPeriod)} ~ ${formatPeriod(course.endPeriod)} 節" +
                             if (course.location.isNotBlank()) "・${course.location}" else "" +
                             if (course.teacher.isNotBlank()) "・${course.teacher}" else "",
                     style = MaterialTheme.typography.bodySmall,

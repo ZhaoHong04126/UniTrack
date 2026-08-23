@@ -169,6 +169,17 @@ fun AddEditCourseDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    val formatPeriodOption = { p: Int ->
+                        when (p) {
+                            10 -> "第 A 節 (10)"
+                            11 -> "第 B 節 (11)"
+                            12 -> "第 C 節 (12)"
+                            13 -> "第 D 節 (13)"
+                            14 -> "第 E 節 (14)"
+                            else -> "第 $p 節"
+                        }
+                    }
+
                     // Start Period
                     ExposedDropdownMenuBox(
                         expanded = startPeriodDropdownExpanded,
@@ -176,7 +187,7 @@ fun AddEditCourseDialog(
                         modifier = Modifier.weight(1f)
                     ) {
                         OutlinedTextField(
-                            value = "第 $startPeriod 節",
+                            value = formatPeriodOption(startPeriod),
                             onValueChange = {},
                             readOnly = true,
                             label = { Text("起始節") },
@@ -190,7 +201,7 @@ fun AddEditCourseDialog(
                         ) {
                             (1..14).forEach { p ->
                                 DropdownMenuItem(
-                                    text = { Text("第 $p 節") },
+                                    text = { Text(formatPeriodOption(p)) },
                                     onClick = {
                                         startPeriod = p
                                         if (endPeriod < p) endPeriod = p
@@ -208,7 +219,7 @@ fun AddEditCourseDialog(
                         modifier = Modifier.weight(1f)
                     ) {
                         OutlinedTextField(
-                            value = "第 $endPeriod 節",
+                            value = formatPeriodOption(endPeriod),
                             onValueChange = {},
                             readOnly = true,
                             label = { Text("結束節") },
@@ -222,7 +233,7 @@ fun AddEditCourseDialog(
                         ) {
                             (startPeriod..14).forEach { p ->
                                 DropdownMenuItem(
-                                    text = { Text("第 $p 節") },
+                                    text = { Text(formatPeriodOption(p)) },
                                     onClick = {
                                         endPeriod = p
                                         endPeriodDropdownExpanded = false

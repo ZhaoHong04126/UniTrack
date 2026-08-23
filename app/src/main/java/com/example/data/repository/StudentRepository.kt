@@ -81,6 +81,11 @@ class StudentRepository(
             courseDao.insertCourses(DefaultData.getDefaultCourses())
             expenseDao.insertExpenses(DefaultData.getDefaultExpenses())
             expenseDao.setBudget(DefaultData.getDefaultBudget())
+        } else {
+            val count = courseDao.getCourseCount()
+            if (count == 0) {
+                courseDao.insertCourses(DefaultData.getDefaultCourses())
+            }
         }
     }
 
