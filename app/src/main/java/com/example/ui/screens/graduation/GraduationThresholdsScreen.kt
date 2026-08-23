@@ -36,7 +36,7 @@ fun GraduationThresholdsScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "畢業門檻與專題檢核",
+                        text = "額外條件筆記",
                         fontWeight = FontWeight.Bold
                     )
                 },
@@ -82,12 +82,12 @@ fun GraduationThresholdsScreen(
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text(
-                                text = "目前無自訂畢業門檻項目",
+                                text = "目前無額外條件筆記項目",
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = "點擊右上角「新增項目」建立檢核點",
+                                text = "點擊右上角「新增項目」建立筆記",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.outline
                             )

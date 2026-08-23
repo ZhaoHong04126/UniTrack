@@ -201,7 +201,7 @@ fun AddThresholdDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("新增畢業門檻項目", fontWeight = FontWeight.Bold) },
+        title = { Text("新增額外條件項目", fontWeight = FontWeight.Bold) },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -210,15 +210,15 @@ fun AddThresholdDialog(
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("門檻項目名稱 *") },
-                    placeholder = { Text("例如：英文能力檢定、服務學習") },
+                    label = { Text("項目名稱 *") },
+                    placeholder = { Text("例如：英文檢定") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = { Text("門檻要求說明") },
+                    label = { Text("項目要求說明") },
                     placeholder = { Text("例如：TOEIC 750分以上") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -227,7 +227,7 @@ fun AddThresholdDialog(
                     value = proofNote,
                     onValueChange = { proofNote = it },
                     label = { Text("備註 / 達成進度") },
-                    placeholder = { Text("例如：已報名 10 月場次") },
+                    placeholder = { Text("例如：未達目標") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -242,7 +242,7 @@ fun AddThresholdDialog(
                 },
                 enabled = title.isNotBlank()
             ) {
-                Text("新增門檻")
+                Text("新增項目")
             }
         },
         dismissButton = {
