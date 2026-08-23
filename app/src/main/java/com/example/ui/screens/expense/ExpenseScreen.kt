@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -47,7 +48,8 @@ fun ExpenseScreen(
     var showBudgetDialog by remember { mutableStateOf(false) }
     var selectedCategoryFilter by remember { mutableStateOf<ExpenseCategory?>(null) }
 
-    val monthFormat = SimpleDateFormat("yyyy-MM", Locale.getDefault())
+    val locale = LocalConfiguration.current.locales[0]
+    val monthFormat = remember(locale) { SimpleDateFormat("yyyy-MM", locale) }
 
     val monthExpenses = remember(allExpenses, selectedMonth, selectedCategoryFilter) {
         allExpenses.filter { it.dateString.startsWith(selectedMonth) }

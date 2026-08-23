@@ -1,3 +1,5 @@
+@file:Suppress("UseKtx")
+
 package com.example.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
@@ -10,7 +12,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -23,7 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.core.graphics.toColorInt
 import com.example.ui.theme.*
 
 @Composable
@@ -65,15 +66,16 @@ fun PrivacySecurityBanner(
     }
 }
 
+@Suppress("unused")
 @Composable
 fun StatMetricCard(
+    modifier: Modifier = Modifier,
     title: String,
     value: String,
     subtitle: String? = null,
     icon: ImageVector,
     iconColor: Color = SapphirePrimary,
     containerColor: Color = MaterialTheme.colorScheme.surface,
-    modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null
 ) {
     Card(
@@ -131,11 +133,11 @@ fun StatMetricCard(
 
 @Composable
 fun SectionHeader(
+    modifier: Modifier = Modifier,
     title: String,
     subtitle: String? = null,
     actionText: String? = null,
-    onActionClick: (() -> Unit)? = null,
-    modifier: Modifier = Modifier
+    onActionClick: (() -> Unit)? = null
 ) {
     Row(
         modifier = modifier
@@ -177,12 +179,12 @@ fun SectionHeader(
 
 @Composable
 fun CategoryCreditProgressBar(
+    modifier: Modifier = Modifier,
     categoryName: String,
     earnedCredits: Double,
     targetCredits: Double,
     inProgressCredits: Double = 0.0,
-    accentColor: Color,
-    modifier: Modifier = Modifier
+    accentColor: Color
 ) {
     val percentage = if (targetCredits > 0.0) ((earnedCredits / targetCredits) * 100.0).coerceIn(0.0, 100.0).toFloat() else 0f
     val animatedProgress by animateFloatAsState(
@@ -260,7 +262,7 @@ fun ColorPickerRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         colors.forEach { hex ->
-            val color = runCatching { Color(android.graphics.Color.parseColor(hex)) }.getOrDefault(Color.Blue)
+            val color = runCatching { Color(hex.toColorInt()) }.getOrDefault(Color.Blue)
             val isSelected = selectedColorHex.equals(hex, ignoreCase = true)
 
             Box(
