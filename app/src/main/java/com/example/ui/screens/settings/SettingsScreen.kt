@@ -107,6 +107,8 @@ fun SettingsScreen(
         ) {
             Column {
                 val user = currentUser
+                val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
+
                 if (user != null && !user.isAnonymous) {
                     SettingTileRow(
                         icon = Icons.Default.AccountCircle,
@@ -115,6 +117,22 @@ fun SettingsScreen(
                         iconTint = EmeraldAccent,
                         badgeText = "已登入",
                         onClick = onNavigateToAuth
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                    )
+
+                    SettingTileRow(
+                        icon = Icons.Default.Sync,
+                        title = "立即同步雲端資料 (Firestore)",
+                        subtitle = if (isSyncing) "正在與 Firebase 雲端同步中..." else "備份本機課表、學分與記帳資料至雲端",
+                        iconTint = SapphirePrimary,
+                        badgeText = if (isSyncing) "同步中..." else "立即同步",
+                        onClick = {
+                            if (!isSyncing) viewModel.syncWithCloud()
+                        }
                     )
 
                     HorizontalDivider(

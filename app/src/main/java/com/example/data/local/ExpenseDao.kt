@@ -11,6 +11,9 @@ interface ExpenseDao {
     @Query("SELECT * FROM expenses ORDER BY timestamp DESC")
     fun getAllExpenses(): Flow<List<ExpenseRecord>>
 
+    @Query("SELECT * FROM expenses ORDER BY timestamp DESC")
+    suspend fun getAllExpensesOnce(): List<ExpenseRecord>
+
     @Query("SELECT * FROM expenses WHERE dateString LIKE :yearMonth || '%' ORDER BY timestamp DESC")
     fun getExpensesByMonth(yearMonth: String): Flow<List<ExpenseRecord>>
 
@@ -35,6 +38,9 @@ interface ExpenseDao {
     // Monthly Budgets
     @Query("SELECT * FROM monthly_budgets")
     fun getAllBudgets(): Flow<List<MonthlyBudget>>
+
+    @Query("SELECT * FROM monthly_budgets")
+    suspend fun getAllBudgetsOnce(): List<MonthlyBudget>
 
     @Query("SELECT * FROM monthly_budgets WHERE yearMonth = :yearMonth")
     fun getBudgetForMonth(yearMonth: String): Flow<MonthlyBudget?>

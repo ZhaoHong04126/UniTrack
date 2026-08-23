@@ -20,6 +20,9 @@ interface GraduationDao {
     @Query("SELECT * FROM graduation_thresholds ORDER BY id ASC")
     fun getAllThresholds(): Flow<List<GraduationThreshold>>
 
+    @Query("SELECT * FROM graduation_thresholds ORDER BY id ASC")
+    suspend fun getAllThresholdsOnce(): List<GraduationThreshold>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertThreshold(threshold: GraduationThreshold): Long
 

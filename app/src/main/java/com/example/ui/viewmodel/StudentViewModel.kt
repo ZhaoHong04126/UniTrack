@@ -7,6 +7,7 @@ import com.example.data.local.AppDatabase
 import com.example.data.local.DefaultData
 import com.example.data.model.*
 import com.example.data.repository.AuthRepository
+import com.example.data.repository.FirestoreSyncRepository
 import com.example.data.repository.StudentRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -85,9 +86,23 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     private val _userMessage = MutableStateFlow<String?>(null)
     val userMessage: StateFlow<String?> = _userMessage.asStateFlow()
 
+    private val firestoreSyncRepository: FirestoreSyncRepository
+
+    private val _isSyncing = MutableStateFlow(false)
+    val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
+
+    private val _lastSyncTime = MutableStateFlow<Long?>(null)
+    val lastSyncTime: StateFlow<Long?> = _lastSyncTime.asStateFlow()
+
     init {
         val db = AppDatabase.getDatabase(application)
         repository = StudentRepository(db.courseDao(), db.graduationDao(), db.expenseDao())
+        firestoreSyncRepository = FirestoreSyncRepository(
+            application.applicationContext,
+            db.courseDao(),
+            db.graduationDao(),
+            db.expenseDao()
+        )
         viewModelScope.launch {
             repository.seedInitialDataIfEmpty()
         }
@@ -98,6 +113,10 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                     if (currentPlan.studentName == "同學" || currentPlan.studentName == "王大明") {
                         updateGraduationPlan(currentPlan.copy(studentName = profile.displayName))
                     }
+                }
+                // Automatic background cloud sync on authenticated user login
+                if (profile != null && !profile.isAnonymous) {
+                    syncWithCloud()
                 }
             }
         }
@@ -695,5 +714,76 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
     fun clearAuthError() {
         authRepository.clearError()
+    }
+
+    // ==================== Cloud Sync (Firestore) ====================
+
+    fun syncWithCloud(onResult: ((Boolean, String?) -> Unit)? = null) {
+        val user = currentUser.value
+        if (user == null || user.isAnonymous) {
+            showToast("訪客模式不支援雲端同步，請先登入帳號")
+            onResult?.invoke(false, "未登入")
+            return
+        }
+
+        viewModelScope.launch {
+            _isSyncing.value = true
+            val result = firestoreSyncRepository.syncBidirectional(user.uid)
+            _isSyncing.value = false
+            result.onSuccess {
+                _lastSyncTime.value = System.currentTimeMillis()
+                showToast("雲端資料同步完成！")
+                onResult?.invoke(true, null)
+            }.onFailure { e ->
+                showToast("雲端同步失敗：${e.message}")
+                onResult?.invoke(false, e.message)
+            }
+        }
+    }
+
+    fun uploadToCloud(onResult: ((Boolean, String?) -> Unit)? = null) {
+        val user = currentUser.value
+        if (user == null || user.isAnonymous) {
+            showToast("訪客模式不支援雲端備份，請先登入帳號")
+            onResult?.invoke(false, "未登入")
+            return
+        }
+
+        viewModelScope.launch {
+            _isSyncing.value = true
+            val result = firestoreSyncRepository.uploadAllToCloud(user.uid)
+            _isSyncing.value = false
+            result.onSuccess {
+                _lastSyncTime.value = System.currentTimeMillis()
+                showToast("本機資料已成功備份至 Firebase 雲端！")
+                onResult?.invoke(true, null)
+            }.onFailure { e ->
+                showToast("雲端備份失敗：${e.message}")
+                onResult?.invoke(false, e.message)
+            }
+        }
+    }
+
+    fun downloadFromCloud(onResult: ((Boolean, String?) -> Unit)? = null) {
+        val user = currentUser.value
+        if (user == null || user.isAnonymous) {
+            showToast("訪客模式不支援雲端還原，請先登入帳號")
+            onResult?.invoke(false, "未登入")
+            return
+        }
+
+        viewModelScope.launch {
+            _isSyncing.value = true
+            val result = firestoreSyncRepository.downloadAllFromCloud(user.uid)
+            _isSyncing.value = false
+            result.onSuccess {
+                _lastSyncTime.value = System.currentTimeMillis()
+                showToast("已從 Firebase 雲端成功還原資料！")
+                onResult?.invoke(true, null)
+            }.onFailure { e ->
+                showToast("雲端還原失敗：${e.message}")
+                onResult?.invoke(false, e.message)
+            }
+        }
     }
 }
