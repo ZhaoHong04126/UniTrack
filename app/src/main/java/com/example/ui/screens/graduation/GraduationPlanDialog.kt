@@ -20,7 +20,6 @@ fun GraduationPlanDialog(
     onDismiss: () -> Unit,
     onSave: (GraduationPlan) -> Unit
 ) {
-    var studentName by remember { mutableStateOf(currentPlan.studentName) }
     var totalTarget by remember { mutableStateOf(currentPlan.targetTotalCredits.toString()) }
     var genTarget by remember { mutableStateOf(currentPlan.targetGeneralCredits.toString()) }
     var colTarget by remember { mutableStateOf(currentPlan.targetCollegeCoreCredits.toString()) }
@@ -28,7 +27,6 @@ fun GraduationPlanDialog(
     var corTarget by remember { mutableStateOf(currentPlan.targetCoreModuleCredits.toString()) }
     var proTarget by remember { mutableStateOf(currentPlan.targetProfessionalModuleCredits.toString()) }
     var freeTarget by remember { mutableStateOf(currentPlan.targetFreeCredits.toString()) }
-    var currentSemester by remember { mutableStateOf(currentPlan.currentSemester) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -46,25 +44,6 @@ fun GraduationPlanDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = studentName,
-                        onValueChange = { studentName = it },
-                        label = { Text("學生姓名/稱呼") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                    OutlinedTextField(
-                        value = currentSemester,
-                        onValueChange = { currentSemester = it },
-                        label = { Text("當前學期") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
 
                 Text(
                     text = "畢業學分目標設定",
@@ -152,7 +131,6 @@ fun GraduationPlanDialog(
             Button(
                 onClick = {
                     val updated = currentPlan.copy(
-                        studentName = studentName.trim(),
                         targetTotalCredits = totalTarget.toDoubleOrNull() ?: 128.0,
                         targetRequiredCredits = currentPlan.targetRequiredCredits, // Keep these
                         targetElectiveCredits = currentPlan.targetElectiveCredits, // Keep these
@@ -162,7 +140,6 @@ fun GraduationPlanDialog(
                         targetCoreModuleCredits = corTarget.toDoubleOrNull() ?: 24.0,
                         targetProfessionalModuleCredits = proTarget.toDoubleOrNull() ?: 23.0,
                         targetFreeCredits = freeTarget.toDoubleOrNull() ?: 20.0,
-                        currentSemester = currentSemester.trim(),
                         gpaScale = currentPlan.gpaScale
                     )
                     onSave(updated)
