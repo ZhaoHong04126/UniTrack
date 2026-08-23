@@ -16,7 +16,7 @@ android {
   defaultConfig {
     applicationId = "com.aistudio.unilife.stuhub"
     minSdk = 24
-    targetSdk = 36
+    targetSdk = libs.versions.targetSdk.get().toInt()
     versionCode = 1
     versionName = "1.0"
 
@@ -112,22 +112,19 @@ dependencies {
   implementation(libs.okhttp)
   // implementation(libs.play.services.location)
   implementation(libs.retrofit)
-  val composeTest = libs.androidx.compose.ui.test.junit4
-  val testJunit = libs.androidx.junit
-  testImplementation(composeTest)
+  testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)
-  testImplementation(testJunit)
+  testImplementation(libs.androidx.junit)
   testImplementation(libs.junit)
   testImplementation(libs.kotlinx.coroutines.test)
   testImplementation(libs.robolectric)
   testImplementation(libs.roborazzi)
   testImplementation(libs.roborazzi.compose)
   testImplementation(libs.roborazzi.junit.rule)
-  androidTestImplementation(platform(libs.androidx.compose.bom))
-  androidTestImplementation(composeTest)
   androidTestImplementation(libs.androidx.espresso.core)
-  androidTestImplementation(testJunit)
   androidTestImplementation(libs.androidx.runner)
+  androidTestImplementation(libs.androidx.junit)
+  androidTestImplementation(libs.androidx.compose.ui.test.junit4)
   debugImplementation(libs.androidx.compose.ui.test.manifest)
   debugImplementation(libs.androidx.compose.ui.tooling)
   "ksp"(libs.androidx.room.compiler)
