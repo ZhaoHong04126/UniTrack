@@ -416,7 +416,6 @@ private fun WeeklyTimetableGrid(
             modifier = Modifier
                 .fillMaxWidth()
                 .verticalScroll(scrollState)
-                .padding(bottom = 80.dp)
         ) {
             // Period Number Column
             Column(modifier = Modifier.width(40.dp)) {

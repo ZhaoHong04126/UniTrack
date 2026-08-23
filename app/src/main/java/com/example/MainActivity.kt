@@ -113,7 +113,7 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .testTag("main_bottom_nav"),
-                            windowInsets = WindowInsets.navigationBars
+                            windowInsets = NavigationBarDefaults.windowInsets
                         ) {
                             items.forEach { dest ->
                                 val selected = currentRoute == dest.route
