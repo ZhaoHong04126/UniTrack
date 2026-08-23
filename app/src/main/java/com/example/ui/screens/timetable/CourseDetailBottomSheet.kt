@@ -69,13 +69,6 @@ fun CourseDetailBottomSheet(
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
-                        if (course.code.isNotBlank()) {
-                            Text(
-                                text = "課號：${course.code}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
                     }
                 }
                 Badge(

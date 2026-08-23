@@ -25,7 +25,6 @@ fun AddEditCourseDialog(
     onSave: (Course) -> Unit
 ) {
     var name by remember { mutableStateOf(initialCourse?.name ?: "") }
-    var code by remember { mutableStateOf(initialCourse?.code ?: "") }
     var teacher by remember { mutableStateOf(initialCourse?.teacher ?: "") }
     var location by remember { mutableStateOf(initialCourse?.location ?: "") }
     var dayOfWeek by remember { mutableIntStateOf(initialCourse?.dayOfWeek ?: 1) }
@@ -97,27 +96,15 @@ fun AddEditCourseDialog(
                     )
                 }
 
-                // Semester & Course Code
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = semester,
-                        onValueChange = { semester = it },
-                        label = { Text("學期") },
-                        placeholder = { Text("例如：113-2") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                    OutlinedTextField(
-                        value = code,
-                        onValueChange = { code = it },
-                        label = { Text("課號 (選填)") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
+                // Semester
+                OutlinedTextField(
+                    value = semester,
+                    onValueChange = { semester = it },
+                    label = { Text("學期") },
+                    placeholder = { Text("例如：113-2") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
 
                 // Day of Week & Periods
                 Row(
@@ -344,7 +331,7 @@ fun AddEditCourseDialog(
                         val score = scoreText.toDoubleOrNull()
                         val course = (initialCourse ?: Course(name = name)).copy(
                             name = name.trim(),
-                            code = code.trim(),
+                            code = initialCourse?.code ?: "",
                             teacher = teacher.trim(),
                             location = location.trim(),
                             dayOfWeek = dayOfWeek,

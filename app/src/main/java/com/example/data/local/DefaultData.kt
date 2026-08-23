@@ -73,7 +73,6 @@ object DefaultData {
             // Current Semester: 113-2 (Active timetable)
             Course(
                 name = "演算法 (Algorithms)",
-                code = "CSIE2002",
                 teacher = "陳教授",
                 location = "電資大樓 201",
                 dayOfWeek = 1, // Mon
@@ -93,7 +92,6 @@ object DefaultData {
             ),
             Course(
                 name = "作業系統 (Operating Systems)",
-                code = "CSIE2008",
                 teacher = "李教授",
                 location = "工程一館 105",
                 dayOfWeek = 2, // Tue
@@ -113,7 +111,6 @@ object DefaultData {
             ),
             Course(
                 name = "人工智慧導論 (Intro to AI)",
-                code = "CSIE3015",
                 teacher = "張教授",
                 location = "綜合大樓 302",
                 dayOfWeek = 3, // Wed
@@ -133,7 +130,6 @@ object DefaultData {
             ),
             Course(
                 name = "現代心理學 (Psychology)",
-                code = "GENE1010",
                 teacher = "林講師",
                 location = "博雅館 101",
                 dayOfWeek = 4, // Thu
@@ -153,7 +149,6 @@ object DefaultData {
             ),
             Course(
                 name = "日語初級 (二)",
-                code = "LANG1002",
                 teacher = "田中老師",
                 location = "文學院 204",
                 dayOfWeek = 5, // Fri
@@ -173,7 +168,6 @@ object DefaultData {
             ),
             Course(
                 name = "羽球進階",
-                code = "PE2004",
                 teacher = "王教練",
                 location = "綜合體育館 B1",
                 dayOfWeek = 2, // Tue
@@ -196,7 +190,6 @@ object DefaultData {
             // 113-1
             Course(
                 name = "資料結構 (Data Structures)",
-                code = "CSIE2001",
                 teacher = "陳教授",
                 location = "電資 201",
                 dayOfWeek = 1,
@@ -212,7 +205,6 @@ object DefaultData {
             ),
             Course(
                 name = "離散數學 (Discrete Math)",
-                code = "CSIE1005",
                 teacher = "郭教授",
                 location = "工綜 301",
                 dayOfWeek = 2,
@@ -228,7 +220,6 @@ object DefaultData {
             ),
             Course(
                 name = "網頁前端程式設計",
-                code = "CSIE3020",
                 teacher = "周講師",
                 location = "電算中心 4",
                 dayOfWeek = 3,
@@ -244,7 +235,6 @@ object DefaultData {
             ),
             Course(
                 name = "哲學與當代社會",
-                code = "GENE1005",
                 teacher = "高教授",
                 location = "共同教室 102",
                 dayOfWeek = 4,
@@ -261,7 +251,6 @@ object DefaultData {
             ),
             Course(
                 name = "桌球初級",
-                code = "PE1002",
                 teacher = "黃老師",
                 location = "體育館",
                 dayOfWeek = 5,
@@ -279,7 +268,6 @@ object DefaultData {
             // 112-2
             Course(
                 name = "物件導向程式設計 (OOP)",
-                code = "CSIE1002",
                 teacher = "許教授",
                 location = "電資 102",
                 dayOfWeek = 1,
@@ -295,7 +283,6 @@ object DefaultData {
             ),
             Course(
                 name = "數位邏輯設計 (Digital Logic)",
-                code = "CSIE1004",
                 teacher = "賴教授",
                 location = "電資 205",
                 dayOfWeek = 2,
@@ -311,7 +298,6 @@ object DefaultData {
             ),
             Course(
                 name = "線性代數 (Linear Algebra)",
-                code = "MATH2001",
                 teacher = "何教授",
                 location = "理學院 101",
                 dayOfWeek = 3,
@@ -327,7 +313,6 @@ object DefaultData {
             ),
             Course(
                 name = "全球環境與永續發展",
-                code = "GENE2001",
                 teacher = "趙教授",
                 location = "綜合 202",
                 dayOfWeek = 4,
@@ -346,7 +331,6 @@ object DefaultData {
             // 112-1
             Course(
                 name = "計算機程式設計 (Intro to Programming)",
-                code = "CSIE1001",
                 teacher = "許教授",
                 location = "電資 102",
                 dayOfWeek = 1,
@@ -362,7 +346,6 @@ object DefaultData {
             ),
             Course(
                 name = "微積分 (一) (Calculus I)",
-                code = "MATH1001",
                 teacher = "廖教授",
                 location = "理學院 101",
                 dayOfWeek = 3,
@@ -378,7 +361,6 @@ object DefaultData {
             ),
             Course(
                 name = "普通物理學 (General Physics)",
-                code = "PHYS1001",
                 teacher = "彭教授",
                 location = "理學院 201",
                 dayOfWeek = 4,
@@ -394,7 +376,6 @@ object DefaultData {
             ),
             Course(
                 name = "大學國文：經典閱讀與思辨",
-                code = "GENE1001",
                 teacher = "梁教授",
                 location = "文學院 101",
                 dayOfWeek = 2,

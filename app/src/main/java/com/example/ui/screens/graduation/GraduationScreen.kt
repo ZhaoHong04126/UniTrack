@@ -25,6 +25,7 @@ import com.example.data.model.CourseCategory
 import com.example.data.model.GraduationThreshold
 import com.example.ui.components.CategoryCreditProgressBar
 import com.example.ui.components.SectionHeader
+import com.example.ui.screens.timetable.AddEditCourseDialog
 import com.example.ui.screens.timetable.CourseDetailBottomSheet
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.StudentViewModel
@@ -42,6 +43,8 @@ fun GraduationScreen(
 
     var showPlanDialog by remember { mutableStateOf(false) }
     var showAddThresholdDialog by remember { mutableStateOf(false) }
+    var showEditCourseDialog by remember { mutableStateOf(false) }
+    var editingCourse by remember { mutableStateOf<Course?>(null) }
     var selectedCategoryFilter by remember { mutableStateOf<CourseCategory?>(null) }
     var selectedCourseDetail by remember { mutableStateOf<Course?>(null) }
 
@@ -386,12 +389,30 @@ fun GraduationScreen(
         )
     }
 
+    if (showEditCourseDialog && editingCourse != null) {
+        AddEditCourseDialog(
+            initialCourse = editingCourse,
+            defaultSemester = editingCourse?.semester ?: plan.currentSemester,
+            onDismiss = {
+                showEditCourseDialog = false
+                editingCourse = null
+            },
+            onSave = { updatedCourse ->
+                viewModel.updateCourse(updatedCourse)
+                showEditCourseDialog = false
+                editingCourse = null
+            }
+        )
+    }
+
     selectedCourseDetail?.let { course ->
         CourseDetailBottomSheet(
             course = course,
             onDismiss = { selectedCourseDetail = null },
             onEdit = {
+                editingCourse = course
                 selectedCourseDetail = null
+                showEditCourseDialog = true
             },
             onDelete = {
                 viewModel.deleteCourse(course)
@@ -504,7 +525,7 @@ private fun AuditCourseCard(
                     }
                 }
                 Text(
-                    text = "${course.semester} 學期" + if (course.code.isNotBlank()) "・${course.code}" else "",
+                    text = "${course.semester} 學期",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
