@@ -4,6 +4,7 @@ package com.example.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,7 +20,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -33,20 +33,20 @@ fun PrivacySecurityBanner(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
-            containerColor = EmeraldLight.copy(alpha = 0.5f)
+            containerColor = EmeraldLight.copy(alpha = 0.7f)
         ),
-        border = CardDefaults.outlinedCardBorder().copy(
-            brush = Brush.horizontalGradient(
-                listOf(EmeraldAccent.copy(alpha = 0.3f), TealSecondary.copy(alpha = 0.3f))
-            )
-        )
+        border = BorderStroke(
+            width = 1.dp,
+            color = EmeraldAccent.copy(alpha = 0.35f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -58,9 +58,10 @@ fun PrivacySecurityBanner(
             )
             Text(
                 text = "離線安全儲存・無任何外部伺服器連線・保障個人隱私",
-                style = MaterialTheme.typography.labelMedium,
-                color = EmeraldAccent.copy(alpha = 0.9f),
-                fontWeight = FontWeight.Medium
+                style = MaterialTheme.typography.labelLarge,
+                color = EmeraldAccent.copy(alpha = 0.95f),
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1
             )
         }
     }
