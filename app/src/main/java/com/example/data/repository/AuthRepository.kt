@@ -76,7 +76,20 @@ class AuthRepository(private val context: Context) {
             _authState.value = AuthState.Loading
 
             val auth = firebaseAuth
-            if (auth == null || webClientId.isBlank()) {
+
+            // Dynamically resolve default_web_client_id generated from google-services.json if not explicitly provided
+            val resolvedClientId = if (webClientId.isNotBlank()) {
+                webClientId
+            } else {
+                try {
+                    val resId = context.resources.getIdentifier("default_web_client_id", "string", context.packageName)
+                    if (resId != 0) context.getString(resId) else ""
+                } catch (e: Exception) {
+                    ""
+                }
+            }
+
+            if (auth == null || resolvedClientId.isBlank()) {
                 // If Firebase / Web Client ID is not configured, supply simulated sign-in for preview/testing
                 val demoUser = UserProfile(
                     uid = "google_demo_${System.currentTimeMillis()}",
@@ -94,7 +107,7 @@ class AuthRepository(private val context: Context) {
             val credentialManager = CredentialManager.create(context)
             val googleIdOption = GetGoogleIdOption.Builder()
                 .setFilterByAuthorizedAccounts(false)
-                .setServerClientId(webClientId)
+                .setServerClientId(resolvedClientId)
                 .setAutoSelectEnabled(false)
                 .build()
 
