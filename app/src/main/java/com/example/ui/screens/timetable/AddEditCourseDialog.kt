@@ -33,7 +33,7 @@ fun AddEditCourseDialog(
     var startPeriod by remember { mutableIntStateOf(initialCourse?.startPeriod ?: 1) }
     var endPeriod by remember { mutableIntStateOf(initialCourse?.endPeriod ?: 2) }
     var creditsText by remember { mutableStateOf(initialCourse?.credits?.toString() ?: "3.0") }
-    var category by remember { mutableStateOf(initialCourse?.category?.takeIf { it != CourseCategory.REQUIRED && it != CourseCategory.ELECTIVE && it != CourseCategory.PE } ?: CourseCategory.GENERAL_EDU) }
+    var category by remember { mutableStateOf(initialCourse?.category) }
     var generalEduSubtype by remember { mutableStateOf(initialCourse?.generalEduSubtype ?: GeneralEduSubtype.NONE) }
     var semester by remember { mutableStateOf(initialCourse?.semester ?: defaultSemester) }
     var scoreText by remember { mutableStateOf(initialCourse?.score?.toString() ?: "") }
@@ -237,10 +237,11 @@ fun AddEditCourseDialog(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     OutlinedTextField(
-                        value = category.label,
+                        value = category?.label ?: "",
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("學分屬性") },
+                        label = { Text("學分屬性 *") },
+                        placeholder = { Text("請選擇學分屬性") },
                         singleLine = true,
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryDropdownExpanded) },
                         modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
@@ -330,7 +331,7 @@ fun AddEditCourseDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    if (name.isNotBlank()) {
+                    if (name.isNotBlank() && category != null) {
                         val credits = creditsText.toDoubleOrNull() ?: 3.0
                         val score = scoreText.toDoubleOrNull()
                         val course = (initialCourse ?: Course(name = name)).copy(
@@ -342,8 +343,8 @@ fun AddEditCourseDialog(
                             startPeriod = startPeriod,
                             endPeriod = endPeriod,
                             credits = credits,
-                            category = category,
-                            generalEduSubtype = generalEduSubtype,
+                            category = category!!,
+                            generalEduSubtype = if (category == CourseCategory.GENERAL_EDU) generalEduSubtype else GeneralEduSubtype.NONE,
                             semester = semester.trim(),
                             score = score,
                             letterGrade = initialCourse?.letterGrade,
@@ -354,7 +355,7 @@ fun AddEditCourseDialog(
                         onSave(course)
                     }
                 },
-                enabled = name.isNotBlank(),
+                enabled = name.isNotBlank() && category != null,
                 modifier = Modifier.testTag("save_course_button")
             ) {
                 Text("儲存")

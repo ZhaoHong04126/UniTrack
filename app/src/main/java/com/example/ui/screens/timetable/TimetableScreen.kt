@@ -65,24 +65,20 @@ fun TimetableScreen(
         maxOf(8, courseMax)
     }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-    ) { innerPadding ->
-        Column(
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        // Header: Semester Switcher & View Mode Toggles
+        Row(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+                .fillMaxWidth()
+                .padding(top = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Header: Semester Switcher & View Mode Toggles
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
                 // Semester selector button
                 Box {
                     OutlinedButton(
@@ -251,7 +247,6 @@ fun TimetableScreen(
                 )
             }
         }
-    }
 
     // Dialogs & Bottom Sheet
     if (showAddDialog) {
