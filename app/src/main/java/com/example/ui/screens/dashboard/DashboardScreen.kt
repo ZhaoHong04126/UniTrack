@@ -25,7 +25,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.Course
-import com.example.ui.components.PrivacySecurityBanner
 import com.example.ui.components.SectionHeader
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.StudentViewModel
@@ -90,10 +89,6 @@ fun DashboardScreen(
             }
         }
 
-        // Privacy Banner
-        item {
-            PrivacySecurityBanner()
-        }
 
         // Main Academic Highlight Card
         item {
