@@ -103,7 +103,6 @@ class MainActivity : ComponentActivity() {
                 val items = listOf(
                     AppDestination.Dashboard,
                     AppDestination.Timetable,
-                    AppDestination.Graduation,
                     AppDestination.Expense,
                     AppDestination.Settings
                 )
@@ -176,6 +175,9 @@ class MainActivity : ComponentActivity() {
                                 viewModel = studentViewModel,
                                 onNavigateToGrades = {
                                     navController.navigate("grade_entry")
+                                },
+                                onNavigateToGraduation = {
+                                    navController.navigate(AppDestination.Graduation.route)
                                 }
                             )
                         }
@@ -195,7 +197,8 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onNavigateToCourseAudit = {
                                     navController.navigate("course_audit_list")
-                                }
+                                },
+                                onNavigateBack = { navController.popBackStack() }
                             )
                         }
 

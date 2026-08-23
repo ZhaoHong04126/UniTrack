@@ -36,7 +36,8 @@ import com.example.ui.viewmodel.StudentViewModel
 fun TimetableScreen(
     viewModel: StudentViewModel,
     modifier: Modifier = Modifier,
-    onNavigateToGrades: () -> Unit = {}
+    onNavigateToGrades: () -> Unit = {},
+    onNavigateToGraduation: () -> Unit = {}
 ) {
     val selectedSemester by viewModel.selectedSemester.collectAsStateWithLifecycle()
     val allSemesters by viewModel.allSemesters.collectAsStateWithLifecycle()
@@ -141,6 +142,19 @@ fun TimetableScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // Graduation Audit Button (School icon)
+                    FilledTonalIconButton(
+                        onClick = onNavigateToGraduation,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.testTag("graduation_audit_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.School,
+                            contentDescription = "畢業審查",
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+
                     // Grade Entry Button (Calculator icon)
                     FilledTonalIconButton(
                         onClick = onNavigateToGrades,

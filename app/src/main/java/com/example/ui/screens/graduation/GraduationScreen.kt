@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.filled.FactCheck
 import androidx.compose.material.icons.automirrored.filled.ListAlt
@@ -33,7 +34,8 @@ fun GraduationScreen(
     viewModel: StudentViewModel,
     onNavigateToThresholds: () -> Unit,
     onNavigateToCourseAudit: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onNavigateBack: (() -> Unit)? = null
 ) {
     val plan by viewModel.graduationPlan.collectAsStateWithLifecycle()
     val auditSummary by viewModel.graduationAudit.collectAsStateWithLifecycle()
@@ -61,17 +63,33 @@ fun GraduationScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Text(
-                        text = "畢業學分審查",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "${plan.department}・畢業審查檢核表",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    if (onNavigateBack != null) {
+                        IconButton(
+                            onClick = onNavigateBack,
+                            modifier = Modifier.testTag("back_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "返回"
+                            )
+                        }
+                    }
+                    Column {
+                        Text(
+                            text = "畢業學分審查",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "${plan.department}・畢業審查檢核表",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
                 FilledTonalButton(
                     onClick = { showPlanDialog = true },
