@@ -35,6 +35,7 @@ import com.example.ui.viewmodel.StudentViewModel
 @Composable
 fun TimetableScreen(
     viewModel: StudentViewModel,
+    onNavigateToGrades: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val selectedSemester by viewModel.selectedSemester.collectAsStateWithLifecycle()
@@ -136,24 +137,42 @@ fun TimetableScreen(
                     }
                 }
 
-                // Add Course Button (Icon only)
-                FilledIconButton(
-                    onClick = {
-                        editingCourse = null
-                        showAddDialog = true
-                    },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = SapphirePrimary,
-                        contentColor = Color.White
-                    ),
-                    modifier = Modifier.testTag("add_course_button")
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "新增課程",
-                        modifier = Modifier.size(22.dp)
-                    )
+                    // Grade Entry Button (Calculator icon)
+                    FilledTonalIconButton(
+                        onClick = onNavigateToGrades,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.testTag("grade_entry_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Calculate,
+                            contentDescription = "登錄成績",
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+
+                    // Add Course Button (Icon only)
+                    FilledIconButton(
+                        onClick = {
+                            editingCourse = null
+                            showAddDialog = true
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = SapphirePrimary,
+                            contentColor = Color.White
+                        ),
+                        modifier = Modifier.testTag("add_course_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "新增課程",
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
                 }
             }
 

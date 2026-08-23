@@ -26,6 +26,7 @@ import com.example.ui.screens.graduation.CourseAuditListScreen
 import com.example.ui.screens.graduation.GraduationScreen
 import com.example.ui.screens.graduation.GraduationThresholdsScreen
 import com.example.ui.screens.settings.SettingsScreen
+import com.example.ui.screens.timetable.GradeEntryScreen
 import com.example.ui.screens.timetable.TimetableScreen
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.viewmodel.StudentViewModel
@@ -171,7 +172,19 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable(AppDestination.Timetable.route) {
-                            TimetableScreen(viewModel = studentViewModel)
+                            TimetableScreen(
+                                viewModel = studentViewModel,
+                                onNavigateToGrades = {
+                                    navController.navigate("grade_entry")
+                                }
+                            )
+                        }
+
+                        composable("grade_entry") {
+                            GradeEntryScreen(
+                                viewModel = studentViewModel,
+                                onNavigateBack = { navController.popBackStack() }
+                            )
                         }
 
                         composable(AppDestination.Graduation.route) {

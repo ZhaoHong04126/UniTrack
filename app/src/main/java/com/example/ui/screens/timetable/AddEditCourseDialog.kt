@@ -38,7 +38,6 @@ fun AddEditCourseDialog(
     var requirementType by remember { mutableStateOf(initialCourse?.requirementType ?: CourseRequirementType.REQUIRED) }
     var generalEduSubtype by remember { mutableStateOf(initialCourse?.generalEduSubtype ?: GeneralEduSubtype.NONE) }
     var semester by remember { mutableStateOf(initialCourse?.semester ?: defaultSemester) }
-    var scoreText by remember { mutableStateOf(initialCourse?.score?.toString() ?: "") }
     var colorHex by remember { mutableStateOf(initialCourse?.colorHex ?: "#2563EB") }
     var notes by remember { mutableStateOf(initialCourse?.notes ?: "") }
 
@@ -347,17 +346,6 @@ fun AddEditCourseDialog(
                     }
                 }
 
-                // Score (Optional for completed courses)
-                OutlinedTextField(
-                    value = scoreText,
-                    onValueChange = { scoreText = it },
-                    label = { Text("成績分數 (選填)") },
-                    placeholder = { Text("例如：85 (0~100)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
                 // Color Picker
                 Text(
                     text = "課表標記色彩",
@@ -384,7 +372,6 @@ fun AddEditCourseDialog(
                 onClick = {
                     if (name.isNotBlank() && category != null) {
                         val credits = creditsText.toDoubleOrNull() ?: 3.0
-                        val score = scoreText.toDoubleOrNull()
                         val course = (initialCourse ?: Course(name = name)).copy(
                             name = name.trim(),
                             code = initialCourse?.code ?: "",
@@ -398,9 +385,9 @@ fun AddEditCourseDialog(
                             requirementType = requirementType,
                             generalEduSubtype = if (category == CourseCategory.GENERAL_EDU) generalEduSubtype else GeneralEduSubtype.NONE,
                             semester = semester.trim(),
-                            score = score,
+                            score = initialCourse?.score,
                             letterGrade = initialCourse?.letterGrade,
-                            isCompleted = score != null,
+                            isCompleted = initialCourse?.isCompleted ?: false,
                             colorHex = colorHex,
                             notes = notes.trim()
                         )
