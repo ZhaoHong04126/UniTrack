@@ -16,7 +16,7 @@ android {
   defaultConfig {
     applicationId = "com.aistudio.unilife.stuhub"
     minSdk = 24
-    targetSdk = libs.versions.targetSdk.get().toInt()
+    targetSdk = 37
     versionCode = 1
     versionName = "1.0"
 
@@ -114,7 +114,6 @@ dependencies {
   implementation(libs.retrofit)
   testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)
-  testImplementation(libs.androidx.junit)
   testImplementation(libs.junit)
   testImplementation(libs.kotlinx.coroutines.test)
   testImplementation(libs.robolectric)
@@ -124,7 +123,6 @@ dependencies {
   androidTestImplementation(libs.androidx.espresso.core)
   androidTestImplementation(libs.androidx.runner)
   androidTestImplementation(libs.androidx.junit)
-  androidTestImplementation(libs.androidx.compose.ui.test.junit4)
   debugImplementation(libs.androidx.compose.ui.test.manifest)
   debugImplementation(libs.androidx.compose.ui.tooling)
   "ksp"(libs.androidx.room.compiler)
