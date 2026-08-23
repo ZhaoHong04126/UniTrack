@@ -1,5 +1,3 @@
-@file:Suppress("UseKtx")
-
 package com.example.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState

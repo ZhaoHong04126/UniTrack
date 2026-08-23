@@ -76,7 +76,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     private val _selectedExpenseMonth = MutableStateFlow(monthFormat.format(Date()))
     val selectedExpenseMonth: StateFlow<String> = _selectedExpenseMonth.asStateFlow()
 
-    // Snackbar / Toast message state
+    // Toast message state
     private val _userMessage = MutableStateFlow<String?>(null)
     val userMessage: StateFlow<String?> = _userMessage.asStateFlow()
 
@@ -98,12 +98,12 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         repository.allSemesters,
         _selectedSemester,
         _customSemesters
-    ) { dbSemesters, currentSem, customSems ->
+    ) { dbSemesters, currentSem, customSemesters ->
         val set = dbSemesters.toMutableSet()
         set.add("114-1")
         set.add("114-2")
         if (currentSem.isNotBlank()) set.add(currentSem)
-        set.addAll(customSems)
+        set.addAll(customSemesters)
         set.toList().sortedDescending()
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), listOf("114-2", "114-1"))
 

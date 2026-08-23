@@ -190,6 +190,7 @@ fun GraduationPlanDialog(
     )
 }
 
+@Suppress("SpellCheckingInspection")
 @Composable
 fun AddThresholdDialog(
     onDismiss: () -> Unit,

@@ -39,7 +39,7 @@ fun DashboardScreen(
     val plan by viewModel.graduationPlan.collectAsStateWithLifecycle()
     val todayClasses by viewModel.todayClasses.collectAsStateWithLifecycle()
     val expenseSummary by viewModel.monthlyExpenseSummary.collectAsStateWithLifecycle()
-    val semesterGpas by viewModel.semesterGpaList.collectAsStateWithLifecycle()
+    val semesterGpaList by viewModel.semesterGpaList.collectAsStateWithLifecycle()
 
     LazyColumn(
         modifier = modifier
@@ -229,7 +229,7 @@ fun DashboardScreen(
         }
 
         // GPA Trend History Across Semesters
-        if (semesterGpas.isNotEmpty()) {
+        if (semesterGpaList.isNotEmpty()) {
             item {
                 SectionHeader(
                     title = "歷年學期 GPA 走勢",
@@ -250,7 +250,7 @@ fun DashboardScreen(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        semesterGpas.take(4).forEach { semGpa ->
+                        semesterGpaList.take(4).forEach { semGpa ->
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,

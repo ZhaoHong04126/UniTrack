@@ -45,6 +45,7 @@ enum class ExpenseType(val label: String) {
     INCOME("收入")
 }
 
+@Suppress("SpellCheckingInspection")
 enum class ExpenseCategory(val label: String, @Suppress("unused") val iconName: String) {
     FOOD("餐飲美食", "restaurant"),
     BOOKS_STUDY("書籍學業", "menu_book"),

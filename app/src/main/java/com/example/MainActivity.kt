@@ -80,6 +80,7 @@ sealed class AppDestination(
 }
 
 class MainActivity : ComponentActivity() {
+    @Suppress("SpellCheckingInspection")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()

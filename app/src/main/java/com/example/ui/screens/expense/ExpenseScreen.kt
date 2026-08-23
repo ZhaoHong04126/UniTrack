@@ -30,7 +30,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.ExpenseCategory
 import com.example.data.model.ExpenseRecord
 import com.example.data.model.ExpenseType
-import com.example.ui.components.SectionHeader
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.StudentViewModel
 import java.text.SimpleDateFormat
