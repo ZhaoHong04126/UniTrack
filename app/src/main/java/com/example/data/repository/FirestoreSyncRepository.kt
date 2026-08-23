@@ -74,6 +74,13 @@ class FirestoreSyncRepository(
             // 2. 上傳 Courses
             val courses = courseDao.getAllCoursesOnce()
             val coursesCol = userDocRef.collection("courses")
+            val remoteCourses = coursesCol.get().await()
+            val localCourseIds = courses.map { it.id.toString() }.toSet()
+            for (doc in remoteCourses.documents) {
+                if (doc.id !in localCourseIds) {
+                    doc.reference.delete().await()
+                }
+            }
             for (course in courses) {
                 val courseMap = hashMapOf(
                     "id" to course.id,
@@ -103,6 +110,13 @@ class FirestoreSyncRepository(
             // 3. 上傳 Graduation Thresholds
             val thresholds = graduationDao.getAllThresholdsOnce()
             val thresholdsCol = userDocRef.collection("thresholds")
+            val remoteThresholds = thresholdsCol.get().await()
+            val localThresholdIds = thresholds.map { it.id.toString() }.toSet()
+            for (doc in remoteThresholds.documents) {
+                if (doc.id !in localThresholdIds) {
+                    doc.reference.delete().await()
+                }
+            }
             for (t in thresholds) {
                 val tMap = hashMapOf(
                     "id" to t.id,

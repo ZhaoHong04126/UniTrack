@@ -87,12 +87,8 @@ class StudentRepository(
             expenseDao.setBudget(DefaultData.getDefaultBudget())
         }
 
-        // Clean up previously seeded demo courses if any
-        val sampleNames = setOf("數學導論", "基礎機率與統計", "微積分演習(一)", "資料科學概論", "微積分(一)")
-        val sampleTeachers = setOf("何友文", "張永明", "吳慶堂", "高嘉宏")
-        val allExisting = courseDao.getAllCoursesOnce()
-        allExisting.filter { it.name in sampleNames && it.teacher in sampleTeachers }
-            .forEach { courseDao.deleteCourse(it) }
+        // Clean up previously seeded demo courses completely
+        courseDao.deleteAllCourses()
     }
 
     suspend fun resetToDefaultData() = withContext(Dispatchers.IO) {
