@@ -135,8 +135,8 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         _customSemesters
     ) { dbSemesters, plan, currentSem, customSemesters ->
         val set = dbSemesters.toMutableSet()
-        val rawAdmission = plan?.currentSemester ?: "114-1"
-        val startYear = rawAdmission.substringBefore("-").filter { it.isDigit() }.toIntOrNull() ?: 114
+        val rawAdmission = plan?.currentSemester ?: DefaultData.getCurrentAcademicSemester()
+        val startYear = rawAdmission.substringBefore("-").filter { it.isDigit() }.toIntOrNull() ?: (Calendar.getInstance().get(Calendar.YEAR) - 1911)
         // Automatically generate 4 college years (8 semesters) starting from admission year
         for (y in startYear until startYear + 4) {
             set.add("$y-1")
@@ -145,7 +145,14 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         if (currentSem.isNotBlank()) set.add(currentSem)
         set.addAll(customSemesters)
         set.toList().sorted()
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), listOf("114-1", "114-2", "115-1", "115-2", "116-1", "116-2", "117-1", "117-2"))
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        run {
+            val base = (Calendar.getInstance().get(Calendar.YEAR) - 1911)
+            (base until base + 4).flatMap { listOf("$it-1", "$it-2") }
+        }
+    )
 
     val graduationPlan: StateFlow<GraduationPlan> = repository.graduationPlan
         .map { it ?: DefaultData.getDefaultGraduationPlan() }
@@ -484,6 +491,13 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     fun updateGraduationPlan(plan: GraduationPlan) = viewModelScope.launch {
         repository.updateGraduationPlan(plan)
         _userMessage.value = "已儲存畢業審查標準"
+    }
+
+    fun setPrimarySemester(semester: String) = viewModelScope.launch {
+        val currentPlan = graduationPlan.value
+        val updated = currentPlan.copy(currentSemester = semester)
+        repository.updateGraduationPlan(updated)
+        _userMessage.value = "已將 $semester 設定為主要學期"
     }
 
     fun addThreshold(threshold: GraduationThreshold) = viewModelScope.launch {

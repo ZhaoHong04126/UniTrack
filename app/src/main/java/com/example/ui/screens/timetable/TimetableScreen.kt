@@ -13,14 +13,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -67,16 +65,9 @@ fun TimetableScreen(
     var showAddDialog by remember { mutableStateOf(false) }
     var editingCourse by remember { mutableStateOf<Course?>(null) }
     var selectedCourseDetail by remember { mutableStateOf<Course?>(null) }
-    var showNewSemesterDialog by remember { mutableStateOf(false) }
-    var newYearInput by remember(graduationPlan.currentSemester) {
-        mutableStateOf(graduationPlan.currentSemester.substringBefore("-").filter { it.isDigit() }.ifBlank { "114" })
-    }
-    var selectedTerm by remember { mutableStateOf("上學期") }
-    var termDropdownExpanded by remember { mutableStateOf(false) }
+    var showSemesterManageDialog by remember { mutableStateOf(false) }
     var isGridView by remember { mutableStateOf(true) }
     var showWeekend by remember { mutableStateOf(true) }
-
-    var semesterMenuExpanded by remember { mutableStateOf(false) }
 
     val daysCount = if (showWeekend) 7 else 5
     val dayNames = if (showWeekend) {
@@ -105,60 +96,22 @@ fun TimetableScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
                 // Semester selector button
-                Box {
-                    OutlinedButton(
-                        onClick = { semesterMenuExpanded = true },
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(
-                            text = formatSemesterLabel(selectedSemester),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Icon(
-                            imageVector = Icons.Default.ArrowDropDown,
-                            contentDescription = "選擇學期",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-
-                    DropdownMenu(
-                        expanded = semesterMenuExpanded,
-                        onDismissRequest = { semesterMenuExpanded = false }
-                    ) {
-                        allSemesters.forEach { sem ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        text = formatSemesterLabel(sem),
-                                        fontWeight = if (sem == selectedSemester) FontWeight.Bold else FontWeight.Normal
-                                    )
-                                },
-                                onClick = {
-                                    viewModel.setSelectedSemester(sem)
-                                    semesterMenuExpanded = false
-                                }
-                            )
-                        }
-                        HorizontalDivider()
-                        DropdownMenuItem(
-                            text = {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Text("新增學期...")
-                                }
-                            },
-                            onClick = {
-                                semesterMenuExpanded = false
-                                showNewSemesterDialog = true
-                            }
-                        )
-                    }
+                OutlinedButton(
+                    onClick = { showSemesterManageDialog = true },
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = formatSemesterLabel(selectedSemester),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Icon(
+                        imageVector = Icons.Default.ArrowDropDown,
+                        contentDescription = "選擇學期",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
                 }
 
                 Row(
@@ -330,89 +283,19 @@ fun TimetableScreen(
         )
     }
 
-    if (showNewSemesterDialog) {
-        val termOptions = listOf("上學期", "下學期", "暑期")
-
-        AlertDialog(
-            onDismissRequest = { showNewSemesterDialog = false },
-            title = { Text("新增學期", fontWeight = FontWeight.Bold) },
-            text = {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // 學年
-                    OutlinedTextField(
-                        value = newYearInput,
-                        onValueChange = { str ->
-                            if (str.all { it.isDigit() } && str.length <= 4) {
-                                newYearInput = str
-                            }
-                        },
-                        label = { Text("學年") },
-                        placeholder = { Text("例如：114") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    // 學期
-                    ExposedDropdownMenuBox(
-                        expanded = termDropdownExpanded,
-                        onExpandedChange = { termDropdownExpanded = !termDropdownExpanded },
-                        modifier = Modifier.weight(1.2f)
-                    ) {
-                        OutlinedTextField(
-                            value = selectedTerm,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("學期") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = termDropdownExpanded) },
-                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
-                        )
-                        ExposedDropdownMenu(
-                            expanded = termDropdownExpanded,
-                            onDismissRequest = { termDropdownExpanded = false }
-                        ) {
-                            termOptions.forEach { term ->
-                                DropdownMenuItem(
-                                    text = { Text(term) },
-                                    onClick = {
-                                        selectedTerm = term
-                                        termDropdownExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
+    if (showSemesterManageDialog) {
+        SemesterManageDialog(
+            selectedSemester = selectedSemester,
+            primarySemester = graduationPlan.currentSemester,
+            allSemesters = allSemesters,
+            admissionSemester = graduationPlan.currentSemester,
+            onSelectSemester = { sem ->
+                viewModel.setSelectedSemester(sem)
             },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (newYearInput.isNotBlank()) {
-                            val termSuffix = when (selectedTerm) {
-                                "上學期" -> "1"
-                                "下學期" -> "2"
-                                "暑期" -> "暑"
-                                else -> "1"
-                            }
-                            val semesterCode = "${newYearInput.trim()}-$termSuffix"
-                            viewModel.setSelectedSemester(semesterCode)
-                            showNewSemesterDialog = false
-                        }
-                    },
-                    enabled = newYearInput.isNotBlank()
-                ) {
-                    Text("確定")
-                }
+            onSetPrimarySemester = { sem ->
+                viewModel.setPrimarySemester(sem)
             },
-            dismissButton = {
-                TextButton(onClick = { showNewSemesterDialog = false }) {
-                    Text("取消")
-                }
-            }
+            onDismiss = { showSemesterManageDialog = false }
         )
     }
 }

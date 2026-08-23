@@ -83,15 +83,16 @@ class StudentRepository(
         if (existingPlan == null) {
             graduationDao.insertOrUpdatePlan(DefaultData.getDefaultGraduationPlan())
             graduationDao.insertThresholds(DefaultData.getDefaultThresholds())
-            courseDao.insertCourses(DefaultData.getDefaultCourses())
             expenseDao.insertExpenses(DefaultData.getDefaultExpenses())
             expenseDao.setBudget(DefaultData.getDefaultBudget())
-        } else {
-            val count = courseDao.getCourseCount()
-            if (count == 0) {
-                courseDao.insertCourses(DefaultData.getDefaultCourses())
-            }
         }
+
+        // Clean up previously seeded demo courses if any
+        val sampleNames = setOf("數學導論", "基礎機率與統計", "微積分演習(一)", "資料科學概論", "微積分(一)")
+        val sampleTeachers = setOf("何友文", "張永明", "吳慶堂", "高嘉宏")
+        val allExisting = courseDao.getAllCoursesOnce()
+        allExisting.filter { it.name in sampleNames && it.teacher in sampleTeachers && it.semester == "114-1" }
+            .forEach { courseDao.deleteCourse(it) }
     }
 
     suspend fun resetToDefaultData() = withContext(Dispatchers.IO) {

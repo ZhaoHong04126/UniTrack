@@ -40,7 +40,7 @@ fun GradeEntryScreen(
     val plan by viewModel.graduationPlan.collectAsStateWithLifecycle()
     val locale = LocalConfiguration.current.locales[0]
 
-    var semesterMenuExpanded by remember { mutableStateOf(false) }
+    var showSemesterManageDialog by remember { mutableStateOf(false) }
 
     // Calculate semester average score & earned credits
     val gradedCourses = courses.filter { it.score != null }
@@ -70,7 +70,7 @@ fun GradeEntryScreen(
                 actions = {
                     Box(modifier = Modifier.padding(end = 8.dp)) {
                         OutlinedButton(
-                            onClick = { semesterMenuExpanded = true },
+                            onClick = { showSemesterManageDialog = true },
                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                             shape = RoundedCornerShape(10.dp)
                         ) {
@@ -84,26 +84,6 @@ fun GradeEntryScreen(
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp)
                             )
-                        }
-
-                        DropdownMenu(
-                            expanded = semesterMenuExpanded,
-                            onDismissRequest = { semesterMenuExpanded = false }
-                        ) {
-                            allSemesters.forEach { sem ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(
-                                            text = "$sem 學期",
-                                            fontWeight = if (sem == selectedSemester) FontWeight.Bold else FontWeight.Normal
-                                        )
-                                    },
-                                    onClick = {
-                                        viewModel.setSelectedSemester(sem)
-                                        semesterMenuExpanded = false
-                                    }
-                                )
-                            }
                         }
                     }
                 }
@@ -231,6 +211,22 @@ fun GradeEntryScreen(
                 }
             }
         }
+    }
+
+    if (showSemesterManageDialog) {
+        SemesterManageDialog(
+            selectedSemester = selectedSemester,
+            primarySemester = plan.currentSemester,
+            allSemesters = allSemesters,
+            admissionSemester = plan.currentSemester,
+            onSelectSemester = { sem ->
+                viewModel.setSelectedSemester(sem)
+            },
+            onSetPrimarySemester = { sem ->
+                viewModel.setPrimarySemester(sem)
+            },
+            onDismiss = { showSemesterManageDialog = false }
+        )
     }
 }
 
