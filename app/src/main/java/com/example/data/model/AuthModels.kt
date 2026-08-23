@@ -2,9 +2,7 @@ package com.example.data.model
 
 enum class AuthProvider {
     GOOGLE,
-    EMAIL,
-    GUEST,
-    OFFLINE_DEMO
+    EMAIL
 }
 
 data class UserProfile(

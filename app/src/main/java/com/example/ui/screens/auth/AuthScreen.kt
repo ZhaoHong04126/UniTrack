@@ -56,10 +56,10 @@ fun AuthScreen(
     var showAuthSheet by remember { mutableStateOf(false) }
     var authSheetInitialTab by remember { mutableIntStateOf(1) } // 0 = 登入, 1 = 註冊
 
-    // If authenticated as non-anonymous user, navigate forward automatically
+    // If authenticated, navigate forward automatically
     val user = currentUser
     LaunchedEffect(user) {
-        if (user != null && !user.isAnonymous) {
+        if (user != null) {
             showAuthSheet = false
             onAuthSuccess()
         }
@@ -205,21 +205,7 @@ fun AuthScreen(
                     )
                 }
 
-                // Guest Mode link
-                Text(
-                    text = "稍後再說，以訪客離線模式體驗 →",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.45f),
-                    modifier = Modifier
-                        .clickable {
-                            viewModel.signInAsGuest {
-                                onAuthSuccess()
-                            }
-                        }
-                        .padding(vertical = 4.dp)
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(12.dp))
             }
         }
 

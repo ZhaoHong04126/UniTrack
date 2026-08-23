@@ -23,7 +23,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
-//import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -97,8 +96,8 @@ fun SettingsScreen(
             onAuthClick = onNavigateToAuth
         )
 
-        // Section 0: Account & Security
-        SectionHeader(title = "帳號資訊")
+        // Section 0: Account & Cloud Sync
+        SectionHeader(title = "帳號與雲端同步")
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(18.dp),
@@ -106,25 +105,58 @@ fun SettingsScreen(
             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
             val user = currentUser
+            val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
 
-            if (user != null && !user.isAnonymous) {
-                SettingTileRow(
-                    icon = Icons.Default.AccountCircle,
-                    title = user.displayName ?: "已登入學生",
-                    subtitle = user.email ?: "已綁定帳號",
-                    iconTint = EmeraldAccent,
-                    badgeText = "已登入",
-                    onClick = onNavigateToAuth
-                )
-            } else {
-                SettingTileRow(
-                    icon = Icons.AutoMirrored.Filled.Login,
-                    title = "登入 / 註冊 UniTrack+ 帳號",
-                    subtitle = "使用 Google 或 Email 登入以保存學業紀錄",
-                    iconTint = SapphirePrimary,
-                    badgeText = "訪客模式",
-                    onClick = onNavigateToAuth
-                )
+            Column {
+                if (user != null) {
+                    SettingTileRow(
+                        icon = Icons.Default.AccountCircle,
+                        title = user.displayName ?: "已登入學生",
+                        subtitle = user.email ?: "已綁定帳號",
+                        iconTint = EmeraldAccent,
+                        badgeText = "已登入",
+                        onClick = onNavigateToAuth
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                    )
+
+                    SettingTileRow(
+                        icon = Icons.Default.Sync,
+                        title = "立即同步雲端資料 (Firestore)",
+                        subtitle = if (isSyncing) "正在與 Firebase 雲端同步中..." else "備份本機課表、學分與記帳資料至雲端",
+                        iconTint = SapphirePrimary,
+                        badgeText = if (isSyncing) "同步中..." else "立即同步",
+                        onClick = {
+                            if (!isSyncing) viewModel.syncWithCloud()
+                        }
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                    )
+
+                    SettingTileRow(
+                        icon = Icons.AutoMirrored.Filled.Logout,
+                        title = "登出目前帳號",
+                        subtitle = "登出並返回登入頁面",
+                        iconTint = RoseAccent,
+                        titleColor = RoseAccent,
+                        onClick = { showSignOutConfirmDialog = true }
+                    )
+                } else {
+                    SettingTileRow(
+                        icon = Icons.AutoMirrored.Filled.Login,
+                        title = "登入 / 註冊 UniTrack+ 帳號",
+                        subtitle = "使用 Google 或 Email 登入以保存學業紀錄",
+                        iconTint = SapphirePrimary,
+                        badgeText = "未登入",
+                        onClick = onNavigateToAuth
+                    )
+                }
             }
         }
 
@@ -469,7 +501,7 @@ fun SettingsScreen(
         AlertDialog(
             onDismissRequest = { showSignOutConfirmDialog = false },
             title = { Text("確認登出帳號？") },
-            text = { Text("登出後將切換為訪客模式，您的本機資料仍會安全保存在這台裝置上。") },
+            text = { Text("登出後將返回登入畫面，您可以隨時重新登入同步資料。") },
             confirmButton = {
                 Button(
                     onClick = {
@@ -527,7 +559,7 @@ private fun StudentIdCard(
     onEditClick: () -> Unit,
     onAuthClick: () -> Unit
 ) {
-    val isLoggedIn = currentUser != null && !currentUser.isAnonymous
+    val isLoggedIn = currentUser != null
 
     Card(
         modifier = Modifier
@@ -591,7 +623,7 @@ private fun StudentIdCard(
                             text = when {
                                 isLoggedIn && currentUser.provider == AuthProvider.GOOGLE -> "Google 認證"
                                 isLoggedIn -> "Email 帳號"
-                                else -> "訪客/本機"
+                                else -> "未登入"
                             },
                             style = MaterialTheme.typography.labelSmall,
                             color = if (isLoggedIn) Color(0xFF6EE7B7) else Color.White,
@@ -666,52 +698,36 @@ private fun StudentIdCard(
                     }
                 }
 
-                // Bottom Metric Pill inside Card
-                Row(
-                    modifier = Modifier.fillMaxWidth()
+                // Bottom Semester Pill inside Card
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.White.copy(alpha = 0.12f))
+                        .padding(vertical = 8.dp, horizontal = 6.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    MetricPill(
-                        label = "當前學期",
-                        value = plan.currentSemester,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(
+                            text = plan.currentSemester,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = "當前學期",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White.copy(alpha = 0.75f),
+                            fontSize = 10.sp,
+                            maxLines = 1
+                        )
+                    }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun MetricPill(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = 0.12f))
-            .padding(vertical = 8.dp, horizontal = 6.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                maxLines = 1
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.White.copy(alpha = 0.75f),
-                fontSize = 10.sp,
-                maxLines = 1
-            )
         }
     }
 }

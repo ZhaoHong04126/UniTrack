@@ -244,43 +244,6 @@ class AuthRepository(private val context: Context) {
     }
 
     /**
-     * Anonymous / Guest Login
-     */
-    suspend fun signInAsGuest(): Result<UserProfile> = withContext(Dispatchers.IO) {
-        try {
-            _authState.value = AuthState.Loading
-            val auth = firebaseAuth
-            val profile = if (auth != null) {
-                val result = auth.signInAnonymously().await()
-                val fbUser = result.user!!
-                UserProfile(
-                    uid = fbUser.uid,
-                    displayName = "訪客同學",
-                    email = null,
-                    photoUrl = null,
-                    isAnonymous = true,
-                    provider = AuthProvider.GUEST
-                )
-            } else {
-                UserProfile(
-                    uid = "guest_${System.currentTimeMillis()}",
-                    displayName = "訪客同學",
-                    email = null,
-                    photoUrl = null,
-                    isAnonymous = true,
-                    provider = AuthProvider.GUEST
-                )
-            }
-            _currentUser.value = profile
-            _authState.value = AuthState.Authenticated(profile)
-            Result.success(profile)
-        } catch (e: Exception) {
-            _authState.value = AuthState.Error(e.localizedMessage ?: "訪客登入失敗")
-            Result.failure(e)
-        }
-    }
-
-    /**
      * Sign Out
      */
     suspend fun signOut() = withContext(Dispatchers.IO) {
@@ -308,8 +271,8 @@ class AuthRepository(private val context: Context) {
             displayName = this.displayName ?: this.email?.substringBefore("@") ?: "同學",
             email = this.email,
             photoUrl = this.photoUrl?.toString(),
-            isAnonymous = this.isAnonymous,
-            provider = if (this.isAnonymous) AuthProvider.GUEST else provider
+            isAnonymous = false,
+            provider = provider
         )
     }
 

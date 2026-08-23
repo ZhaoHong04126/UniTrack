@@ -115,7 +115,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                     }
                 }
                 // Automatic background cloud sync on authenticated user login
-                if (profile != null && !profile.isAnonymous) {
+                if (profile != null) {
                     syncWithCloud()
                 }
             }
@@ -692,19 +692,6 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun signInAsGuest(onResult: ((Boolean) -> Unit)? = null) {
-        viewModelScope.launch {
-            val result = authRepository.signInAsGuest()
-            result.onSuccess {
-                showToast("已進入訪客模式（本機離線儲存）")
-                onResult?.invoke(true)
-            }.onFailure {
-                showToast("訪客模式切換失敗")
-                onResult?.invoke(false)
-            }
-        }
-    }
-
     fun signOut() {
         viewModelScope.launch {
             authRepository.signOut()
@@ -720,8 +707,8 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
     fun syncWithCloud(onResult: ((Boolean, String?) -> Unit)? = null) {
         val user = currentUser.value
-        if (user == null || user.isAnonymous) {
-            showToast("訪客模式不支援雲端同步，請先登入帳號")
+        if (user == null) {
+            showToast("請先登入帳號以同步雲端資料")
             onResult?.invoke(false, "未登入")
             return
         }
@@ -743,8 +730,8 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
     fun uploadToCloud(onResult: ((Boolean, String?) -> Unit)? = null) {
         val user = currentUser.value
-        if (user == null || user.isAnonymous) {
-            showToast("訪客模式不支援雲端備份，請先登入帳號")
+        if (user == null) {
+            showToast("請先登入帳號以備份資料")
             onResult?.invoke(false, "未登入")
             return
         }
@@ -766,8 +753,8 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
     fun downloadFromCloud(onResult: ((Boolean, String?) -> Unit)? = null) {
         val user = currentUser.value
-        if (user == null || user.isAnonymous) {
-            showToast("訪客模式不支援雲端還原，請先登入帳號")
+        if (user == null) {
+            showToast("請先登入帳號以還原資料")
             onResult?.invoke(false, "未登入")
             return
         }
