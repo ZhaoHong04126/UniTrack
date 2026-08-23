@@ -4,12 +4,13 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -48,6 +49,7 @@ fun GraduationScreen(
     var showEditCourseDialog by remember { mutableStateOf(false) }
     var editingCourse by remember { mutableStateOf<Course?>(null) }
     var selectedCategoryFilter by remember { mutableStateOf<CourseCategory?>(null) }
+    var showFilterDialog by remember { mutableStateOf(false) }
     var selectedCourseDetail by remember { mutableStateOf<Course?>(null) }
 
     val animatedOverallProgress by animateFloatAsState(
@@ -301,38 +303,43 @@ fun GraduationScreen(
             }
         }
 
-        // Course Audit History & Filter Chips
-        item {
-            SectionHeader(
-                title = "歷年修課審查清單",
-                subtitle = "點擊課程可檢視或編輯成績"
-            )
-        }
-
-        // Category Filter Chips
+        // Course Audit History Header & Filter Button
         item {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                FilterChip(
-                    selected = selectedCategoryFilter == null,
-                    onClick = { selectedCategoryFilter = null },
-                    label = { Text("全部 (${allCourses.size})") }
-                )
-                CourseCategory.entries
-                    .filter { it != CourseCategory.REQUIRED && it != CourseCategory.ELECTIVE && it != CourseCategory.PE }
-                    .forEach { cat ->
-                        FilterChip(
-                            selected = selectedCategoryFilter == cat,
-                            onClick = {
-                                selectedCategoryFilter = if (selectedCategoryFilter == cat) null else cat
-                            },
-                            label = { Text(cat.label.removeSuffix("課程")) }
-                        )
-                    }
+                Column {
+                    Text(
+                        text = "歷年修課審查清單",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "點擊課程可檢視或編輯成績",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                OutlinedButton(
+                    onClick = { showFilterDialog = true },
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.FilterList,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = if (selectedCategoryFilter == null) "篩選" else selectedCategoryFilter!!.label.removeSuffix("課程"),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
         }
 
@@ -423,6 +430,93 @@ fun GraduationScreen(
             onDelete = {
                 viewModel.deleteCourse(course)
                 selectedCourseDetail = null
+            }
+        )
+    }
+
+    if (showFilterDialog) {
+        val categories = CourseCategory.entries
+            .filter { it != CourseCategory.REQUIRED && it != CourseCategory.ELECTIVE && it != CourseCategory.PE }
+
+        AlertDialog(
+            onDismissRequest = { showFilterDialog = false },
+            title = { Text("篩選學分屬性", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    // Option: 全部
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable {
+                                selectedCategoryFilter = null
+                                showFilterDialog = false
+                            }
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "全部 (${allCourses.size})",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = if (selectedCategoryFilter == null) FontWeight.Bold else FontWeight.Normal,
+                            color = if (selectedCategoryFilter == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        )
+                        if (selectedCategoryFilter == null) {
+                            Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                    categories.forEach { cat ->
+                        val count = allCourses.count { it.category == cat }
+                        val isSelected = selectedCategoryFilter == cat
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable {
+                                    selectedCategoryFilter = cat
+                                    showFilterDialog = false
+                                }
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(10.dp)
+                                        .clip(CircleShape)
+                                        .background(cat.badgeColor)
+                                )
+                                Text(
+                                    text = "${cat.label} ($count)",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            if (isSelected) {
+                                Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showFilterDialog = false }) {
+                    Text("關閉")
+                }
             }
         )
     }
