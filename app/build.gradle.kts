@@ -14,7 +14,7 @@ android {
   compileSdk = 37
 
   defaultConfig {
-    applicationId = "com.aistudio.unilife.stuhub"
+    applicationId = "com.unitrack.app"
     minSdk = 24
     targetSdk = 37
     versionCode = 1

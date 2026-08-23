@@ -9,10 +9,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.unitrack.app" />
+                  <option name="mobileSdkAppId" value="1:742695547810:android:aef58b7753c13b8ddaf8fb" />
+                  <option name="projectId" value="unitrack2027-bbc01" />
+                  <option name="projectNumber" value="742695547810" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

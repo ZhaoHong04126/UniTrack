@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "742695547810",
+    "project_id": "unitrack2027-bbc01",
+    "storage_bucket": "unitrack2027-bbc01.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:742695547810:android:aef58b7753c13b8ddaf8fb",
+        "android_client_info": {
+          "package_name": "com.unitrack.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDAoH77HI5XamJ4-z4G85xf3YQs_a6JH50"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
