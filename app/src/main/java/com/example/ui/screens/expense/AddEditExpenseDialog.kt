@@ -6,8 +6,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
@@ -44,6 +47,7 @@ fun AddEditExpenseDialog(
 
     var categoryDropdownExpanded by remember { mutableStateOf(false) }
     var paymentDropdownExpanded by remember { mutableStateOf(false) }
+    var presetDropdownExpanded by remember { mutableStateOf(false) }
 
     val quickExpensePresets = listOf(
         "學餐午餐" to ExpenseCategory.FOOD,
@@ -124,30 +128,6 @@ fun AddEditExpenseDialog(
                     )
                 }
 
-                // Quick Presets
-                Text(
-                    text = "常用快捷項目：",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    items(quickExpensePresets) { (presetTitle, presetCat) ->
-                        SuggestionChip(
-                            onClick = {
-                                title = presetTitle
-                                category = presetCat
-                                if (presetCat == ExpenseCategory.SALARY_JOB || presetCat == ExpenseCategory.SCHOLARSHIP) {
-                                    type = ExpenseType.INCOME
-                                }
-                            },
-                            label = { Text(presetTitle, style = MaterialTheme.typography.labelSmall) }
-                        )
-                    }
-                }
-
                 // Amount
                 OutlinedTextField(
                     value = amountText,
@@ -161,17 +141,78 @@ fun AddEditExpenseDialog(
                         .testTag("expense_amount_input")
                 )
 
-                // Title
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text("項目說明 *") },
-                    placeholder = { Text("例如：午餐排骨飯、微積分課本") },
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("expense_title_input")
-                )
+                // Title with Quick Presets Dropdown
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = title,
+                        onValueChange = { title = it },
+                        label = { Text("項目說明 *") },
+                        placeholder = { Text("例如：午餐排骨飯、微積分課本") },
+                        singleLine = true,
+                        trailingIcon = {
+                            IconButton(
+                                onClick = { presetDropdownExpanded = true },
+                                modifier = Modifier.testTag("quick_presets_dropdown_button")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ArrowDropDown,
+                                    contentDescription = "常用快捷項目"
+                                )
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("expense_title_input")
+                    )
+
+                    DropdownMenu(
+                        expanded = presetDropdownExpanded,
+                        onDismissRequest = { presetDropdownExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    "常用快捷項目",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            },
+                            onClick = {},
+                            enabled = false
+                        )
+                        HorizontalDivider()
+                        quickExpensePresets.forEach { (presetTitle, presetCat) ->
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(presetTitle, style = MaterialTheme.typography.bodyMedium)
+                                        Spacer(modifier = Modifier.width(16.dp))
+                                        Text(
+                                            text = presetCat.label,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    title = presetTitle
+                                    category = presetCat
+                                    if (presetCat == ExpenseCategory.SALARY_JOB || presetCat == ExpenseCategory.SCHOLARSHIP) {
+                                        type = ExpenseType.INCOME
+                                    } else {
+                                        type = ExpenseType.EXPENSE
+                                    }
+                                    presetDropdownExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
 
                 // Category & Payment Method
                 Row(
