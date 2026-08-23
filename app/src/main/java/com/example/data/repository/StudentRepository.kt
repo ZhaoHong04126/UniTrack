@@ -55,6 +55,7 @@ class StudentRepository(
 
     // Expenses & Budgets
     val allExpenses: Flow<List<ExpenseRecord>> = expenseDao.getAllExpenses()
+    val allBudgets: Flow<List<MonthlyBudget>> = expenseDao.getAllBudgets()
 
     suspend fun insertExpense(expense: ExpenseRecord): Long = withContext(Dispatchers.IO) {
         expenseDao.insertExpense(expense)
@@ -66,6 +67,10 @@ class StudentRepository(
 
     suspend fun deleteExpense(expense: ExpenseRecord) = withContext(Dispatchers.IO) {
         expenseDao.deleteExpense(expense)
+    }
+
+    suspend fun deleteAllExpenses() = withContext(Dispatchers.IO) {
+        expenseDao.deleteAllExpenses()
     }
 
     suspend fun setBudget(budget: MonthlyBudget) = withContext(Dispatchers.IO) {

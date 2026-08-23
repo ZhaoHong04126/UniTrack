@@ -117,6 +117,9 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     val allExpenses: StateFlow<List<ExpenseRecord>> = repository.allExpenses
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val allBudgets: StateFlow<List<MonthlyBudget>> = repository.allBudgets
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     // Filtered courses for currently selected semester
     val currentSemesterCourses: StateFlow<List<Course>> = combine(allCourses, _selectedSemester) { courses, sem ->
         courses.filter { it.semester == sem }
@@ -359,8 +362,9 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     // Expense Monthly Summary
     val monthlyExpenseSummary: StateFlow<ExpenseMonthlySummary> = combine(
         allExpenses,
-        _selectedExpenseMonth
-    ) { expenses, month ->
+        _selectedExpenseMonth,
+        allBudgets
+    ) { expenses, month, budgets ->
         val monthExpenses = expenses.filter { it.dateString.startsWith(month) }
         var totalExp = 0.0
         var totalInc = 0.0
@@ -375,9 +379,9 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             }
         }
 
-        val budget = 10000.0 // Default budget or customized
+        val budget = budgets.firstOrNull { it.yearMonth == month }?.budgetAmount ?: 10000.0
         val remaining = budget - totalExp
-        val usagePercentage = ((totalExp / budget) * 100.0).coerceIn(0.0, 100.0).toFloat()
+        val usagePercentage = if (budget > 0) ((totalExp / budget) * 100.0).coerceIn(0.0, 100.0).toFloat() else 0f
 
         ExpenseMonthlySummary(
             yearMonth = month,
@@ -474,6 +478,11 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     fun deleteExpense(expense: ExpenseRecord) = viewModelScope.launch {
         repository.deleteExpense(expense)
         _userMessage.value = "已刪除記錄"
+    }
+
+    fun clearAllExpenses() = viewModelScope.launch {
+        repository.deleteAllExpenses()
+        _userMessage.value = "已清空所有記帳記錄"
     }
 
     fun setMonthlyBudget(amount: Double) = viewModelScope.launch {

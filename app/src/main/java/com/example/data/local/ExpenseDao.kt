@@ -33,6 +33,9 @@ interface ExpenseDao {
     suspend fun deleteAllExpenses()
 
     // Monthly Budgets
+    @Query("SELECT * FROM monthly_budgets")
+    fun getAllBudgets(): Flow<List<MonthlyBudget>>
+
     @Query("SELECT * FROM monthly_budgets WHERE yearMonth = :yearMonth")
     fun getBudgetForMonth(yearMonth: String): Flow<MonthlyBudget?>
 

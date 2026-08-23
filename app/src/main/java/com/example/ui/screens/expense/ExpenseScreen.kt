@@ -46,6 +46,7 @@ fun ExpenseScreen(
     var showAddDialog by remember { mutableStateOf(false) }
     var editingExpense by remember { mutableStateOf<ExpenseRecord?>(null) }
     var showBudgetDialog by remember { mutableStateOf(false) }
+    var showClearConfirmDialog by remember { mutableStateOf(false) }
     var selectedCategoryFilter by remember { mutableStateOf<ExpenseCategory?>(null) }
 
     val locale = LocalConfiguration.current.locales[0]
@@ -96,36 +97,51 @@ fun ExpenseScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(
-                        onClick = {
-                            val cal = Calendar.getInstance()
-                            runCatching {
-                                cal.time = monthFormat.parse(selectedMonth) ?: Date()
-                                cal.add(Calendar.MONTH, -1)
-                                viewModel.setSelectedExpenseMonth(monthFormat.format(cal.time))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(
+                            onClick = {
+                                val cal = Calendar.getInstance()
+                                runCatching {
+                                    cal.time = monthFormat.parse(selectedMonth) ?: Date()
+                                    cal.add(Calendar.MONTH, -1)
+                                    viewModel.setSelectedExpenseMonth(monthFormat.format(cal.time))
+                                }
                             }
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "上個月")
                         }
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "上個月")
+
+                        Text(
+                            text = "$selectedMonth 月記帳",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        IconButton(
+                            onClick = {
+                                val cal = Calendar.getInstance()
+                                runCatching {
+                                    cal.time = monthFormat.parse(selectedMonth) ?: Date()
+                                    cal.add(Calendar.MONTH, 1)
+                                    viewModel.setSelectedExpenseMonth(monthFormat.format(cal.time))
+                                }
+                            }
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "下個月")
+                        }
                     }
 
-                    Text(
-                        text = "$selectedMonth 月記帳",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    IconButton(
-                        onClick = {
-                            val cal = Calendar.getInstance()
-                            runCatching {
-                                cal.time = monthFormat.parse(selectedMonth) ?: Date()
-                                cal.add(Calendar.MONTH, 1)
-                                viewModel.setSelectedExpenseMonth(monthFormat.format(cal.time))
-                            }
+                    if (allExpenses.isNotEmpty()) {
+                        IconButton(
+                            onClick = { showClearConfirmDialog = true },
+                            modifier = Modifier.testTag("clear_expenses_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.DeleteOutline,
+                                contentDescription = "清空所有記帳記錄",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "下個月")
                     }
                 }
             }
@@ -365,6 +381,34 @@ fun ExpenseScreen(
                     viewModel.updateExpense(expense)
                 }
                 showAddDialog = false
+            },
+            onDelete = { expense ->
+                viewModel.deleteExpense(expense)
+                showAddDialog = false
+            }
+        )
+    }
+
+    if (showClearConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearConfirmDialog = false },
+            title = { Text("清空記帳明細", fontWeight = FontWeight.Bold) },
+            text = { Text("確定要清空所有的記帳與收支明細嗎？此動作無法復原。") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.clearAllExpenses()
+                        showClearConfirmDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("確定清空")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearConfirmDialog = false }) {
+                    Text("取消")
+                }
             }
         )
     }

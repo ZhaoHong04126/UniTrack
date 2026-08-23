@@ -13,11 +13,13 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.data.model.ExpenseCategory
 import com.example.data.model.ExpenseRecord
 import com.example.data.model.ExpenseType
 import com.example.data.model.PaymentMethod
+import com.example.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -26,7 +28,8 @@ import java.util.*
 fun AddEditExpenseDialog(
     initialExpense: ExpenseRecord? = null,
     onDismiss: () -> Unit,
-    onSave: (ExpenseRecord) -> Unit
+    onSave: (ExpenseRecord) -> Unit,
+    onDelete: ((ExpenseRecord) -> Unit)? = null
 ) {
     val locale = LocalConfiguration.current.locales[0]
     val dateFormat = remember(locale) { SimpleDateFormat("yyyy-MM-dd", locale) }
@@ -74,7 +77,23 @@ fun AddEditExpenseDialog(
                     FilterChip(
                         selected = type == ExpenseType.EXPENSE,
                         onClick = { type = ExpenseType.EXPENSE },
-                        label = { Text("支出") },
+                        label = {
+                            Text(
+                                "支出",
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Center,
+                                fontWeight = if (type == ExpenseType.EXPENSE) FontWeight.Bold else FontWeight.Normal
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = RoseLight,
+                            selectedLabelColor = RoseAccent
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = type == ExpenseType.EXPENSE,
+                            selectedBorderColor = RoseAccent
+                        ),
                         modifier = Modifier.weight(1f)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -84,7 +103,23 @@ fun AddEditExpenseDialog(
                             type = ExpenseType.INCOME
                             if (category == ExpenseCategory.FOOD) category = ExpenseCategory.SALARY_JOB
                         },
-                        label = { Text("收入") },
+                        label = {
+                            Text(
+                                "收入",
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Center,
+                                fontWeight = if (type == ExpenseType.INCOME) FontWeight.Bold else FontWeight.Normal
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = EmeraldLight,
+                            selectedLabelColor = EmeraldAccent
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = type == ExpenseType.INCOME,
+                            selectedBorderColor = EmeraldAccent
+                        ),
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -245,8 +280,19 @@ fun AddEditExpenseDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("取消")
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (initialExpense != null && onDelete != null) {
+                    TextButton(
+                        onClick = { onDelete(initialExpense) },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        modifier = Modifier.testTag("delete_expense_button")
+                    ) {
+                        Text("刪除")
+                    }
+                }
+                TextButton(onClick = onDismiss) {
+                    Text("取消")
+                }
             }
         }
     )
@@ -258,7 +304,7 @@ fun BudgetDialog(
     onDismiss: () -> Unit,
     onSave: (Double) -> Unit
 ) {
-    var budgetText by remember { mutableStateOf(currentBudget.toInt().toString()) }
+    var budgetText by remember { mutableStateOf(if (currentBudget > 0) currentBudget.toInt().toString() else "") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -275,8 +321,13 @@ fun BudgetDialog(
                 )
                 OutlinedTextField(
                     value = budgetText,
-                    onValueChange = { budgetText = it },
+                    onValueChange = { input ->
+                        if (input.isEmpty() || input.all { it.isDigit() }) {
+                            budgetText = input
+                        }
+                    },
                     label = { Text("月預算額度 ($)") },
+                    placeholder = { Text("請輸入預算金額") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -288,7 +339,8 @@ fun BudgetDialog(
                 onClick = {
                     val amount = budgetText.toDoubleOrNull() ?: 10000.0
                     onSave(amount)
-                }
+                },
+                enabled = (budgetText.toDoubleOrNull() ?: 0.0) > 0
             ) {
                 Text("確認設定")
             }
