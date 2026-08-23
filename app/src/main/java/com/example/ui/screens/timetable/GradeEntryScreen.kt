@@ -16,7 +16,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -38,9 +38,9 @@ fun GradeEntryScreen(
     val allSemesters by viewModel.allSemesters.collectAsStateWithLifecycle()
     val courses by viewModel.currentSemesterCourses.collectAsStateWithLifecycle()
     val plan by viewModel.graduationPlan.collectAsStateWithLifecycle()
+    val locale = LocalConfiguration.current.locales[0]
 
     var semesterMenuExpanded by remember { mutableStateOf(false) }
-    val focusManager = LocalFocusManager.current
 
     // Calculate semester average score & earned credits
     val gradedCourses = courses.filter { it.score != null }
@@ -136,7 +136,7 @@ fun GradeEntryScreen(
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = if (semesterAverageScore > 0) String.format("%.1f", semesterAverageScore) else "—",
+                                text = if (semesterAverageScore > 0) String.format(locale, "%.1f", semesterAverageScore) else "—",
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = TealSecondary
@@ -218,7 +218,6 @@ fun GradeEntryScreen(
                 items(courses.sortedWith(compareBy({ it.dayOfWeek }, { it.startPeriod })), key = { it.id }) { course ->
                     GradeEntryCourseCard(
                         course = course,
-                        minPassingScore = plan.minPassingScore,
                         onSaveScore = { newScore ->
                             val isCompleted = newScore != null && newScore >= plan.minPassingScore
                             viewModel.updateCourse(
@@ -238,17 +237,12 @@ fun GradeEntryScreen(
 @Composable
 private fun GradeEntryCourseCard(
     course: Course,
-    minPassingScore: Double,
     onSaveScore: (Double?) -> Unit
 ) {
     var scoreInput by remember(course.score) {
         mutableStateOf(course.score?.let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() } ?: "")
     }
     val focusManager = LocalFocusManager.current
-
-    val currentScore = course.score
-    val isPassed = currentScore != null && currentScore >= minPassingScore
-    val isFailed = currentScore != null && currentScore < minPassingScore
 
     Card(
         modifier = Modifier.fillMaxWidth(),
