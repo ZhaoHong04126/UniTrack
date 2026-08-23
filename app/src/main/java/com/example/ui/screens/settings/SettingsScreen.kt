@@ -31,7 +31,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.AuthProvider
 import com.example.data.model.GraduationPlan
 import com.example.data.model.UserProfile
-import com.example.ui.components.PrivacySecurityBanner
 import com.example.ui.components.SectionHeader
 import com.example.ui.screens.graduation.GraduationPlanDialog
 import com.example.ui.theme.*
@@ -61,6 +60,7 @@ fun SettingsScreen(
     var showResetConfirmDialog by remember { mutableStateOf(false) }
     var showClearConfirmDialog by remember { mutableStateOf(false) }
     var showSignOutConfirmDialog by remember { mutableStateOf(false) }
+    var showDeleteAccountConfirmDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -98,66 +98,33 @@ fun SettingsScreen(
         )
 
         // Section 0: Account & Security
-        SectionHeader(title = "帳號與雲端同步")
+        SectionHeader(title = "帳號資訊")
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(18.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
-            Column {
-                val user = currentUser
-                val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
+            val user = currentUser
 
-                if (user != null && !user.isAnonymous) {
-                    SettingTileRow(
-                        icon = Icons.Default.AccountCircle,
-                        title = user.displayName ?: "已登入學生",
-                        subtitle = user.email ?: "已綁定帳號",
-                        iconTint = EmeraldAccent,
-                        badgeText = "已登入",
-                        onClick = onNavigateToAuth
-                    )
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-                    )
-
-                    SettingTileRow(
-                        icon = Icons.Default.Sync,
-                        title = "立即同步雲端資料 (Firestore)",
-                        subtitle = if (isSyncing) "正在與 Firebase 雲端同步中..." else "備份本機課表、學分與記帳資料至雲端",
-                        iconTint = SapphirePrimary,
-                        badgeText = if (isSyncing) "同步中..." else "立即同步",
-                        onClick = {
-                            if (!isSyncing) viewModel.syncWithCloud()
-                        }
-                    )
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-                    )
-
-                    SettingTileRow(
-                        icon = Icons.AutoMirrored.Filled.Logout,
-                        title = "登出目前帳號",
-                        subtitle = "切換回訪客模式或更換其他帳號",
-                        iconTint = RoseAccent,
-                        titleColor = RoseAccent,
-                        onClick = { showSignOutConfirmDialog = true }
-                    )
-                } else {
-                    SettingTileRow(
-                        icon = Icons.AutoMirrored.Filled.Login,
-                        title = "登入 / 註冊 UniTrack+ 帳號",
-                        subtitle = "使用 Google 或 Email 登入以保存學業紀錄",
-                        iconTint = SapphirePrimary,
-                        badgeText = "訪客模式",
-                        onClick = onNavigateToAuth
-                    )
-                }
+            if (user != null && !user.isAnonymous) {
+                SettingTileRow(
+                    icon = Icons.Default.AccountCircle,
+                    title = user.displayName ?: "已登入學生",
+                    subtitle = user.email ?: "已綁定帳號",
+                    iconTint = EmeraldAccent,
+                    badgeText = "已登入",
+                    onClick = onNavigateToAuth
+                )
+            } else {
+                SettingTileRow(
+                    icon = Icons.AutoMirrored.Filled.Login,
+                    title = "登入 / 註冊 UniTrack+ 帳號",
+                    subtitle = "使用 Google 或 Email 登入以保存學業紀錄",
+                    iconTint = SapphirePrimary,
+                    badgeText = "訪客模式",
+                    onClick = onNavigateToAuth
+                )
             }
         }
 
@@ -195,7 +162,6 @@ fun SettingsScreen(
 
         // Section 2: Data Backup & Security
         SectionHeader(title = "資料備份與安全")
-        PrivacySecurityBanner()
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(18.dp),
@@ -264,6 +230,70 @@ fun SettingsScreen(
                     iconTint = RoseAccent,
                     titleColor = RoseAccent,
                     onClick = { showClearConfirmDialog = true }
+                )
+            }
+        }
+
+        // Footer: Sign Out / Delete Account & Copyright
+        val user = currentUser
+        if (user != null && !user.isAnonymous) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    TextButton(
+                        onClick = { showSignOutConfirmDialog = true },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "登出",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Text(
+                        text = "|",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+
+                    TextButton(
+                        onClick = { showDeleteAccountConfirmDialog = true },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "刪除帳號",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Text(
+                    text = "© 2026 UniTrack+. All rights reserved.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "© 2026 UniTrack+. All rights reserved.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outlineVariant
                 )
             }
         }
@@ -459,6 +489,32 @@ fun SettingsScreen(
             }
         )
     }
+
+    // Delete Account Confirm Dialog
+    if (showDeleteAccountConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteAccountConfirmDialog = false },
+            title = { Text("確認刪除帳號？", color = RoseAccent, fontWeight = FontWeight.Bold) },
+            text = { Text("這將會登出並清除您的雲端帳號關聯設定。此操作無法復原。") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.signOut()
+                        showDeleteAccountConfirmDialog = false
+                        onNavigateToAuth()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = RoseAccent)
+                ) {
+                    Text("確定刪除")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteAccountConfirmDialog = false }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
 }
 
 /**
@@ -610,25 +666,14 @@ private fun StudentIdCard(
                     }
                 }
 
-                // Bottom 3 Metric Pills inside Card
+                // Bottom Metric Pill inside Card
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     MetricPill(
                         label = "當前學期",
                         value = plan.currentSemester,
-                        modifier = Modifier.weight(1f)
-                    )
-                    MetricPill(
-                        label = "畢業學分目標",
-                        value = "${plan.targetTotalCredits.toInt()} 學分",
-                        modifier = Modifier.weight(1f)
-                    )
-                    MetricPill(
-                        label = "資料庫狀態",
-                        value = "本機安全",
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
