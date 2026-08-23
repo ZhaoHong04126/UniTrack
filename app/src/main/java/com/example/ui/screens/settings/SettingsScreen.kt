@@ -137,7 +137,7 @@ fun SettingsScreen(
                 ) {
                     Column {
                         Text(
-                            text = "${plan.department} (${plan.studentName})",
+                            text = plan.studentName,
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold
                         )
