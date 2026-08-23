@@ -130,16 +130,22 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
     val allSemesters: StateFlow<List<String>> = combine(
         repository.allSemesters,
+        repository.graduationPlan,
         _selectedSemester,
         _customSemesters
-    ) { dbSemesters, currentSem, customSemesters ->
+    ) { dbSemesters, plan, currentSem, customSemesters ->
         val set = dbSemesters.toMutableSet()
-        set.add("114-1")
-        set.add("114-2")
+        val rawAdmission = plan?.currentSemester ?: "114-1"
+        val startYear = rawAdmission.substringBefore("-").filter { it.isDigit() }.toIntOrNull() ?: 114
+        // Automatically generate 4 college years (8 semesters) starting from admission year
+        for (y in startYear until startYear + 4) {
+            set.add("$y-1")
+            set.add("$y-2")
+        }
         if (currentSem.isNotBlank()) set.add(currentSem)
         set.addAll(customSemesters)
-        set.toList().sortedDescending()
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), listOf("114-2", "114-1"))
+        set.toList().sorted()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), listOf("114-1", "114-2", "115-1", "115-2", "116-1", "116-2", "117-1", "117-2"))
 
     val graduationPlan: StateFlow<GraduationPlan> = repository.graduationPlan
         .map { it ?: DefaultData.getDefaultGraduationPlan() }

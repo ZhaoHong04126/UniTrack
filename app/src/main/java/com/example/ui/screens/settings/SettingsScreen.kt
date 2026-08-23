@@ -104,28 +104,13 @@ fun SettingsScreen(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
-            Column {
-                SettingTileRow(
-                    icon = Icons.Default.Person,
-                    title = "編輯姓名與當前學期",
-                    subtitle = "${plan.studentName}・${plan.currentSemester} 學期",
-                    iconTint = SapphirePrimary,
-                    onClick = { showEditProfileDialog = true }
-                )
-
-                HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-                )
-
-                SettingTileRow(
-                    icon = Icons.Default.Tune,
-                    title = "畢業審查標準設定",
-                    subtitle = "總目標 ${plan.targetTotalCredits.toInt()} 學分・各模組門檻",
-                    iconTint = IndigoAccent,
-                    onClick = { showPlanDialog = true }
-                )
-            }
+            SettingTileRow(
+                icon = Icons.Default.Tune,
+                title = "畢業審查標準設定",
+                subtitle = "總目標 ${plan.targetTotalCredits.toInt()} 學分・各模組門檻",
+                iconTint = IndigoAccent,
+                onClick = { showPlanDialog = true }
+            )
         }
 
         // Section 2: Data Backup & Security
@@ -610,6 +595,11 @@ private fun StudentIdCard(
                     }
 
                     // Student Information
+                    val admissionYearDisplay = remember(plan.currentSemester) {
+                        val code = plan.currentSemester.substringBefore("-").trim()
+                        if (plan.currentSemester.contains("學年度")) plan.currentSemester else "$code 學年度 (${plan.currentSemester})"
+                    }
+
                     Column(
                         modifier = Modifier.weight(1f),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -627,40 +617,74 @@ private fun StudentIdCard(
                             color = Color.White
                         )
                         Text(
-                            text = "當前學期：${plan.currentSemester}",
+                            text = "入學年度：$admissionYearDisplay",
                             style = MaterialTheme.typography.bodySmall,
                             color = Color.White.copy(alpha = 0.9f)
                         )
                     }
                 }
 
-                // Bottom Semester Pill inside Card
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color.White.copy(alpha = 0.12f))
-                        .padding(vertical = 8.dp, horizontal = 6.dp),
-                    contentAlignment = Alignment.Center
+                // Bottom Info Pills inside Card
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color.White.copy(alpha = 0.12f))
+                            .padding(vertical = 8.dp, horizontal = 6.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = plan.currentSemester,
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            maxLines = 1
-                        )
-                        Text(
-                            text = "當前學期",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White.copy(alpha = 0.75f),
-                            fontSize = 10.sp,
-                            maxLines = 1
-                        )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text(
+                                text = plan.department.ifBlank { "尚未設定系所" },
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                maxLines = 1
+                            )
+                            Text(
+                                text = "主修系所",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White.copy(alpha = 0.75f),
+                                fontSize = 10.sp,
+                                maxLines = 1
+                            )
+                        }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color.White.copy(alpha = 0.12f))
+                            .padding(vertical = 8.dp, horizontal = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text(
+                                text = plan.currentSemester,
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                maxLines = 1
+                            )
+                            Text(
+                                text = "當前學期",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White.copy(alpha = 0.75f),
+                                fontSize = 10.sp,
+                                maxLines = 1
+                            )
+                        }
                     }
                 }
             }

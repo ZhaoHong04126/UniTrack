@@ -202,7 +202,7 @@ class StudentRepository(
                 val planObj = root.getJSONObject("graduationPlan")
                 val plan = GraduationPlan(
                     id = 1,
-                    department = planObj.optString("department", "資訊工程學系"),
+                    department = planObj.optString("department", "尚未設定系所"),
                     studentName = planObj.optString("studentName", "同學"),
                     targetTotalCredits = planObj.optDouble("targetTotalCredits", 128.0),
                     targetRequiredCredits = planObj.optDouble("targetRequiredCredits", 58.0),

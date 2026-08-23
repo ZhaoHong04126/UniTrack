@@ -169,7 +169,7 @@ fun AuthScreen(
 
                             viewModel.updateGraduationPlan(
                                 graduationPlan.copy(
-                                    department = department.ifBlank { "資訊工程學系" },
+                                    department = department.ifBlank { "尚未設定系所" },
                                     currentSemester = semesterCode
                                 )
                             )

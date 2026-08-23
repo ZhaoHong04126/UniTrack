@@ -42,12 +42,35 @@ fun TimetableScreen(
     val selectedSemester by viewModel.selectedSemester.collectAsStateWithLifecycle()
     val allSemesters by viewModel.allSemesters.collectAsStateWithLifecycle()
     val courses by viewModel.currentSemesterCourses.collectAsStateWithLifecycle()
+    val graduationPlan by viewModel.graduationPlan.collectAsStateWithLifecycle()
+
+    fun formatSemesterLabel(sem: String): String {
+        val startYear = graduationPlan.currentSemester.substringBefore("-").filter { it.isDigit() }.toIntOrNull() ?: 114
+        val year = sem.substringBefore("-").filter { it.isDigit() }.toIntOrNull()
+        val term = sem.substringAfter("-").filter { it.isDigit() }.toIntOrNull() ?: 1
+        if (year != null) {
+            val grade = when (val diff = year - startYear) {
+                0 -> "大一"
+                1 -> "大二"
+                2 -> "大三"
+                3 -> "大四"
+                else -> if (diff > 3) "延畢" else ""
+            }
+            val termStr = if (term == 1) "上" else "下"
+            if (grade.isNotEmpty()) {
+                return "$sem 學期 ($grade$termStr)"
+            }
+        }
+        return "$sem 學期"
+    }
 
     var showAddDialog by remember { mutableStateOf(false) }
     var editingCourse by remember { mutableStateOf<Course?>(null) }
     var selectedCourseDetail by remember { mutableStateOf<Course?>(null) }
     var showNewSemesterDialog by remember { mutableStateOf(false) }
-    var newYearInput by remember { mutableStateOf("114") }
+    var newYearInput by remember(graduationPlan.currentSemester) {
+        mutableStateOf(graduationPlan.currentSemester.substringBefore("-").filter { it.isDigit() }.ifBlank { "114" })
+    }
     var selectedTerm by remember { mutableStateOf("上學期") }
     var termDropdownExpanded by remember { mutableStateOf(false) }
     var isGridView by remember { mutableStateOf(true) }
@@ -89,7 +112,7 @@ fun TimetableScreen(
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
-                            text = "$selectedSemester 學期",
+                            text = formatSemesterLabel(selectedSemester),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
@@ -109,7 +132,7 @@ fun TimetableScreen(
                             DropdownMenuItem(
                                 text = {
                                     Text(
-                                        text = "$sem 學期",
+                                        text = formatSemesterLabel(sem),
                                         fontWeight = if (sem == selectedSemester) FontWeight.Bold else FontWeight.Normal
                                     )
                                 },

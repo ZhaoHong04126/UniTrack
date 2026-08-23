@@ -10,7 +10,7 @@ object DefaultData {
     fun getDefaultGraduationPlan(): GraduationPlan {
         return GraduationPlan(
             id = 1,
-            department = "資訊工程學系",
+            department = "尚未設定系所",
             studentName = "大學生",
             targetTotalCredits = 128.0,
             targetRequiredCredits = 58.0,

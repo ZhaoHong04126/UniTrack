@@ -165,7 +165,7 @@ class FirestoreSyncRepository(
             if (planSnapshot.exists()) {
                 val plan = GraduationPlan(
                     id = 1,
-                    department = planSnapshot.getString("department") ?: "資訊工程學系",
+                    department = planSnapshot.getString("department") ?: "尚未設定系所",
                     studentName = planSnapshot.getString("studentName") ?: "同學",
                     targetTotalCredits = planSnapshot.getDouble("targetTotalCredits") ?: 128.0,
                     targetRequiredCredits = planSnapshot.getDouble("targetRequiredCredits") ?: 58.0,
