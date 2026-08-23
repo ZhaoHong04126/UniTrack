@@ -11,7 +11,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.example.data.model.GpaScale
 import com.example.data.model.GraduationPlan
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -31,9 +30,6 @@ fun GraduationPlanDialog(
     var proTarget by remember { mutableStateOf(currentPlan.targetProfessionalModuleCredits.toString()) }
     var freeTarget by remember { mutableStateOf(currentPlan.targetFreeCredits.toString()) }
     var currentSemester by remember { mutableStateOf(currentPlan.currentSemester) }
-    var gpaScale by remember { mutableStateOf(currentPlan.gpaScale) }
-
-    var gpaDropdownExpanded by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -159,41 +155,6 @@ fun GraduationPlanDialog(
                         modifier = Modifier.weight(1f)
                     )
                 }
-
-                Text(
-                    text = "GPA 成績計分制度",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
-                )
-
-                ExposedDropdownMenuBox(
-                    expanded = gpaDropdownExpanded,
-                    onExpandedChange = { gpaDropdownExpanded = !gpaDropdownExpanded },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    OutlinedTextField(
-                        value = gpaScale.label,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("GPA 計分標準") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = gpaDropdownExpanded) },
-                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
-                    )
-                    ExposedDropdownMenu(
-                        expanded = gpaDropdownExpanded,
-                        onDismissRequest = { gpaDropdownExpanded = false }
-                    ) {
-                        GpaScale.entries.forEach { scale ->
-                            DropdownMenuItem(
-                                text = { Text(scale.label) },
-                                onClick = {
-                                    gpaScale = scale
-                                    gpaDropdownExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
             }
         },
         confirmButton = {
@@ -212,7 +173,7 @@ fun GraduationPlanDialog(
                         targetProfessionalModuleCredits = proTarget.toDoubleOrNull() ?: 23.0,
                         targetFreeCredits = freeTarget.toDoubleOrNull() ?: 20.0,
                         currentSemester = currentSemester.trim(),
-                        gpaScale = gpaScale
+                        gpaScale = currentPlan.gpaScale
                     )
                     onSave(updated)
                 },

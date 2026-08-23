@@ -65,6 +65,7 @@ fun ExpenseScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = {
@@ -76,7 +77,6 @@ fun ExpenseScreen(
                 containerColor = TealSecondary,
                 contentColor = Color.White,
                 modifier = Modifier
-                    .padding(bottom = 72.dp)
                     .testTag("add_expense_fab")
             )
         }
@@ -87,7 +87,7 @@ fun ExpenseScreen(
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(top = 12.dp, bottom = 96.dp)
+            contentPadding = PaddingValues(top = 12.dp, bottom = 16.dp)
         ) {
             // Month Selector Header
             item {

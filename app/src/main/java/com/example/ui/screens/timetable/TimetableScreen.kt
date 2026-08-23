@@ -224,7 +224,7 @@ fun TimetableScreen(
                         .fillMaxWidth()
                         .weight(1f),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(bottom = 80.dp)
+                    contentPadding = PaddingValues(bottom = 16.dp)
                 ) {
                     items(courses.sortedWith(compareBy({ it.dayOfWeek }, { it.startPeriod }))) { course ->
                         CourseListItemCard(

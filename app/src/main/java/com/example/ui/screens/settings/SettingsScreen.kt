@@ -142,7 +142,7 @@ fun SettingsScreen(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "畢業目標: ${plan.targetTotalCredits.toInt()} 學分 (${plan.gpaScale.label.split(" ").first()})",
+                            text = "畢業目標: ${plan.targetTotalCredits.toInt()} 學分",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
