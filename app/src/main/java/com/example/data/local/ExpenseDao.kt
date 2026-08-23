@@ -5,6 +5,7 @@ import com.example.data.model.ExpenseRecord
 import com.example.data.model.MonthlyBudget
 import kotlinx.coroutines.flow.Flow
 
+@Suppress("unused")
 @Dao
 interface ExpenseDao {
     @Query("SELECT * FROM expenses ORDER BY timestamp DESC")

@@ -3,7 +3,6 @@ package com.example.ui.screens.timetable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.*
@@ -13,11 +12,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.toColorInt
 import com.example.data.model.Course
-import com.example.data.model.CourseCategory
 import com.example.ui.theme.RoseAccent
 import com.example.ui.theme.SapphirePrimary
 
@@ -29,7 +29,7 @@ fun CourseDetailBottomSheet(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val courseColor = runCatching { Color(android.graphics.Color.parseColor(course.colorHex)) }
+    val courseColor = runCatching { Color(course.colorHex.toColorInt()) }
         .getOrDefault(SapphirePrimary)
 
     val days = listOf("星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日")
@@ -178,7 +178,7 @@ fun CourseDetailBottomSheet(
 
 @Composable
 private fun DetailRowItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     label: String,
     value: String
 ) {

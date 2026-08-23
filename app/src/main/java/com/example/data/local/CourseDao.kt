@@ -4,6 +4,7 @@ import androidx.room.*
 import com.example.data.model.Course
 import kotlinx.coroutines.flow.Flow
 
+@Suppress("unused")
 @Dao
 interface CourseDao {
     @Query("SELECT * FROM courses ORDER BY semester DESC, dayOfWeek ASC, startPeriod ASC")

@@ -5,6 +5,7 @@ import com.example.data.model.GraduationPlan
 import com.example.data.model.GraduationThreshold
 import kotlinx.coroutines.flow.Flow
 
+@Suppress("unused")
 @Dao
 interface GraduationDao {
     @Query("SELECT * FROM graduation_plans WHERE id = 1")

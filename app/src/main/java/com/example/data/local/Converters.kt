@@ -8,46 +8,50 @@ import com.example.data.model.GeneralEduSubtype
 import com.example.data.model.GpaScale
 import com.example.data.model.PaymentMethod
 
+@Suppress("unused")
 class Converters {
     @TypeConverter
     fun fromCourseCategory(value: CourseCategory?): String? = value?.name
 
     @TypeConverter
     fun toCourseCategory(value: String?): CourseCategory? =
-        value?.let { runCatching { CourseCategory.valueOf(it) }.getOrDefault(CourseCategory.REQUIRED) }
+        value?.let { enumValueOfOrDefault(it, CourseCategory.REQUIRED) }
 
     @TypeConverter
     fun fromGeneralEduSubtype(value: GeneralEduSubtype?): String? = value?.name
 
     @TypeConverter
     fun toGeneralEduSubtype(value: String?): GeneralEduSubtype? =
-        value?.let { runCatching { GeneralEduSubtype.valueOf(it) }.getOrDefault(GeneralEduSubtype.NONE) }
+        value?.let { enumValueOfOrDefault(it, GeneralEduSubtype.NONE) }
 
     @TypeConverter
     fun fromExpenseType(value: ExpenseType?): String? = value?.name
 
     @TypeConverter
     fun toExpenseType(value: String?): ExpenseType? =
-        value?.let { runCatching { ExpenseType.valueOf(it) }.getOrDefault(ExpenseType.EXPENSE) }
+        value?.let { enumValueOfOrDefault(it, ExpenseType.EXPENSE) }
 
     @TypeConverter
     fun fromExpenseCategory(value: ExpenseCategory?): String? = value?.name
 
     @TypeConverter
     fun toExpenseCategory(value: String?): ExpenseCategory? =
-        value?.let { runCatching { ExpenseCategory.valueOf(it) }.getOrDefault(ExpenseCategory.FOOD) }
+        value?.let { enumValueOfOrDefault(it, ExpenseCategory.FOOD) }
 
     @TypeConverter
     fun fromPaymentMethod(value: PaymentMethod?): String? = value?.name
 
     @TypeConverter
     fun toPaymentMethod(value: String?): PaymentMethod? =
-        value?.let { runCatching { PaymentMethod.valueOf(it) }.getOrDefault(PaymentMethod.CASH) }
+        value?.let { enumValueOfOrDefault(it, PaymentMethod.CASH) }
 
     @TypeConverter
     fun fromGpaScale(value: GpaScale?): String? = value?.name
 
     @TypeConverter
     fun toGpaScale(value: String?): GpaScale? =
-        value?.let { runCatching { GpaScale.valueOf(it) }.getOrDefault(GpaScale.SCALE_4_3) }
+        value?.let { enumValueOfOrDefault(it, GpaScale.SCALE_4_3) }
+
+    private inline fun <reified T : Enum<T>> enumValueOfOrDefault(name: String, defaultValue: T): T =
+        runCatching { enumValueOf<T>(name) }.getOrDefault(defaultValue)
 }
