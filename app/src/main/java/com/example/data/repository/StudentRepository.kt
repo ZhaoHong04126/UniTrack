@@ -199,8 +199,8 @@ class StudentRepository(
                     targetElectiveCredits = planObj.optDouble("targetElectiveCredits", 36.0),
                     targetGeneralCredits = planObj.optDouble("targetGeneralCredits", 28.0),
                     targetFreeCredits = planObj.optDouble("targetFreeCredits", 6.0),
-                    currentSemester = planObj.optString("currentSemester", "113-2"),
-                    gpaScale = runCatching { GpaScale.valueOf(planObj.optString("gpaScale", "SCALE_4_3")) }.getOrDefault(GpaScale.SCALE_4_3)
+                    currentSemester = planObj.optString("currentSemester", "114-1"),
+                    gpaScale = runCatching { GpaScale.valueOf(planObj.optString("gpaScale", "PERCENTAGE")) }.getOrDefault(GpaScale.PERCENTAGE)
                 )
                 graduationDao.insertOrUpdatePlan(plan)
             }

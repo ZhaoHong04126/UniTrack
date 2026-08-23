@@ -69,7 +69,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
     // Selected semester in timetable
-    private val _selectedSemester = MutableStateFlow("113-2")
+    private val _selectedSemester = MutableStateFlow("114-1")
     val selectedSemester: StateFlow<String> = _selectedSemester.asStateFlow()
 
     // Selected month in expense tracker
@@ -92,16 +92,20 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     val allCourses: StateFlow<List<Course>> = repository.allCourses
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val allSemesters: StateFlow<List<String>> = repository.allSemesters
-        .map { list ->
-            val set = list.toMutableSet()
-            set.add("113-2")
-            set.add("113-1")
-            set.add("112-2")
-            set.add("112-1")
-            set.toList().sortedDescending()
-        }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), listOf("113-2", "113-1", "112-2", "112-1"))
+    private val _customSemesters = MutableStateFlow<Set<String>>(emptySet())
+
+    val allSemesters: StateFlow<List<String>> = combine(
+        repository.allSemesters,
+        _selectedSemester,
+        _customSemesters
+    ) { dbSemesters, currentSem, customSems ->
+        val set = dbSemesters.toMutableSet()
+        set.add("114-1")
+        set.add("114-2")
+        if (currentSem.isNotBlank()) set.add(currentSem)
+        set.addAll(customSems)
+        set.toList().sortedDescending()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), listOf("114-2", "114-1"))
 
     val graduationPlan: StateFlow<GraduationPlan> = repository.graduationPlan
         .map { it ?: DefaultData.getDefaultGraduationPlan() }
@@ -403,6 +407,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     // User Actions
     fun setSelectedSemester(semester: String) {
         _selectedSemester.value = semester
+        _customSemesters.update { it + semester }
     }
 
     fun setSelectedExpenseMonth(yearMonth: String) {

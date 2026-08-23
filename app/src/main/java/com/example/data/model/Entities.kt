@@ -19,7 +19,7 @@ data class Course(
     val credits: Double = 3.0,
     val category: CourseCategory = CourseCategory.REQUIRED,
     val generalEduSubtype: GeneralEduSubtype = GeneralEduSubtype.NONE,
-    val semester: String = "113-2", // e.g. 113-1, 113-2
+    val semester: String = "114-1", // e.g. 113-1, 113-2
     val score: Double? = null, // 0~100 or null if currently taking
     val letterGrade: String? = null, // "A+", "A", "B+", etc.
     val isCompleted: Boolean = false, // completed and passed
@@ -43,8 +43,8 @@ data class GraduationPlan(
     val targetProfessionalModuleCredits: Double = 23.0,
     val targetFreeCredits: Double = 20.0,
     val minPassingScore: Double = 60.0,
-    val gpaScale: GpaScale = GpaScale.SCALE_4_3,
-    val currentSemester: String = "113-2"
+    val gpaScale: GpaScale = GpaScale.PERCENTAGE,
+    val currentSemester: String = "114-1"
 )
 
 @Entity(tableName = "graduation_thresholds")
