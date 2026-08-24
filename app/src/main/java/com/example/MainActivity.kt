@@ -183,9 +183,6 @@ class MainActivity : ComponentActivity() {
                                 viewModel = studentViewModel,
                                 onNavigateToGrades = {
                                     navController.navigate("grade_entry")
-                                },
-                                onNavigateToGraduation = {
-                                    navController.navigate(AppDestination.Graduation.route)
                                 }
                             )
                         }
@@ -193,7 +190,10 @@ class MainActivity : ComponentActivity() {
                         composable("grade_entry") {
                             GradeEntryScreen(
                                 viewModel = studentViewModel,
-                                onNavigateBack = { navController.popBackStack() }
+                                onNavigateBack = { navController.popBackStack() },
+                                onNavigateToGraduation = {
+                                    navController.navigate(AppDestination.Graduation.route)
+                                }
                             )
                         }
 

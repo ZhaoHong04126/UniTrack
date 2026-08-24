@@ -12,6 +12,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,7 +33,8 @@ import com.example.ui.viewmodel.StudentViewModel
 fun GradeEntryScreen(
     viewModel: StudentViewModel,
     onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onNavigateToGraduation: () -> Unit = {}
 ) {
     val selectedSemester by viewModel.selectedSemester.collectAsStateWithLifecycle()
     val allSemesters by viewModel.allSemesters.collectAsStateWithLifecycle()
@@ -69,6 +71,14 @@ fun GradeEntryScreen(
                     }
                 },
                 actions = {
+                    IconButton(
+                        onClick = onNavigateToGraduation
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.School,
+                            contentDescription = "畢業審查"
+                        )
+                    }
                     Box(modifier = Modifier.padding(end = 8.dp)) {
                         OutlinedButton(
                             onClick = { showSemesterManageDialog = true },
