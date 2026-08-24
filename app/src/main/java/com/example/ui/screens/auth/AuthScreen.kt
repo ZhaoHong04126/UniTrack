@@ -39,8 +39,10 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.AuthState
 import com.example.ui.theme.*
@@ -249,50 +251,297 @@ fun AuthScreen(
         }
     }
 
-    // Password Reset Dialog
+    // Password Reset & Verification Code Dialog (Two-Stage Flow)
     if (showResetDialog) {
-        AlertDialog(
-            onDismissRequest = { showResetDialog = false },
-            title = { Text("重設密碼", fontWeight = FontWeight.Bold) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = "請輸入您註冊時使用的電子郵件，我們將寄送重設密碼連結至您的信箱：",
-                        style = MaterialTheme.typography.bodySmall
-                    )
+        PasswordResetVerificationDialog(
+            initialEmail = resetEmail,
+            viewModel = viewModel,
+            onDismiss = { showResetDialog = false },
+            onVerificationSuccess = { _ ->
+                showResetDialog = false
+                viewModel.showToast("身分驗證成功！已可重設密碼或使用該帳號登入")
+            }
+        )
+    }
+}
+
+/**
+ * 現代化重設密碼與驗證碼對話框 (Password Reset & Verification Dialog)
+ * 雙階段設計：
+ * Stage 1: 輸入信箱 ➜ 發送驗證碼
+ * Stage 2: 頂部橫條「驗證碼已寄出」+ 6 位數驗證碼輸入 + 60 秒倒數計時
+ */
+@Composable
+private fun PasswordResetVerificationDialog(
+    initialEmail: String,
+    viewModel: StudentViewModel,
+    onDismiss: () -> Unit,
+    onVerificationSuccess: (String) -> Unit
+) {
+    var email by remember { mutableStateOf(initialEmail) }
+    var code by remember { mutableStateOf("") }
+    var stage by remember { mutableIntStateOf(1) } // 1: Input Email, 2: Input 6-digit Code
+    var countdown by remember { mutableIntStateOf(60) }
+    var isSending by remember { mutableStateOf(false) }
+
+    // 倒數計時器
+    LaunchedEffect(stage, countdown) {
+        if (stage == 2 && countdown > 0) {
+            delay(1000.milliseconds)
+            countdown -= 1
+        }
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp),
+            shape = RoundedCornerShape(28.dp),
+            color = Color(0xFF1E293B),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+            shadowElevation = 16.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                if (stage == 1) {
+                    // ====== Stage 1: 輸入電子郵件發送驗證碼 ======
+                    // 頂部圓形圖示徽章
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF3B82F6)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.LockReset,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "重設密碼",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "請輸入註冊時的電子郵件地址，\n我們會寄送驗證碼。",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.White.copy(alpha = 0.65f),
+                            textAlign = TextAlign.Center,
+                            lineHeight = 20.sp
+                        )
+                    }
+
+                    // Email 輸入框
                     OutlinedTextField(
-                        value = resetEmail,
-                        onValueChange = { resetEmail = it },
-                        label = { Text("電子郵件") },
+                        value = email,
+                        onValueChange = { email = it },
+                        placeholder = { Text("your@email.com", color = Color.White.copy(alpha = 0.35f)) },
+                        leadingIcon = {
+                            Icon(Icons.Default.Email, contentDescription = null, tint = Color.White.copy(alpha = 0.5f))
+                        },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(
                             capitalization = KeyboardCapitalization.None,
-                            keyboardType = KeyboardType.Email
+                            keyboardType = KeyboardType.Email,
+                            imeAction = ImeAction.Done
                         ),
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = SapphirePrimary,
+                            unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
+                            focusedContainerColor = Color.White.copy(alpha = 0.05f),
+                            unfocusedContainerColor = Color.White.copy(alpha = 0.05f)
+                        )
                     )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (resetEmail.isNotBlank()) {
-                            viewModel.sendPasswordReset(resetEmail)
-                            showResetDialog = false
+
+                    // 發送驗證碼按鈕
+                    Button(
+                        onClick = {
+                            if (email.isNotBlank()) {
+                                isSending = true
+                                viewModel.sendVerificationCode(email.trim()) { success, _ ->
+                                    isSending = false
+                                    if (success) {
+                                        stage = 2
+                                        countdown = 60
+                                    }
+                                }
+                            }
+                        },
+                        enabled = email.isNotBlank() && !isSending,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6))
+                    ) {
+                        if (isSending) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
+                        } else {
+                            Text("發送驗證碼", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
                         }
-                    },
-                    enabled = resetEmail.isNotBlank()
-                ) {
-                    Text("寄送重設信")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showResetDialog = false }) {
-                    Text("取消")
+                    }
+
+                    // 取消按鈕
+                    TextButton(onClick = onDismiss) {
+                        Text("取消", color = Color.White.copy(alpha = 0.7f), style = MaterialTheme.typography.bodyMedium)
+                    }
+                } else {
+                    // ====== Stage 2: 輸入 6 位數驗證碼 ======
+                    // 頂部「驗證碼已寄出」狀態橫條
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFF3B82F6),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                            Text(
+                                text = "驗證碼已寄出",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+
+                    // 中央信封圓形圖示徽章
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF3B82F6)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Email,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "驗證碼已寄出",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "請輸入電子郵件中收到的6位數驗證碼。",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.65f),
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            text = email,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
+                    // 6 位數驗證碼輸入框
+                    OutlinedTextField(
+                        value = code,
+                        onValueChange = { if (it.length <= 6) code = it.filter { ch -> ch.isDigit() } },
+                        placeholder = { Text("6位數驗證碼", color = Color.White.copy(alpha = 0.35f)) },
+                        leadingIcon = {
+                            Icon(Icons.Default.Pin, contentDescription = null, tint = Color.White.copy(alpha = 0.5f))
+                        },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.NumberPassword,
+                            imeAction = ImeAction.Done
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = SapphirePrimary,
+                            unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
+                            focusedContainerColor = Color.White.copy(alpha = 0.05f),
+                            unfocusedContainerColor = Color.White.copy(alpha = 0.05f)
+                        )
+                    )
+
+                    // 確認按鈕
+                    Button(
+                        onClick = {
+                            if (code.length == 6) {
+                                viewModel.verifyCode(email, code) { success, _ ->
+                                    if (success) {
+                                        onVerificationSuccess(email)
+                                    }
+                                }
+                            }
+                        },
+                        enabled = code.length == 6,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6))
+                    ) {
+                        Text("確認", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                    }
+
+                    // 重新寄送倒數或按鈕
+                    if (countdown > 0) {
+                        Text(
+                            text = "重新寄送郵件（${countdown} 秒）",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.55f)
+                        )
+                    } else {
+                        TextButton(
+                            onClick = {
+                                viewModel.sendVerificationCode(email.trim()) { success, _ ->
+                                    if (success) {
+                                        countdown = 60
+                                    }
+                                }
+                            }
+                        ) {
+                            Text("重新寄送驗證碼", color = Color(0xFF60A5FA), fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    // 取消按鈕
+                    TextButton(onClick = onDismiss) {
+                        Text("取消", color = Color.White.copy(alpha = 0.7f), style = MaterialTheme.typography.bodyMedium)
+                    }
                 }
             }
-        )
+        }
     }
 }
 

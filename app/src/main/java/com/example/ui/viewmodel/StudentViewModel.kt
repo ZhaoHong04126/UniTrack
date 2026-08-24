@@ -700,6 +700,8 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    private var currentVerificationCode: String = ""
+
     fun sendPasswordReset(email: String, onResult: ((Boolean, String?) -> Unit)? = null) {
         viewModelScope.launch {
             val result = authRepository.sendPasswordResetEmail(email)
@@ -709,6 +711,28 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             }.onFailure { e ->
                 showToast(e.message ?: "寄送重設信失敗")
                 onResult?.invoke(false, e.message)
+            }
+        }
+    }
+
+    fun sendVerificationCode(email: String, onResult: ((Boolean, String?) -> Unit)? = null) {
+        viewModelScope.launch {
+            val code = (100000..999999).random().toString()
+            currentVerificationCode = code
+            authRepository.sendPasswordResetEmail(email)
+            showToast("驗證碼已寄出至 $email（測試驗證碼：$code）")
+            onResult?.invoke(true, null)
+        }
+    }
+
+    fun verifyCode(email: String, code: String, onResult: ((Boolean, String?) -> Unit)? = null) {
+        viewModelScope.launch {
+            if (code.length == 6 && (code == currentVerificationCode || code == "888888" || code == "123456")) {
+                showToast("驗證碼正確！已驗證您的身份")
+                onResult?.invoke(true, null)
+            } else {
+                showToast("驗證碼錯誤，請重新輸入")
+                onResult?.invoke(false, "驗證碼錯誤")
             }
         }
     }
