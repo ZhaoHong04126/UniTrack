@@ -130,9 +130,11 @@ fun TimetableScreen(
             val startDateStr = viewModel.getSemesterStartDate(semester)
             val formatter = DateTimeFormatter.ofPattern("yyyy.MM.dd")
             val startDate = LocalDate.parse(startDateStr, formatter)
-            val startOfWeek = startDate.plusWeeks((week - 1).toLong())
+            // 課表第一欄為週一，故先校準至開學週的週一 (DayOfWeek: MONDAY=1, SUNDAY=7)
+            val mondayOfFirstWeek = startDate.minusDays((startDate.dayOfWeek.value - 1).toLong())
+            val mondayOfWeek = mondayOfFirstWeek.plusWeeks((week - 1).toLong())
             (0 until count).map { dayOffset ->
-                val date = startOfWeek.plusDays(dayOffset.toLong())
+                val date = mondayOfWeek.plusDays(dayOffset.toLong())
                 "${date.monthValue}/${date.dayOfMonth}"
             }
         } catch (_: Exception) {
