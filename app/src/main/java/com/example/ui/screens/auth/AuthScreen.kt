@@ -2,6 +2,9 @@ package com.example.ui.screens.auth
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -42,8 +45,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.AuthState
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.StudentViewModel
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 enum class AuthPage {
+    SPLASH,
     WELCOME,
     LOGIN,
     REGISTER_STEP_1,
@@ -59,7 +65,7 @@ fun AuthScreen(
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
     val graduationPlan by viewModel.graduationPlan.collectAsStateWithLifecycle()
 
-    var currentPage by remember { mutableStateOf(AuthPage.WELCOME) }
+    var currentPage by remember { mutableStateOf(AuthPage.SPLASH) }
 
     // Registration Profile State
     var department by remember { mutableStateOf("") }
@@ -79,19 +85,19 @@ fun AuthScreen(
     // Auto-navigate on auth success
     val user = currentUser
     LaunchedEffect(user) {
-        if (user != null) {
+        if (user != null && currentPage != AuthPage.SPLASH) {
             onAuthSuccess()
         }
     }
 
     // Android System Back Button Handler
-    BackHandler(enabled = currentPage != AuthPage.WELCOME) {
+    BackHandler(enabled = currentPage != AuthPage.WELCOME && currentPage != AuthPage.SPLASH) {
         viewModel.clearAuthError()
         when (currentPage) {
             AuthPage.REGISTER_STEP_2 -> currentPage = AuthPage.REGISTER_STEP_1
             AuthPage.REGISTER_STEP_1 -> currentPage = AuthPage.WELCOME
             AuthPage.LOGIN -> currentPage = AuthPage.WELCOME
-            AuthPage.WELCOME -> {}
+            AuthPage.WELCOME, AuthPage.SPLASH -> {}
         }
     }
 
@@ -116,6 +122,18 @@ fun AuthScreen(
             label = "AuthPageTransition"
         ) { targetPage ->
             when (targetPage) {
+                AuthPage.SPLASH -> {
+                    AuthSplashLoadingView(
+                        viewModel = viewModel,
+                        onFinishLoading = {
+                            if (currentUser != null) {
+                                onAuthSuccess()
+                            } else {
+                                currentPage = AuthPage.WELCOME
+                            }
+                        }
+                    )
+                }
                 AuthPage.WELCOME -> {
                     WelcomePageView(
                         onStartRegister = {
@@ -249,6 +267,114 @@ fun AuthScreen(
                 }
             }
         )
+    }
+}
+
+/**
+ * 啟動與登入載入進度條畫面 (Splash / Login Progress Loading Screen)
+ * 在中央 App Logo 正下方呈現平滑動態進度條與狀態提示
+ */
+@Composable
+private fun AuthSplashLoadingView(
+    viewModel: StudentViewModel,
+    onFinishLoading: () -> Unit
+) {
+    val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
+    var progress by remember { mutableFloatStateOf(0.08f) }
+    var statusText by remember { mutableStateOf("正在初始化系統環境...") }
+
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        label = "loginProgressBar"
+    )
+
+    LaunchedEffect(Unit) {
+        delay(200.milliseconds)
+        progress = 0.35f
+        statusText = "檢查登入狀態與學生檔案..."
+        delay(350.milliseconds)
+        progress = 0.70f
+        statusText = "載入課表與學業資料..."
+        delay(350.milliseconds)
+        progress = 1.0f
+        statusText = if (currentUser != null) "登入成功，準備進入系統！" else "載入完成"
+        delay(300.milliseconds)
+        onFinishLoading()
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF0F172A)),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(horizontal = 32.dp)
+        ) {
+            // App Logo
+            AuthLogoMascot()
+
+            Spacer(modifier = Modifier.height(28.dp))
+
+            // Progress Bar Container (登入進度條區域)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                // 進度條外框與發光進度指示
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color.White.copy(alpha = 0.12f))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(animatedProgress.coerceIn(0f, 1f))
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(
+                                        SapphirePrimary,
+                                        Color(0xFF38BDF8),
+                                        EmeraldAccent
+                                    )
+                                )
+                            )
+                    )
+                }
+
+                // 狀態文字與百分比
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = statusText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.75f),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "${(animatedProgress * 100).toInt()}%",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFF60A5FA),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -613,6 +739,36 @@ private fun LoginPageView(
         ) {
             TextButton(onClick = onForgotPassword) {
                 Text("忘記密碼？", style = MaterialTheme.typography.bodySmall, color = Color(0xFF60A5FA), fontWeight = FontWeight.SemiBold)
+            }
+        }
+
+        // 登入進度條 (Login In-Progress Bar)
+        AnimatedVisibility(
+            visible = authState is AuthState.Loading,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp)),
+                    color = SapphirePrimary,
+                    trackColor = Color.White.copy(alpha = 0.12f)
+                )
+                Text(
+                    text = "正在進行帳號驗證與登入...",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF93C5FD),
+                    fontSize = 12.sp
+                )
             }
         }
 
@@ -1486,7 +1642,37 @@ private fun RegisterStep2PageView(
             )
         )
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // 註冊建立進度條
+        AnimatedVisibility(
+            visible = authState is AuthState.Loading,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp)),
+                    color = EmeraldAccent,
+                    trackColor = Color.White.copy(alpha = 0.12f)
+                )
+                Text(
+                    text = "正在建立帳號並初始化學業檔案...",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = EmeraldLight,
+                    fontSize = 12.sp
+                )
+            }
+        }
 
         Button(
             onClick = {
