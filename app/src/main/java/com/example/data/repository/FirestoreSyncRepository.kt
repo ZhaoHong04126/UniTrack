@@ -349,46 +349,23 @@ class FirestoreSyncRepository(
         try {
             val userDocRef = db.collection("users").document(userId)
 
-            // 1. 刪除 profile / graduation_plan
-            runCatching {
-                userDocRef.collection("profile").document("graduation_plan").delete().await()
-            }
-
-            // 2. 刪除 courses
-            runCatching {
-                val coursesDocs = userDocRef.collection("courses").get().await()
-                for (doc in coursesDocs.documents) {
-                    doc.reference.delete().await()
+            val subcollections = listOf("profile", "courses", "thresholds", "expenses", "budgets")
+            for (sub in subcollections) {
+                try {
+                    val snapshot = userDocRef.collection(sub).get().await()
+                    for (doc in snapshot.documents) {
+                        doc.reference.delete().await()
+                    }
+                } catch (e: Exception) {
+                    Log.w(tag, "Failed to delete subcollection $sub for user $userId", e)
                 }
             }
 
-            // 3. 刪除 thresholds
-            runCatching {
-                val thresholdsDocs = userDocRef.collection("thresholds").get().await()
-                for (doc in thresholdsDocs.documents) {
-                    doc.reference.delete().await()
-                }
-            }
-
-            // 4. 刪除 expenses
-            runCatching {
-                val expensesDocs = userDocRef.collection("expenses").get().await()
-                for (doc in expensesDocs.documents) {
-                    doc.reference.delete().await()
-                }
-            }
-
-            // 5. 刪除 budgets
-            runCatching {
-                val budgetsDocs = userDocRef.collection("budgets").get().await()
-                for (doc in budgetsDocs.documents) {
-                    doc.reference.delete().await()
-                }
-            }
-
-            // 6. 刪除 user 主文檔
-            runCatching {
+            // 刪除 user 主文檔
+            try {
                 userDocRef.delete().await()
+            } catch (e: Exception) {
+                Log.w(tag, "Failed to delete user doc for user $userId", e)
             }
 
             Log.i(tag, "All Cloud Firestore data deleted successfully for user: $userId")

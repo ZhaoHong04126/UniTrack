@@ -789,17 +789,17 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val uid = currentUser.value?.uid.orEmpty()
 
-            // 1. 先嘗試刪除 Firebase Auth 帳號（若需要重新驗證，可避免提前清空本機資料造成狀態錯亂）
+            // 1. 在帳號仍具有授權時，先徹底清除 Cloud Firestore 所有集合與文件（避免 Auth 刪除後遭遇權限拒絕）
+            if (uid.isNotBlank()) {
+                firestoreSyncRepository.deleteAllCloudData(uid)
+            }
+
+            // 2. 清除手機本機 Room 資料庫（課表、記帳、預算、門檻、學業檔案）
+            repository.clearAllData()
+
+            // 3. 永久註銷並刪除 Firebase Auth 帳號與 Google 憑證
             val authDeleteResult = authRepository.deleteAccount()
             authDeleteResult.onSuccess {
-                // 2. 刪除 Firestore 雲端所有資料
-                if (uid.isNotBlank()) {
-                    firestoreSyncRepository.deleteAllCloudData(uid)
-                }
-
-                // 3. 清除本機 Room 資料庫
-                repository.clearAllData()
-
                 showToast("帳號已永久刪除，本機與雲端資料已完全清除")
                 onResult?.invoke(true, null)
             }.onFailure { e ->
