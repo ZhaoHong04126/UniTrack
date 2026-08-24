@@ -110,7 +110,7 @@ class MainActivity : ComponentActivity() {
                     AppDestination.Settings
                 )
 
-                val isMainTab = items.any { it.route == currentRoute }
+                val showBottomBar = items.any { it.route == currentRoute } || currentRoute == AppDestination.Graduation.route
                 val currentUser by studentViewModel.currentUser.collectAsStateWithLifecycle()
                 val graduationPlan by studentViewModel.graduationPlan.collectAsStateWithLifecycle()
                 val isProfileReady = currentUser != null && graduationPlan.department.isNotBlank() && graduationPlan.department != "尚未設定系所"
@@ -119,7 +119,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
                     bottomBar = {
-                        if (isMainTab) {
+                        if (showBottomBar) {
                             NavigationBar(
                                 containerColor = MaterialTheme.colorScheme.surface,
                                 tonalElevation = 8.dp
@@ -208,7 +208,8 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onNavigateToPlanSetting = {
                                     navController.navigate("graduation_plan_setting")
-                                }
+                                },
+                                onNavigateBack = { navController.popBackStack() }
                             )
                         }
 
