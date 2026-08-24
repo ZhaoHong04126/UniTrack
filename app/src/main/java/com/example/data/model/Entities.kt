@@ -25,7 +25,9 @@ data class Course(
     val letterGrade: String? = null, // "A+", "A", "B+", etc.
     val isCompleted: Boolean = false, // completed and passed
     val colorHex: String = "#3B82F6",
-    val notes: String = ""
+    val notes: String = "",
+    val repeatWeeks: String = "1-18",
+    val repeatMode: String = "每週"
 )
 
 @Entity(tableName = "graduation_plans")
