@@ -11,7 +11,8 @@ data class UserProfile(
     val email: String?,
     val photoUrl: String? = null,
     val isAnonymous: Boolean = false,
-    val provider: AuthProvider = AuthProvider.EMAIL
+    val provider: AuthProvider = AuthProvider.EMAIL,
+    val isNewUser: Boolean = false
 )
 
 sealed interface AuthState {

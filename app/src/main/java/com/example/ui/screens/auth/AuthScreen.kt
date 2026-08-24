@@ -82,11 +82,24 @@ fun AuthScreen(
     var showResetDialog by remember { mutableStateOf(false) }
     var resetEmail by remember { mutableStateOf("") }
 
-    // Auto-navigate on auth success
+    // Auto-navigate on auth success or redirect to RegisterStep1 if profile incomplete
     val user = currentUser
-    LaunchedEffect(user) {
+    LaunchedEffect(user, currentPage) {
         if (user != null && currentPage != AuthPage.SPLASH) {
-            onAuthSuccess()
+            val plan = graduationPlan
+            val isNew = user.isNewUser || plan.department.isBlank() || plan.department == "尚未設定系所"
+            if (isNew) {
+                if (currentPage != AuthPage.REGISTER_STEP_1 && currentPage != AuthPage.REGISTER_STEP_2) {
+                    if (!user.displayName.isNullOrBlank() && name.isBlank()) name = user.displayName
+                    if (!user.email.isNullOrBlank() && email.isBlank()) email = user.email
+                    viewModel.showToast("首次登入請先選擇就讀系所")
+                    currentPage = AuthPage.REGISTER_STEP_1
+                }
+            } else {
+                if (currentPage != AuthPage.REGISTER_STEP_1 && currentPage != AuthPage.REGISTER_STEP_2) {
+                    onAuthSuccess()
+                }
+            }
         }
     }
 
@@ -127,7 +140,14 @@ fun AuthScreen(
                         viewModel = viewModel,
                         onFinishLoading = {
                             if (currentUser != null) {
-                                onAuthSuccess()
+                                val plan = graduationPlan
+                                if (currentUser?.isNewUser == true || plan.department.isBlank() || plan.department == "尚未設定系所") {
+                                    if (!currentUser?.displayName.isNullOrBlank() && name.isBlank()) name = currentUser?.displayName ?: ""
+                                    if (!currentUser?.email.isNullOrBlank() && email.isBlank()) email = currentUser?.email ?: ""
+                                    currentPage = AuthPage.REGISTER_STEP_1
+                                } else {
+                                    onAuthSuccess()
+                                }
                             } else {
                                 currentPage = AuthPage.WELCOME
                             }
@@ -176,6 +196,7 @@ fun AuthScreen(
                         onDepartmentChange = { department = it },
                         admissionYear = admissionYear,
                         onAdmissionYearChange = { admissionYear = it },
+                        isGoogleAuthenticated = currentUser != null,
                         onBack = {
                             viewModel.clearAuthError()
                             currentPage = AuthPage.WELCOME
@@ -184,14 +205,19 @@ fun AuthScreen(
                             val yearNum = admissionYear.filter { it.isDigit() }.take(3).ifBlank { (java.util.Calendar.getInstance().get(java.util.Calendar.YEAR) - 1911).toString() }
                             val semesterCode = "$yearNum-1"
 
-                            viewModel.updateGraduationPlan(
-                                graduationPlan.copy(
-                                    department = department.ifBlank { "尚未設定系所" },
-                                    admissionSemester = semesterCode,
-                                    currentSemester = semesterCode
-                                )
+                            val updatedPlan = graduationPlan.copy(
+                                department = department.ifBlank { "尚未設定系所" },
+                                admissionSemester = semesterCode,
+                                currentSemester = semesterCode
                             )
-                            currentPage = AuthPage.REGISTER_STEP_2
+                            viewModel.updateGraduationPlan(updatedPlan)
+
+                            if (currentUser != null) {
+                                viewModel.showToast("系所設定完成，歡迎使用 UniTrack+！")
+                                onAuthSuccess()
+                            } else {
+                                currentPage = AuthPage.REGISTER_STEP_2
+                            }
                         },
                         onNavigateToLogin = {
                             viewModel.clearAuthError()
@@ -702,53 +728,6 @@ private fun LoginPageView(
             }
         }
 
-        // 查無帳號或錯誤提示：引導前往註冊新帳號
-        AnimatedVisibility(
-            visible = isAuthError,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically()
-        ) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .clickable(onClick = onNavigateToRegister),
-                color = RoseAccent.copy(alpha = 0.12f),
-                border = BorderStroke(1.dp, RoseAccent.copy(alpha = 0.35f))
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = null,
-                            tint = RoseAccent,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Text(
-                            text = "尚未擁有帳號？",
-                            color = RoseAccent,
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                    Text(
-                        text = "請進入註冊新帳號 →",
-                        color = Color(0xFF60A5FA),
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
-
         // 登入進度條 (Login In-Progress Bar)
         AnimatedVisibility(
             visible = authState is AuthState.Loading,
@@ -782,8 +761,19 @@ private fun LoginPageView(
         Button(
             onClick = {
                 focusManager.clearFocus()
-                viewModel.signInWithEmail(email, password) { success, _ ->
-                    if (success) onAuthSuccess()
+                viewModel.signInWithEmail(email, password) { success, errMsg ->
+                    if (success) {
+                        val plan = viewModel.graduationPlan.value
+                        if (plan.department.isBlank() || plan.department == "尚未設定系所") {
+                            viewModel.showToast("尚未設定就讀系所，請先選擇系所")
+                            onNavigateToRegister()
+                        } else {
+                            onAuthSuccess()
+                        }
+                    } else if (errMsg?.contains("不存在") == true || errMsg?.contains("註冊") == true || errMsg?.contains("尚未註冊") == true) {
+                        viewModel.showToast("此帳號尚未註冊，請先設定就讀系所進行註冊")
+                        onNavigateToRegister()
+                    }
                 }
             },
             enabled = email.isNotBlank() && password.isNotBlank() && authState !is AuthState.Loading,
@@ -814,7 +804,17 @@ private fun LoginPageView(
         OutlinedButton(
             onClick = {
                 viewModel.signInWithGoogle { success, _ ->
-                    if (success) onAuthSuccess()
+                    if (success) {
+                        val user = viewModel.currentUser.value
+                        val plan = viewModel.graduationPlan.value
+                        val isNew = (user?.isNewUser == true) || plan.department.isBlank() || plan.department == "尚未設定系所"
+                        if (isNew) {
+                            viewModel.showToast("首次登入請先選擇就讀系所")
+                            onNavigateToRegister()
+                        } else {
+                            onAuthSuccess()
+                        }
+                    }
                 }
             },
             modifier = Modifier
@@ -833,29 +833,6 @@ private fun LoginPageView(
             Spacer(modifier = Modifier.width(10.dp))
             Text("使用 Google 帳號一鍵登入", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = Color.White)
         }
-
-        // 底部引導前往註冊
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 6.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "還沒有帳號？",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.65f)
-            )
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = "請進入註冊新帳號",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF60A5FA),
-                modifier = Modifier.clickable(onClick = onNavigateToRegister)
-            )
-        }
     }
 }
 
@@ -869,6 +846,7 @@ private fun RegisterStep1PageView(
     onDepartmentChange: (String) -> Unit,
     admissionYear: String,
     onAdmissionYearChange: (String) -> Unit,
+    isGoogleAuthenticated: Boolean = false,
     onBack: () -> Unit,
     onNext: () -> Unit,
     onNavigateToLogin: () -> Unit
@@ -979,17 +957,19 @@ private fun RegisterStep1PageView(
                         .clip(CircleShape)
                         .background(SapphirePrimary)
                 )
-                Box(
-                    modifier = Modifier
-                        .width(36.dp)
-                        .height(6.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.2f))
-                )
+                if (!isGoogleAuthenticated) {
+                    Box(
+                        modifier = Modifier
+                            .width(36.dp)
+                            .height(6.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.2f))
+                    )
+                }
             }
 
             Text(
-                text = "步驟 1 / 2",
+                text = if (isGoogleAuthenticated) "設定學籍系所" else "步驟 1 / 2",
                 style = MaterialTheme.typography.labelMedium,
                 color = Color.White.copy(alpha = 0.7f),
                 fontWeight = FontWeight.Medium
@@ -1415,22 +1395,29 @@ private fun RegisterStep1PageView(
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.buttonColors(containerColor = SapphirePrimary)
         ) {
-            Text("下一步", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+            Text(
+                text = if (isGoogleAuthenticated) "完成設定並開始使用" else "下一步",
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = Color.White
+            )
             Spacer(modifier = Modifier.width(6.dp))
             Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.White)
         }
 
-        // Navigate to login page
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("已有帳號？", color = Color.White.copy(alpha = 0.6f), style = MaterialTheme.typography.bodyMedium)
-            Spacer(modifier = Modifier.width(6.dp))
-            Text("登入", color = Color(0xFF60A5FA), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, modifier = Modifier.clickable(onClick = onNavigateToLogin))
+        if (!isGoogleAuthenticated) {
+            // Navigate to login page
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("已有帳號？", color = Color.White.copy(alpha = 0.6f), style = MaterialTheme.typography.bodyMedium)
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("登入", color = Color(0xFF60A5FA), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, modifier = Modifier.clickable(onClick = onNavigateToLogin))
+            }
         }
     }
 }

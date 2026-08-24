@@ -130,7 +130,8 @@ class AuthRepository(private val context: Context) {
             val authCredential = GoogleAuthProvider.getCredential(idToken, null)
             val authResult = auth.signInWithCredential(authCredential).await()
             val fbUser = authResult.user ?: throw IllegalStateException("Firebase 登入失敗")
-            val profile = fbUser.toUserProfile(AuthProvider.GOOGLE)
+            val isNewUser = authResult.additionalUserInfo?.isNewUser == true
+            val profile = fbUser.toUserProfile(AuthProvider.GOOGLE, isNewUser = isNewUser)
             _currentUser.value = profile
             _authState.value = AuthState.Authenticated(profile)
             Result.success(profile)
@@ -261,14 +262,15 @@ class AuthRepository(private val context: Context) {
         }
     }
 
-    private fun FirebaseUser.toUserProfile(provider: AuthProvider = AuthProvider.EMAIL): UserProfile {
+    private fun FirebaseUser.toUserProfile(provider: AuthProvider = AuthProvider.EMAIL, isNewUser: Boolean = false): UserProfile {
         return UserProfile(
             uid = this.uid,
             displayName = this.displayName ?: this.email?.substringBefore("@") ?: "同學",
             email = this.email,
             photoUrl = this.photoUrl?.toString(),
             isAnonymous = false,
-            provider = provider
+            provider = provider,
+            isNewUser = isNewUser
         )
     }
 
