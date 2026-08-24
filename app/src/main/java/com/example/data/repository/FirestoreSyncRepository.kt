@@ -186,14 +186,14 @@ class FirestoreSyncRepository(
                 val remoteStudentName = planSnapshot.getString("studentName")?.trim()
 
                 // Resolution logic:
-                // If remote department is valid (not blank and not "尚未設定系所"), use remote.
-                // Else if local plan has a valid department, KEEP local department!
-                val resolvedDept = if (!remoteDepartment.isNullOrBlank() && remoteDepartment != "尚未設定系所") {
-                    remoteDepartment
-                } else if (localPlan != null && localPlan.department.isNotBlank() && localPlan.department != "尚未設定系所") {
+                // If local plan has a valid department, KEEP local department!
+                // Else if remote department is valid, use remote.
+                val resolvedDept = if (localPlan != null && localPlan.department.isNotBlank() && localPlan.department != "尚未設定系所") {
                     localPlan.department
+                } else if (!remoteDepartment.isNullOrBlank() && remoteDepartment != "尚未設定系所") {
+                    remoteDepartment
                 } else {
-                    remoteDepartment ?: "尚未設定系所"
+                    localPlan?.department ?: remoteDepartment ?: "尚未設定系所"
                 }
 
                 val isDefaultName = { n: String? -> n.isNullOrBlank() || n == "同學" || n == "王大明" || n == "大學生" }

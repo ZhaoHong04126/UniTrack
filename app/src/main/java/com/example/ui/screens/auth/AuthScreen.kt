@@ -71,7 +71,9 @@ fun AuthScreen(
     var currentPage by remember { mutableStateOf(AuthPage.SPLASH) }
 
     // Registration Profile State
-    var department by remember { mutableStateOf("") }
+    var department by remember(graduationPlan.department) {
+        mutableStateOf(if (graduationPlan.department != "尚未設定系所") graduationPlan.department else "")
+    }
     val initialTaiwanYear = remember { java.util.Calendar.getInstance().get(java.util.Calendar.YEAR) - 1911 }
     var admissionYear by remember { mutableStateOf("$initialTaiwanYear 學年度 ($initialTaiwanYear-1)") }
 
@@ -89,9 +91,8 @@ fun AuthScreen(
     val user = currentUser
     LaunchedEffect(user, graduationPlan.department) {
         if (user != null) {
-            val isNew = user.isNewUser
             val isDeptUnset = graduationPlan.department.isBlank() || graduationPlan.department == "尚未設定系所"
-            if (isNew || isDeptUnset) {
+            if (isDeptUnset) {
                 if (currentPage == AuthPage.SPLASH || currentPage == AuthPage.LOGIN || currentPage == AuthPage.WELCOME) {
                     val defaultName = user.displayName?.ifBlank { null } ?: user.email?.substringBefore("@") ?: ""
                     if (name.isBlank() && defaultName.isNotBlank()) name = defaultName
@@ -100,9 +101,7 @@ fun AuthScreen(
                     currentPage = AuthPage.REGISTER_STEP_1
                 }
             } else {
-                if (currentPage != AuthPage.REGISTER_STEP_1 && currentPage != AuthPage.REGISTER_STEP_2) {
-                    onAuthSuccess()
-                }
+                onAuthSuccess()
             }
         }
     }
@@ -156,7 +155,7 @@ fun AuthScreen(
                         onFinishLoading = {
                             if (currentUser != null) {
                                 val isDeptUnset = graduationPlan.department.isBlank() || graduationPlan.department == "尚未設定系所"
-                                if (currentUser?.isNewUser == true || isDeptUnset) {
+                                if (isDeptUnset) {
                                     val defaultName = currentUser?.displayName?.ifBlank { null } ?: currentUser?.email?.substringBefore("@") ?: ""
                                     if (name.isBlank() && defaultName.isNotBlank()) name = defaultName
                                     if (!currentUser?.email.isNullOrBlank() && email.isBlank()) email = currentUser?.email ?: ""
@@ -230,14 +229,13 @@ fun AuthScreen(
                                 admissionSemester = admissionCode,
                                 currentSemester = currentActiveSemester
                             )
-                            viewModel.updateGraduationPlan(updatedPlan)
-
-                            if (currentUser != null) {
-                                viewModel.uploadToCloud()
-                                viewModel.showToast("系所設定完成，歡迎使用 UniTrack+！")
-                                onAuthSuccess()
-                            } else {
-                                currentPage = AuthPage.REGISTER_STEP_2
+                            viewModel.updateGraduationPlan(updatedPlan) {
+                                if (currentUser != null) {
+                                    viewModel.showToast("系所設定完成，歡迎使用 UniTrack+！")
+                                    onAuthSuccess()
+                                } else {
+                                    currentPage = AuthPage.REGISTER_STEP_2
+                                }
                             }
                         },
                         onNavigateToLogin = {
@@ -900,8 +898,9 @@ private fun LoginPageView(
                     focusManager.clearFocus()
                     viewModel.signInWithEmail(email, password) { success, errMsg ->
                         if (success) {
-                            val user = viewModel.currentUser.value
-                            if (user?.isNewUser == true) {
+                            val plan = viewModel.graduationPlan.value
+                            val isDeptUnset = plan.department.isBlank() || plan.department == "尚未設定系所"
+                            if (isDeptUnset) {
                                 viewModel.showToast("首次登入請先選擇就讀系所")
                                 onNavigateToRegister()
                             } else {
@@ -938,10 +937,9 @@ private fun LoginPageView(
                 onClick = {
                     viewModel.signInWithGoogle { success, _ ->
                         if (success) {
-                            val user = viewModel.currentUser.value
                             val plan = viewModel.graduationPlan.value
                             val isDeptUnset = plan.department.isBlank() || plan.department == "尚未設定系所"
-                            if (user?.isNewUser == true || isDeptUnset) {
+                            if (isDeptUnset) {
                                 viewModel.showToast("首次登入請先選擇就讀系所")
                                 onNavigateToRegister()
                             } else {
@@ -1180,7 +1178,7 @@ private fun RegisterStep1PageView(
 
         // 2. 所屬學院 (College Selection - In-line Downward Expander)
         var collegeExpanded by remember { mutableStateOf(false) }
-        var selectedCollege by remember {
+        var selectedCollege by remember(department) {
             mutableStateOf(
                 colleges.firstOrNull { it.departments.contains(department) }?.name ?: ""
             )
@@ -1852,9 +1850,9 @@ private fun RegisterStep2PageView(
                             admissionSemester = admissionCode.ifBlank { currentPlan.admissionSemester },
                             currentSemester = currentActiveSemester
                         )
-                        viewModel.updateGraduationPlan(updatedPlan)
-                        viewModel.uploadToCloud()
-                        onAuthSuccess()
+                        viewModel.updateGraduationPlan(updatedPlan) {
+                            onAuthSuccess()
+                        }
                     }
                 }
             },

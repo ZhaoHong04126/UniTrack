@@ -1,5 +1,7 @@
 package com.example.data.repository
 
+import android.content.Context
+import androidx.core.content.edit
 import com.example.data.local.CourseDao
 import com.example.data.local.DefaultData
 import com.example.data.local.ExpenseDao
@@ -13,10 +15,29 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 class StudentRepository(
+    private val context: Context,
     private val courseDao: CourseDao,
     private val graduationDao: GraduationDao,
     private val expenseDao: ExpenseDao
 ) {
+    private val prefs by lazy {
+        context.getSharedPreferences("unitrack_profile_prefs", Context.MODE_PRIVATE)
+    }
+
+    fun getCachedGraduationPlan(): GraduationPlan {
+        val defaultPlan = DefaultData.getDefaultGraduationPlan()
+        val dept = prefs.getString("department", null)
+        val name = prefs.getString("studentName", null)
+        val adm = prefs.getString("admissionSemester", null)
+        val cur = prefs.getString("currentSemester", null)
+        return defaultPlan.copy(
+            department = if (!dept.isNullOrBlank()) dept else defaultPlan.department,
+            studentName = if (!name.isNullOrBlank()) name else defaultPlan.studentName,
+            admissionSemester = if (!adm.isNullOrBlank()) adm else defaultPlan.admissionSemester,
+            currentSemester = if (!cur.isNullOrBlank()) cur else defaultPlan.currentSemester
+        )
+    }
+
     // Courses
     val allCourses: Flow<List<Course>> = courseDao.getAllCourses()
     val allSemesters: Flow<List<String>> = courseDao.getAllSemesters()
@@ -37,7 +58,38 @@ class StudentRepository(
     val graduationPlan: Flow<GraduationPlan?> = graduationDao.getGraduationPlan()
     val allThresholds: Flow<List<GraduationThreshold>> = graduationDao.getAllThresholds()
 
+    suspend fun getGraduationPlanOnce(): GraduationPlan? = withContext(Dispatchers.IO) {
+        val plan = graduationDao.getGraduationPlanOnce()
+        if (plan != null) {
+            if (plan.department.isNotBlank() && plan.department != "尚未設定系所") {
+                prefs.edit {
+                    putString("department", plan.department)
+                    putString("studentName", plan.studentName)
+                    putString("admissionSemester", plan.admissionSemester)
+                    putString("currentSemester", plan.currentSemester)
+                }
+            }
+            plan
+        } else {
+            val cached = getCachedGraduationPlan()
+            if (cached.department.isNotBlank() && cached.department != "尚未設定系所") {
+                graduationDao.insertOrUpdatePlan(cached)
+                cached
+            } else {
+                null
+            }
+        }
+    }
+
     suspend fun updateGraduationPlan(plan: GraduationPlan) = withContext(Dispatchers.IO) {
+        if (plan.department.isNotBlank() && plan.department != "尚未設定系所") {
+            prefs.edit {
+                putString("department", plan.department)
+                putString("studentName", plan.studentName)
+                putString("admissionSemester", plan.admissionSemester)
+                putString("currentSemester", plan.currentSemester)
+            }
+        }
         graduationDao.insertOrUpdatePlan(plan)
     }
 

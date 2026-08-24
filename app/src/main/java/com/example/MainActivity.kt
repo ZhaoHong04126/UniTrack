@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -24,6 +25,7 @@ import com.example.ui.screens.auth.AuthScreen
 import com.example.ui.screens.dashboard.DashboardScreen
 import com.example.ui.screens.expense.ExpenseScreen
 import com.example.ui.screens.graduation.CourseAuditListScreen
+import com.example.ui.screens.graduation.GraduationPlanScreen
 import com.example.ui.screens.graduation.GraduationScreen
 import com.example.ui.screens.graduation.GraduationThresholdsScreen
 import com.example.ui.screens.settings.SettingsScreen
@@ -105,11 +107,15 @@ class MainActivity : ComponentActivity() {
                 val items = listOf(
                     AppDestination.Dashboard,
                     AppDestination.Timetable,
+                    AppDestination.Graduation,
                     AppDestination.Expense,
                     AppDestination.Settings
                 )
 
                 val isMainTab = items.any { it.route == currentRoute }
+                val currentUser by studentViewModel.currentUser.collectAsStateWithLifecycle()
+                val graduationPlan by studentViewModel.graduationPlan.collectAsStateWithLifecycle()
+                val isProfileReady = currentUser != null && graduationPlan.department.isNotBlank() && graduationPlan.department != "尚未設定系所"
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
@@ -117,10 +123,8 @@ class MainActivity : ComponentActivity() {
                     bottomBar = {
                         if (isMainTab) {
                             NavigationBar(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .testTag("main_bottom_nav"),
-                                windowInsets = NavigationBarDefaults.windowInsets
+                                containerColor = MaterialTheme.colorScheme.surface,
+                                tonalElevation = 8.dp
                             ) {
                                 items.forEach { dest ->
                                     val selected = currentRoute == dest.route
@@ -129,7 +133,7 @@ class MainActivity : ComponentActivity() {
                                         onClick = {
                                             if (currentRoute != dest.route) {
                                                 navController.navigate(dest.route) {
-                                                    popUpTo(navController.graph.findStartDestination().id) {
+                                                    popUpTo(AppDestination.Dashboard.route) {
                                                         saveState = true
                                                     }
                                                     launchSingleTop = true
@@ -153,7 +157,7 @@ class MainActivity : ComponentActivity() {
                 ) { innerPadding ->
                     NavHost(
                         navController = navController,
-                        startDestination = "auth",
+                        startDestination = if (isProfileReady) AppDestination.Dashboard.route else "auth",
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(innerPadding)
@@ -204,6 +208,15 @@ class MainActivity : ComponentActivity() {
                                 onNavigateToCourseAudit = {
                                     navController.navigate("course_audit_list")
                                 },
+                                onNavigateToPlanSetting = {
+                                    navController.navigate("graduation_plan_setting")
+                                }
+                            )
+                        }
+
+                        composable("graduation_plan_setting") {
+                            GraduationPlanScreen(
+                                viewModel = studentViewModel,
                                 onNavigateBack = { navController.popBackStack() }
                             )
                         }
@@ -231,6 +244,9 @@ class MainActivity : ComponentActivity() {
                                 viewModel = studentViewModel,
                                 onNavigateToAuth = {
                                     navController.navigate("auth")
+                                },
+                                onNavigateToPlanSetting = {
+                                    navController.navigate("graduation_plan_setting")
                                 }
                             )
                         }

@@ -111,7 +111,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
     init {
         val db = AppDatabase.getDatabase(application)
-        repository = StudentRepository(db.courseDao(), db.graduationDao(), db.expenseDao())
+        repository = StudentRepository(application.applicationContext, db.courseDao(), db.graduationDao(), db.expenseDao())
         firestoreSyncRepository = FirestoreSyncRepository(
             application.applicationContext,
             db.courseDao(),
@@ -127,7 +127,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                     val nameToSet = profile.displayName?.ifBlank { null }
                         ?: profile.email?.substringBefore("@")
                     if (!nameToSet.isNullOrBlank()) {
-                        val currentPlan = graduationPlan.value
+                        val currentPlan = repository.getGraduationPlanOnce() ?: repository.getCachedGraduationPlan()
                         if (currentPlan.studentName == "同學" || currentPlan.studentName == "王大明" || currentPlan.studentName == "大學生" || currentPlan.studentName.isBlank()) {
                             updateGraduationPlan(currentPlan.copy(studentName = nameToSet))
                         }
@@ -185,8 +185,8 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     )
 
     val graduationPlan: StateFlow<GraduationPlan> = repository.graduationPlan
-        .map { it ?: DefaultData.getDefaultGraduationPlan() }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DefaultData.getDefaultGraduationPlan())
+        .map { it ?: repository.getCachedGraduationPlan() }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, repository.getCachedGraduationPlan())
 
     val graduationThresholds: StateFlow<List<GraduationThreshold>> = repository.allThresholds
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -518,18 +518,23 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         _userMessage.value = "已刪除課程：${course.name}"
     }
 
-    fun updateGraduationPlan(plan: GraduationPlan) = viewModelScope.launch {
+    fun updateGraduationPlan(plan: GraduationPlan, onComplete: (() -> Unit)? = null) = viewModelScope.launch {
         repository.updateGraduationPlan(plan)
         val user = currentUser.value
         if (user != null) {
             firestoreSyncRepository.uploadAllToCloud(user.uid)
         }
+        onComplete?.invoke()
     }
 
     fun setPrimarySemester(semester: String) = viewModelScope.launch {
-        val currentPlan = graduationPlan.value
+        val currentPlan = repository.getGraduationPlanOnce() ?: DefaultData.getDefaultGraduationPlan()
         val updated = currentPlan.copy(currentSemester = semester)
         repository.updateGraduationPlan(updated)
+        val user = currentUser.value
+        if (user != null) {
+            firestoreSyncRepository.uploadAllToCloud(user.uid)
+        }
         _userMessage.value = "已將 $semester 設定為主要學期"
     }
 
@@ -699,7 +704,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             result.onSuccess { user ->
                 val nameToSet = user.displayName?.ifBlank { null } ?: user.email?.substringBefore("@")
                 if (!nameToSet.isNullOrBlank()) {
-                    val currentPlan = graduationPlan.value
+                    val currentPlan = repository.getGraduationPlanOnce() ?: DefaultData.getDefaultGraduationPlan()
                     if (currentPlan.studentName == "同學" || currentPlan.studentName == "王大明" || currentPlan.studentName == "大學生" || currentPlan.studentName.isBlank()) {
                         updateGraduationPlan(currentPlan.copy(studentName = nameToSet))
                     }
@@ -719,7 +724,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             result.onSuccess { user ->
                 val nameToSet = user.displayName?.ifBlank { null } ?: email.substringBefore("@")
                 if (nameToSet.isNotBlank()) {
-                    val currentPlan = graduationPlan.value
+                    val currentPlan = repository.getGraduationPlanOnce() ?: DefaultData.getDefaultGraduationPlan()
                     if (currentPlan.studentName == "同學" || currentPlan.studentName == "王大明" || currentPlan.studentName == "大學生" || currentPlan.studentName.isBlank()) {
                         updateGraduationPlan(currentPlan.copy(studentName = nameToSet))
                     }
@@ -745,7 +750,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             val result = authRepository.signUpWithEmail(name, email, pass)
             result.onSuccess { user ->
                 val nameToSet = user.displayName?.ifBlank { null } ?: name.ifBlank { email.substringBefore("@") }
-                val currentPlan = graduationPlan.value
+                val currentPlan = repository.getGraduationPlanOnce() ?: DefaultData.getDefaultGraduationPlan()
                 val updatedPlan = currentPlan.copy(
                     studentName = nameToSet.ifBlank { currentPlan.studentName },
                     department = department.ifBlank { currentPlan.department },

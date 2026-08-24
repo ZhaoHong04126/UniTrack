@@ -34,14 +34,13 @@ fun GraduationScreen(
     viewModel: StudentViewModel,
     onNavigateToThresholds: () -> Unit,
     onNavigateToCourseAudit: () -> Unit,
+    onNavigateToPlanSetting: () -> Unit,
     modifier: Modifier = Modifier,
     onNavigateBack: (() -> Unit)? = null
 ) {
     val plan by viewModel.graduationPlan.collectAsStateWithLifecycle()
     val auditSummary by viewModel.graduationAudit.collectAsStateWithLifecycle()
     val allCourses by viewModel.allCourses.collectAsStateWithLifecycle()
-
-    var showPlanDialog by remember { mutableStateOf(false) }
 
     val animatedOverallProgress by animateFloatAsState(
         targetValue = (auditSummary.overallPercentage / 100f).coerceIn(0f, 1f),
@@ -92,7 +91,7 @@ fun GraduationScreen(
                     }
                 }
                 FilledTonalButton(
-                    onClick = { showPlanDialog = true },
+                    onClick = onNavigateToPlanSetting,
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.testTag("edit_plan_button")
@@ -390,16 +389,5 @@ fun GraduationScreen(
                 }
             }
         }
-    }
-
-    if (showPlanDialog) {
-        GraduationPlanDialog(
-            currentPlan = plan,
-            onDismiss = { showPlanDialog = false },
-            onSave = { updatedPlan ->
-                viewModel.updateGraduationPlan(updatedPlan)
-                showPlanDialog = false
-            }
-        )
     }
 }

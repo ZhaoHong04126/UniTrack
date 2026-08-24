@@ -30,7 +30,6 @@ import com.example.data.model.AuthProvider
 import com.example.data.model.GraduationPlan
 import com.example.data.model.UserProfile
 import com.example.ui.components.SectionHeader
-import com.example.ui.screens.graduation.GraduationPlanDialog
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.StudentViewModel
 
@@ -40,7 +39,8 @@ import com.example.ui.viewmodel.StudentViewModel
 fun SettingsScreen(
     viewModel: StudentViewModel,
     modifier: Modifier = Modifier,
-    onNavigateToAuth: () -> Unit = {}
+    onNavigateToAuth: () -> Unit = {},
+    onNavigateToPlanSetting: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -50,7 +50,6 @@ fun SettingsScreen(
 
     var showEditProfileDialog by remember { mutableStateOf(false) }
     var showDaysOptionDialog by remember { mutableStateOf(false) }
-    var showPlanDialog by remember { mutableStateOf(false) }
     var showSignOutConfirmDialog by remember { mutableStateOf(false) }
     var showDeleteAccountConfirmDialog by remember { mutableStateOf(false) }
     var showFinalExecutionDialog by remember { mutableStateOf(false) }
@@ -119,7 +118,7 @@ fun SettingsScreen(
                 title = "畢業審查標準設定",
                 subtitle = "總目標 ${plan.targetTotalCredits.toInt()} 學分・各模組門檻",
                 iconTint = IndigoAccent,
-                onClick = { showPlanDialog = true }
+                onClick = onNavigateToPlanSetting
             )
         }
 
@@ -328,18 +327,6 @@ fun SettingsScreen(
                 TextButton(onClick = { showDaysOptionDialog = false }) {
                     Text("取消")
                 }
-            }
-        )
-    }
-
-    // Graduation Plan Thresholds Dialog
-    if (showPlanDialog) {
-        GraduationPlanDialog(
-            currentPlan = plan,
-            onDismiss = { showPlanDialog = false },
-            onSave = { updated ->
-                viewModel.updateGraduationPlan(updated)
-                showPlanDialog = false
             }
         )
     }
