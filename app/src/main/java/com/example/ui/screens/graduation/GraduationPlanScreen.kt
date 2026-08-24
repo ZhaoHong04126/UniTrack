@@ -10,7 +10,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
+
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.*
@@ -49,7 +49,6 @@ fun GraduationPlanScreen(
 
     // 院共同
     var colReqTarget by remember(currentPlan) { mutableStateOf(currentPlan.targetCollegeCoreRequiredCredits.toString()) }
-    var colEleTarget by remember(currentPlan) { mutableStateOf(currentPlan.targetCollegeCoreElectiveCredits.toString()) }
 
     // 基礎模組
     var basReqTarget by remember(currentPlan) { mutableStateOf(currentPlan.targetBasicModuleRequiredCredits.toString()) }

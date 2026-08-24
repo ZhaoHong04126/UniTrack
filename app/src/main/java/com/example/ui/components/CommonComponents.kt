@@ -245,6 +245,7 @@ fun CategoryCreditProgressBar(
     }
 }
 
+@Suppress("unused")
 @Composable
 fun ColorPickerRow(
     selectedColorHex: String,

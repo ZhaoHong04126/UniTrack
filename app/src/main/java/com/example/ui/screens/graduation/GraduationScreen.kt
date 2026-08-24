@@ -46,7 +46,6 @@ fun GraduationScreen(
     modifier: Modifier = Modifier,
     onNavigateBack: (() -> Unit)? = null
 ) {
-    val plan by viewModel.graduationPlan.collectAsStateWithLifecycle()
     val auditSummary by viewModel.graduationAudit.collectAsStateWithLifecycle()
     val allCourses by viewModel.allCourses.collectAsStateWithLifecycle()
 

@@ -115,7 +115,6 @@ fun AddEditCourseDialog(
 
     var otherInfoExpanded by remember { mutableStateOf(false) }
     var categoryDropdownExpanded by remember { mutableStateOf(false) }
-    var requirementDropdownExpanded by remember { mutableStateOf(false) }
     var generalSubtypeDropdownExpanded by remember { mutableStateOf(false) }
 
     val weekdays = listOf(

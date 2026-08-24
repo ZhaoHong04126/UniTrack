@@ -424,7 +424,6 @@ fun TimetableScreen(
 
     if (showTimeSettingsSheet) {
         SemesterTimeSettingsBottomSheet(
-            selectedSemester = selectedSemester,
             initialStartDate = currentStartDateStr,
             initialTotalWeeks = currentTotalWeeks,
             onDismiss = { showTimeSettingsSheet = false },
@@ -439,7 +438,6 @@ fun TimetableScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SemesterTimeSettingsBottomSheet(
-    selectedSemester: String,
     initialStartDate: String,
     initialTotalWeeks: Int,
     onDismiss: () -> Unit,
@@ -648,12 +646,12 @@ private fun WeeklyTimetableGrid(
     courses: List<Course>,
     daysCount: Int,
     dayNames: List<String>,
-    dates: List<String>? = null,
     maxPeriod: Int,
     selectedWeek: Int,
     onModeToggle: () -> Unit,
     onCourseClick: (Course) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    dates: List<String>? = null
 ) {
     val scrollState = rememberScrollState()
     val startHour = 8
