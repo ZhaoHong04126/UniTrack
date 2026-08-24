@@ -614,70 +614,18 @@ private fun LoginPageView(
             }
         }
 
-        // Error Banner
-        AnimatedVisibility(
-            visible = authState is AuthState.Error,
-            enter = fadeIn(),
-            exit = fadeOut()
-        ) {
-            val errorState = authState as? AuthState.Error
-            if (errorState != null) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    color = RoseAccent.copy(alpha = 0.15f),
-                    border = BorderStroke(1.dp, RoseAccent.copy(alpha = 0.4f))
-                ) {
-                    Row(
-                        modifier = Modifier.padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(Icons.Default.ErrorOutline, contentDescription = null, tint = RoseAccent, modifier = Modifier.size(20.dp))
-                        Text(errorState.message, color = RoseAccent, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                    }
-                }
-            }
-        }
-
-        // Google One-Tap Sign In
-        OutlinedButton(
-            onClick = {
-                viewModel.signInWithGoogle { success, _ ->
-                    if (success) onAuthSuccess()
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White.copy(alpha = 0.06f)),
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
-        ) {
-            Icon(Icons.Default.AccountCircle, contentDescription = "Google", tint = Color(0xFF60A5FA), modifier = Modifier.size(22.dp))
-            Spacer(modifier = Modifier.width(10.dp))
-            Text("使用 Google 帳號一鍵登入", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = Color.White)
-        }
-
-        // Divider
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            HorizontalDivider(modifier = Modifier.weight(1f), color = Color.White.copy(alpha = 0.15f))
-            Text("  或使用電子郵件  ", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.45f))
-            HorizontalDivider(modifier = Modifier.weight(1f), color = Color.White.copy(alpha = 0.15f))
-        }
-
         // Form Fields
+        val isAuthError = authState is AuthState.Error
+
         OutlinedTextField(
             value = email,
             onValueChange = {
                 onEmailChange(it)
                 if (authState is AuthState.Error) viewModel.clearAuthError()
             },
+            isError = isAuthError,
             label = { Text("電子郵件 (Email)") },
-            leadingIcon = { Icon(Icons.Default.Email, contentDescription = null, tint = SapphirePrimary) },
+            leadingIcon = { Icon(Icons.Default.Email, contentDescription = null, tint = if (isAuthError) RoseAccent else SapphirePrimary) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
             keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
@@ -689,7 +637,12 @@ private fun LoginPageView(
                 focusedBorderColor = SapphirePrimary,
                 unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
                 focusedLabelColor = SapphirePrimary,
-                unfocusedLabelColor = Color.White.copy(alpha = 0.6f)
+                unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
+                errorBorderColor = RoseAccent,
+                errorLabelColor = RoseAccent,
+                errorLeadingIconColor = RoseAccent,
+                errorTextColor = Color.White,
+                errorContainerColor = RoseAccent.copy(alpha = 0.05f)
             )
         )
 
@@ -699,14 +652,15 @@ private fun LoginPageView(
                 onPasswordChange(it)
                 if (authState is AuthState.Error) viewModel.clearAuthError()
             },
+            isError = isAuthError,
             label = { Text("密碼") },
-            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = SapphirePrimary) },
+            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = if (isAuthError) RoseAccent else SapphirePrimary) },
             trailingIcon = {
                 IconButton(onClick = onTogglePasswordVisible) {
                     Icon(
                         imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                         contentDescription = if (passwordVisible) "隱藏密碼" else "顯示密碼",
-                        tint = Color.White.copy(alpha = 0.7f)
+                        tint = if (isAuthError) RoseAccent else Color.White.copy(alpha = 0.7f)
                     )
                 }
             },
@@ -729,7 +683,13 @@ private fun LoginPageView(
                 focusedBorderColor = SapphirePrimary,
                 unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
                 focusedLabelColor = SapphirePrimary,
-                unfocusedLabelColor = Color.White.copy(alpha = 0.6f)
+                unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
+                errorBorderColor = RoseAccent,
+                errorLabelColor = RoseAccent,
+                errorLeadingIconColor = RoseAccent,
+                errorTrailingIconColor = RoseAccent,
+                errorTextColor = Color.White,
+                errorContainerColor = RoseAccent.copy(alpha = 0.05f)
             )
         )
 
@@ -791,6 +751,40 @@ private fun LoginPageView(
             } else {
                 Text("立即登入", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
             }
+        }
+
+        // Divider
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            HorizontalDivider(modifier = Modifier.weight(1f), color = Color.White.copy(alpha = 0.15f))
+            Text("  或使用其他方式  ", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.45f))
+            HorizontalDivider(modifier = Modifier.weight(1f), color = Color.White.copy(alpha = 0.15f))
+        }
+
+        // Google One-Tap Sign In
+        OutlinedButton(
+            onClick = {
+                viewModel.signInWithGoogle { success, _ ->
+                    if (success) onAuthSuccess()
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White.copy(alpha = 0.06f)),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
+        ) {
+            Icon(
+                painter = painterResource(id = com.example.R.drawable.ic_google_logo),
+                contentDescription = "Google",
+                tint = Color.Unspecified,
+                modifier = Modifier.size(22.dp)
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Text("使用 Google 帳號一鍵登入", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = Color.White)
         }
     }
 }

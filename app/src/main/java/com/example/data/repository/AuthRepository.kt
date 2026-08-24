@@ -1,5 +1,6 @@
 package com.example.data.repository
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
 import androidx.credentials.ClearCredentialStateRequest
@@ -7,7 +8,6 @@ import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
-import androidx.credentials.exceptions.GetCredentialException
 import com.example.data.model.AuthProvider
 import com.example.data.model.AuthState
 import com.example.data.model.UserProfile
@@ -71,6 +71,7 @@ class AuthRepository(private val context: Context) {
     /**
      * Google Sign-In via Android Credential Manager
      */
+    @SuppressLint("DiscouragedApi")
     suspend fun signInWithGoogle(webClientId: String = ""): Result<UserProfile> = withContext(Dispatchers.IO) {
         try {
             _authState.value = AuthState.Loading
@@ -78,13 +79,11 @@ class AuthRepository(private val context: Context) {
             val auth = firebaseAuth
 
             // Dynamically resolve default_web_client_id generated from google-services.json if not explicitly provided
-            val resolvedClientId = if (webClientId.isNotBlank()) {
-                webClientId
-            } else {
+            val resolvedClientId = webClientId.ifBlank {
                 try {
                     val resId = context.resources.getIdentifier("default_web_client_id", "string", context.packageName)
                     if (resId != 0) context.getString(resId) else ""
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     ""
                 }
             }
@@ -135,7 +134,7 @@ class AuthRepository(private val context: Context) {
             _currentUser.value = profile
             _authState.value = AuthState.Authenticated(profile)
             Result.success(profile)
-        } catch (e: GetCredentialCancellationException) {
+        } catch (_: GetCredentialCancellationException) {
             _authState.value = _currentUser.value?.let { AuthState.Authenticated(it) } ?: AuthState.Unauthenticated
             Result.failure(Exception("已取消 Google 登入"))
         } catch (e: Exception) {
@@ -232,10 +231,7 @@ class AuthRepository(private val context: Context) {
      */
     suspend fun sendPasswordResetEmail(email: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val auth = firebaseAuth
-            if (auth == null) {
-                return@withContext Result.success(Unit)
-            }
+            val auth = firebaseAuth ?: return@withContext Result.success(Unit)
             auth.sendPasswordResetEmail(email.trim()).await()
             Result.success(Unit)
         } catch (e: Exception) {
@@ -279,6 +275,9 @@ class AuthRepository(private val context: Context) {
     private fun mapFirebaseAuthException(e: Exception): String {
         val msg = e.message.orEmpty()
         return when {
+            msg.contains("invalid-credential", ignoreCase = true) ||
+            msg.contains("auth credential is incorrect", ignoreCase = true) ||
+            msg.contains("INVALID_LOGIN_CREDENTIALS", ignoreCase = true) -> "帳號或密碼錯誤，請重新確認"
             msg.contains("password", ignoreCase = true) && msg.contains("invalid", ignoreCase = true) -> "密碼錯誤，請重新輸入"
             msg.contains("user-not-found", ignoreCase = true) || msg.contains("no user", ignoreCase = true) -> "此帳號不存在，請先註冊"
             msg.contains("email-already-in-use", ignoreCase = true) -> "此電子郵件已被註冊"
