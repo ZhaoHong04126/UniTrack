@@ -730,17 +730,29 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun signUpWithEmail(name: String, email: String, pass: String, onResult: ((Boolean, String?) -> Unit)? = null) {
+    fun signUpWithEmail(
+        name: String,
+        email: String,
+        pass: String,
+        department: String = "",
+        admissionSemester: String = "",
+        onResult: ((Boolean, String?) -> Unit)? = null
+    ) {
         viewModelScope.launch {
             val result = authRepository.signUpWithEmail(name, email, pass)
             result.onSuccess { user ->
                 val nameToSet = user.displayName?.ifBlank { null } ?: name.ifBlank { email.substringBefore("@") }
-                if (nameToSet.isNotBlank()) {
-                    val currentPlan = graduationPlan.value
-                    if (currentPlan.studentName == "同學" || currentPlan.studentName == "王大明" || currentPlan.studentName == "大學生" || currentPlan.studentName.isBlank()) {
-                        updateGraduationPlan(currentPlan.copy(studentName = nameToSet))
-                    }
-                }
+                val currentPlan = graduationPlan.value
+                val updatedPlan = currentPlan.copy(
+                    studentName = if (nameToSet.isNotBlank()) nameToSet else currentPlan.studentName,
+                    department = if (department.isNotBlank()) department else currentPlan.department,
+                    admissionSemester = if (admissionSemester.isNotBlank()) admissionSemester else currentPlan.admissionSemester
+                )
+                repository.updateGraduationPlan(updatedPlan)
+
+                // 立即將包含正確學系與學生的檔案同步上傳至 Firestore 雲端
+                firestoreSyncRepository.uploadAllToCloud(user.uid)
+
                 showToast("註冊成功！歡迎加入 UniTrack+，${user.displayName ?: nameToSet}")
                 onResult?.invoke(true, null)
             }.onFailure { e ->

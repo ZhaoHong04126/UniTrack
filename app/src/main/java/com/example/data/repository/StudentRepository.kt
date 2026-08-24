@@ -104,6 +104,7 @@ class StudentRepository(
         courseDao.deleteAllCourses()
         graduationDao.deleteAllThresholds()
         expenseDao.deleteAllExpenses()
+        expenseDao.deleteAllBudgets()
         graduationDao.insertOrUpdatePlan(DefaultData.getDefaultGraduationPlan())
     }
 

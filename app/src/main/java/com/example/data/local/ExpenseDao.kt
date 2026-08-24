@@ -50,4 +50,7 @@ interface ExpenseDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun setBudget(budget: MonthlyBudget)
+
+    @Query("DELETE FROM monthly_budgets")
+    suspend fun deleteAllBudgets()
 }

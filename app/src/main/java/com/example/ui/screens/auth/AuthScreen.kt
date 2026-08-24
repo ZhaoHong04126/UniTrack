@@ -231,6 +231,7 @@ fun AuthScreen(
                             viewModel.updateGraduationPlan(updatedPlan)
 
                             if (currentUser != null) {
+                                viewModel.uploadToCloud()
                                 viewModel.showToast("系所設定完成，歡迎使用 UniTrack+！")
                                 onAuthSuccess()
                             } else {
@@ -256,6 +257,8 @@ fun AuthScreen(
                         onConfirmPasswordChange = { confirmPassword = it },
                         passwordVisible = passwordVisible,
                         onTogglePasswordVisible = { passwordVisible = !passwordVisible },
+                        department = department,
+                        admissionYear = admissionYear,
                         onBack = {
                             viewModel.clearAuthError()
                             currentPage = AuthPage.REGISTER_STEP_1
@@ -1565,11 +1568,18 @@ private fun RegisterStep2PageView(
     onConfirmPasswordChange: (String) -> Unit,
     passwordVisible: Boolean,
     onTogglePasswordVisible: () -> Unit,
+    department: String = "",
+    admissionYear: String = "",
     onBack: () -> Unit,
     onAuthSuccess: () -> Unit
 ) {
     val authState by viewModel.authState.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
+
+    val yearNum = remember(admissionYear) {
+        admissionYear.filter { it.isDigit() }.take(3).ifBlank { (java.util.Calendar.getInstance().get(java.util.Calendar.YEAR) - 1911).toString() }
+    }
+    val admissionCode = "$yearNum-1"
 
     Column(
         modifier = Modifier
@@ -1628,43 +1638,28 @@ private fun RegisterStep2PageView(
             )
         }
 
-        Spacer(modifier = Modifier.height(4.dp))
-
-        // Title Header
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Image(
-                painter = painterResource(id = com.example.R.drawable.ic_launcher_foreground),
-                contentDescription = "Logo",
-                modifier = Modifier
-                    .size(46.dp)
-                    .scale(1.25f)
+        // Header Title
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                text = "設定登入帳號密碼",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
             )
-            Column {
-                Text(
-                    text = "建立 UniTrack+ 雲端帳號",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-                Text(
-                    text = "設定登入憑證以啟用雲端同步與備份",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.65f)
-                )
-            }
+            Text(
+                text = "建立您的個人帳號以啟用雲端同步與備份功能",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.7f)
+            )
         }
 
         // Error Banner
         AnimatedVisibility(
             visible = authState is AuthState.Error,
-            enter = fadeIn(),
-            exit = fadeOut()
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
         ) {
-            val errorState = authState as? AuthState.Error
-            if (errorState != null) {
+            if (authState is AuthState.Error) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
@@ -1672,51 +1667,30 @@ private fun RegisterStep2PageView(
                     border = BorderStroke(1.dp, RoseAccent.copy(alpha = 0.4f))
                 ) {
                     Row(
-                        modifier = Modifier.padding(14.dp),
+                        modifier = Modifier.padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(Icons.Default.ErrorOutline, contentDescription = null, tint = RoseAccent, modifier = Modifier.size(20.dp))
-                        Text(errorState.message, color = RoseAccent, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                        Icon(Icons.Default.Error, contentDescription = null, tint = RoseAccent, modifier = Modifier.size(18.dp))
+                        Text(
+                            text = (authState as AuthState.Error).message,
+                            color = Color.White,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.weight(1f)
+                        )
                     }
                 }
             }
         }
 
-        // Google One-Tap Sign In
-        OutlinedButton(
-            onClick = {
-                viewModel.signInWithGoogle { success, _ ->
-                    if (success) onAuthSuccess()
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White.copy(alpha = 0.06f)),
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
-        ) {
-            Icon(Icons.Default.AccountCircle, contentDescription = "Google", tint = Color(0xFF60A5FA), modifier = Modifier.size(22.dp))
-            Spacer(modifier = Modifier.width(10.dp))
-            Text("使用 Google 帳號一鍵註冊並綁定", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = Color.White)
-        }
-
-        // Divider
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            HorizontalDivider(modifier = Modifier.weight(1f), color = Color.White.copy(alpha = 0.15f))
-            Text("  或使用電子郵件  ", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.45f))
-            HorizontalDivider(modifier = Modifier.weight(1f), color = Color.White.copy(alpha = 0.15f))
-        }
-
         // Form Fields
         OutlinedTextField(
             value = name,
-            onNameChange,
-            label = { Text("姓名 / 稱呼") },
+            onValueChange = {
+                onNameChange(it)
+                if (authState is AuthState.Error) viewModel.clearAuthError()
+            },
+            label = { Text("你的名字 / 暱稱") },
             leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = EmeraldAccent) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
@@ -1797,7 +1771,13 @@ private fun RegisterStep2PageView(
             keyboardActions = KeyboardActions(onDone = {
                 focusManager.clearFocus()
                 if (email.isNotBlank() && password.length >= 6 && password == confirmPassword) {
-                    viewModel.signUpWithEmail(name, email, password) { success, _ ->
+                    viewModel.signUpWithEmail(
+                        name = name,
+                        email = email,
+                        pass = password,
+                        department = department,
+                        admissionSemester = admissionCode
+                    ) { success, _ ->
                         if (success) onAuthSuccess()
                     }
                 }
@@ -1825,7 +1805,13 @@ private fun RegisterStep2PageView(
         Button(
             onClick = {
                 focusManager.clearFocus()
-                viewModel.signUpWithEmail(name, email, password) { success, _ ->
+                viewModel.signUpWithEmail(
+                    name = name,
+                    email = email,
+                    pass = password,
+                    department = department,
+                    admissionSemester = admissionCode
+                ) { success, _ ->
                     if (success) onAuthSuccess()
                 }
             },
