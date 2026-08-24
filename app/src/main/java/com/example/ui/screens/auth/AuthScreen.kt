@@ -89,8 +89,7 @@ fun AuthScreen(
     val user = currentUser
     LaunchedEffect(user) {
         if (user != null) {
-            val plan = graduationPlan
-            val isNew = user.isNewUser || plan.department.isBlank() || plan.department == "尚未設定系所"
+            val isNew = user.isNewUser
             if (isNew) {
                 if (currentPage == AuthPage.SPLASH || currentPage == AuthPage.LOGIN || currentPage == AuthPage.WELCOME) {
                     val defaultName = user.displayName?.ifBlank { null } ?: user.email?.substringBefore("@") ?: ""
@@ -155,8 +154,7 @@ fun AuthScreen(
                         viewModel = viewModel,
                         onFinishLoading = {
                             if (currentUser != null) {
-                                val plan = graduationPlan
-                                if (currentUser?.isNewUser == true || plan.department.isBlank() || plan.department == "尚未設定系所") {
+                                if (currentUser?.isNewUser == true) {
                                     val defaultName = currentUser?.displayName?.ifBlank { null } ?: currentUser?.email?.substringBefore("@") ?: ""
                                     if (name.isBlank() && defaultName.isNotBlank()) name = defaultName
                                     if (!currentUser?.email.isNullOrBlank() && email.isBlank()) email = currentUser?.email ?: ""
@@ -897,9 +895,9 @@ private fun LoginPageView(
                     focusManager.clearFocus()
                     viewModel.signInWithEmail(email, password) { success, errMsg ->
                         if (success) {
-                            val plan = viewModel.graduationPlan.value
-                            if (plan.department.isBlank() || plan.department == "尚未設定系所") {
-                                viewModel.showToast("尚未設定就讀系所，請先選擇系所")
+                            val user = viewModel.currentUser.value
+                            if (user?.isNewUser == true) {
+                                viewModel.showToast("首次登入請先選擇就讀系所")
                                 onNavigateToRegister()
                             } else {
                                 onAuthSuccess()
@@ -936,9 +934,7 @@ private fun LoginPageView(
                     viewModel.signInWithGoogle { success, _ ->
                         if (success) {
                             val user = viewModel.currentUser.value
-                            val plan = viewModel.graduationPlan.value
-                            val isNew = (user?.isNewUser == true) || plan.department.isBlank() || plan.department == "尚未設定系所"
-                            if (isNew) {
+                            if (user?.isNewUser == true) {
                                 viewModel.showToast("首次登入請先選擇就讀系所")
                                 onNavigateToRegister()
                             } else {

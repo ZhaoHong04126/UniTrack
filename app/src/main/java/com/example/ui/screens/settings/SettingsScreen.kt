@@ -1160,7 +1160,7 @@ private fun EditProfileDialog(
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                             ProfileInfoRow(
                                 label = "學校",
-                                value = "國立大學 / UniTrack+"
+                                value = "國立臺東大學"
                             )
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                             ProfileInfoRow(
