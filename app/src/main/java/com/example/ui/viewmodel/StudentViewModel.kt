@@ -138,10 +138,17 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         val rawAdmission = plan?.admissionSemester ?: DefaultData.getCurrentAcademicSemester()
         val startYear = rawAdmission.substringBefore("-").filter { it.isDigit() }.toIntOrNull()
             ?: (Calendar.getInstance().get(Calendar.YEAR) - 1911)
-        // Automatically generate 4 college years (8 semesters) starting from admission year
+        // Automatically generate semesters from admission year up to 4 years, but ONLY if the semester has started
+        val now = Date()
         for (y in startYear until startYear + 4) {
-            set.add("$y-1")
-            set.add("$y-2")
+            val sem1 = "$y-1"
+            val sem2 = "$y-2"
+            if (DefaultData.hasSemesterStarted(sem1, now)) {
+                set.add(sem1)
+            }
+            if (DefaultData.hasSemesterStarted(sem2, now)) {
+                set.add(sem2)
+            }
         }
         if (currentSem.isNotBlank()) set.add(currentSem)
         set.addAll(customSemesters)
@@ -150,8 +157,11 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
         run {
+            val now = Date()
             val base = (Calendar.getInstance().get(Calendar.YEAR) - 1911)
             (base until base + 4).flatMap { listOf("$it-1", "$it-2") }
+                .filter { DefaultData.hasSemesterStarted(it, now) }
+                .ifEmpty { listOf(DefaultData.getCurrentAcademicSemester()) }
         }
     )
 

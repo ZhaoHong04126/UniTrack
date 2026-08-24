@@ -69,6 +69,14 @@ object DefaultData {
         return time >= start.timeInMillis && time <= end.timeInMillis
     }
 
+    /**
+     * 檢查指定學期是否已到達法定開始日（上學期 8/1、下學期 2/1）
+     */
+    fun hasSemesterStarted(semesterCode: String, date: Date = Date()): Boolean {
+        val (start, _) = getSemesterDateRange(semesterCode) ?: return true
+        return date.time >= start.timeInMillis
+    }
+
     fun getDefaultGraduationPlan(): GraduationPlan {
         val currentAcademicSem = getCurrentAcademicSemester()
         return GraduationPlan(
