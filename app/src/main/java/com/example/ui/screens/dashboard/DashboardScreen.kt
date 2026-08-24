@@ -1,5 +1,6 @@
 package com.example.ui.screens.dashboard
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -51,32 +52,76 @@ fun DashboardScreen(
         // Top Header
         item {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     Text(
-                        text = "您好，${plan.studentName}",
+                        text = "${getTimeGreeting()}，${plan.studentName.ifBlank { "同學" }}",
                         style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    Text(
-                        text = "${plan.currentSemester} 學期",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                        ) {
+                            Text(
+                                text = "${plan.currentSemester.ifBlank { "114-1" }} 學期",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                        if (plan.department.isNotBlank() && plan.department != "尚未設定系所") {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            ) {
+                                Text(
+                                    text = plan.department,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                )
+                            }
+                        }
+                    }
                 }
-                IconButton(
+
+                Surface(
                     onClick = onNavigateToSettings,
-                    modifier = Modifier.testTag("settings_button")
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
+                    modifier = Modifier
+                        .size(44.dp)
+                        .testTag("settings_button")
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = "設定",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        val initial = plan.studentName.trim().take(1).ifBlank { "學" }
+                        Text(
+                            text = initial,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
                 }
             }
         }
@@ -414,3 +459,13 @@ private fun getDayOfWeekString(): String {
         else -> ""
     }
 }
+
+private fun getTimeGreeting(): String {
+    val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+    return when (hour) {
+        in 5..11 -> "早安"
+        in 12..17 -> "午安"
+        else -> "晚安"
+    }
+}
+
