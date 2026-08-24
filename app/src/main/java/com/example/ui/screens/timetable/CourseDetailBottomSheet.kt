@@ -7,7 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,11 +29,41 @@ fun CourseDetailBottomSheet(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
+    var showConfirmDelete by remember { mutableStateOf(false) }
+
     val courseColor = runCatching { Color(course.colorHex.toColorInt()) }
         .getOrDefault(SapphirePrimary)
 
     val days = listOf("星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日")
     val dayName = days.getOrElse(course.dayOfWeek - 1) { "星期一" }
+
+    if (showConfirmDelete) {
+        AlertDialog(
+            onDismissRequest = { showConfirmDelete = false },
+            title = {
+                Text("確認刪除課程", fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Text("確定要刪除「${course.name}」嗎？此動作將同時自課表與歷年紀錄中移除。")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showConfirmDelete = false
+                        onDelete()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = RoseAccent)
+                ) {
+                    Text("確定刪除")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showConfirmDelete = false }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -143,7 +173,7 @@ fun CourseDetailBottomSheet(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 OutlinedButton(
-                    onClick = onDelete,
+                    onClick = { showConfirmDelete = true },
                     modifier = Modifier
                         .weight(1f)
                         .testTag("delete_course_button"),

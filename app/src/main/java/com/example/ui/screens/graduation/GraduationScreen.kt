@@ -1,7 +1,12 @@
 package com.example.ui.screens.graduation
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,13 +24,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.CourseCategory
 import com.example.ui.components.CategoryCreditProgressBar
 import com.example.ui.theme.*
+import com.example.ui.viewmodel.CreditCategorySummary
 import com.example.ui.viewmodel.StudentViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -201,6 +209,8 @@ fun GraduationScreen(
 
         // Category Breakdown Card
         item {
+            var showSubcategories by remember { mutableStateOf(false) }
+
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -211,64 +221,82 @@ fun GraduationScreen(
                     modifier = Modifier.padding(18.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Text(
-                        text = "學分分項進度",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "學分分項進度",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
 
-                    // General
-                    CategoryCreditProgressBar(
+                        TextButton(
+                            onClick = { showSubcategories = !showSubcategories },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (showSubcategories) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = if (showSubcategories) "收合修別" else "展開修別",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    // 1. General Education
+                    ModuleProgressItem(
                         categoryName = "通識教育課程",
-                        earnedCredits = auditSummary.generalSummary.earnedCredits,
-                        targetCredits = auditSummary.generalSummary.targetCredits,
-                        inProgressCredits = auditSummary.generalSummary.inProgressCredits,
-                        accentColor = CourseCategory.GENERAL_EDU.badgeColor
+                        summary = auditSummary.generalSummary,
+                        accentColor = CourseCategory.GENERAL_EDU.badgeColor,
+                        showSubcategories = showSubcategories
                     )
 
-                    // College Core
-                    CategoryCreditProgressBar(
+                    // 2. College Core
+                    ModuleProgressItem(
                         categoryName = "院共同課程",
-                        earnedCredits = auditSummary.collegeCoreSummary.earnedCredits,
-                        targetCredits = auditSummary.collegeCoreSummary.targetCredits,
-                        inProgressCredits = auditSummary.collegeCoreSummary.inProgressCredits,
-                        accentColor = CourseCategory.COLLEGE_CORE.badgeColor
+                        summary = auditSummary.collegeCoreSummary,
+                        accentColor = CourseCategory.COLLEGE_CORE.badgeColor,
+                        showSubcategories = showSubcategories
                     )
 
-                    // Basic Module
-                    CategoryCreditProgressBar(
+                    // 3. Basic Module
+                    ModuleProgressItem(
                         categoryName = "基礎模組",
-                        earnedCredits = auditSummary.basicModuleSummary.earnedCredits,
-                        targetCredits = auditSummary.basicModuleSummary.targetCredits,
-                        inProgressCredits = auditSummary.basicModuleSummary.inProgressCredits,
-                        accentColor = CourseCategory.BASIC_MODULE.badgeColor
+                        summary = auditSummary.basicModuleSummary,
+                        accentColor = CourseCategory.BASIC_MODULE.badgeColor,
+                        showSubcategories = showSubcategories
                     )
 
-                    // Core Module
-                    CategoryCreditProgressBar(
+                    // 4. Core Module
+                    ModuleProgressItem(
                         categoryName = "核心模組",
-                        earnedCredits = auditSummary.coreModuleSummary.earnedCredits,
-                        targetCredits = auditSummary.coreModuleSummary.targetCredits,
-                        inProgressCredits = auditSummary.coreModuleSummary.inProgressCredits,
-                        accentColor = CourseCategory.CORE_MODULE.badgeColor
+                        summary = auditSummary.coreModuleSummary,
+                        accentColor = CourseCategory.CORE_MODULE.badgeColor,
+                        showSubcategories = showSubcategories
                     )
 
-                    // Professional Module
-                    CategoryCreditProgressBar(
+                    // 5. Professional Module
+                    ModuleProgressItem(
                         categoryName = "專業模組",
-                        earnedCredits = auditSummary.professionalModuleSummary.earnedCredits,
-                        targetCredits = auditSummary.professionalModuleSummary.targetCredits,
-                        inProgressCredits = auditSummary.professionalModuleSummary.inProgressCredits,
-                        accentColor = CourseCategory.PROFESSIONAL_MODULE.badgeColor
+                        summary = auditSummary.professionalModuleSummary,
+                        accentColor = CourseCategory.PROFESSIONAL_MODULE.badgeColor,
+                        showSubcategories = showSubcategories
                     )
 
-                    // Free
-                    CategoryCreditProgressBar(
+                    // 6. Free Elective
+                    ModuleProgressItem(
                         categoryName = "自由選修",
-                        earnedCredits = auditSummary.freeSummary.earnedCredits,
-                        targetCredits = auditSummary.freeSummary.targetCredits,
-                        inProgressCredits = auditSummary.freeSummary.inProgressCredits,
-                        accentColor = CourseCategory.FREE_ELECTIVE.badgeColor
+                        summary = auditSummary.freeSummary,
+                        accentColor = CourseCategory.FREE_ELECTIVE.badgeColor,
+                        showSubcategories = showSubcategories
                     )
                 }
             }
@@ -389,5 +417,124 @@ fun GraduationScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ModuleProgressItem(
+    categoryName: String,
+    summary: CreditCategorySummary,
+    accentColor: Color,
+    showSubcategories: Boolean
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        CategoryCreditProgressBar(
+            categoryName = categoryName,
+            earnedCredits = summary.earnedCredits,
+            targetCredits = summary.targetCredits,
+            inProgressCredits = summary.inProgressCredits,
+            accentColor = accentColor
+        )
+
+        AnimatedVisibility(
+            visible = showSubcategories && (summary.requiredSummary != null || summary.electiveSummary != null),
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 18.dp, top = 2.dp, bottom = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                summary.requiredSummary?.let { req ->
+                    if (req.targetCredits > 0.0 || req.earnedCredits > 0.0) {
+                        SubcategoryProgressBar(
+                            label = "[ 必修 ]",
+                            earnedCredits = req.earnedCredits,
+                            targetCredits = req.targetCredits,
+                            inProgressCredits = req.inProgressCredits,
+                            accentColor = accentColor
+                        )
+                    }
+                }
+                summary.electiveSummary?.let { ele ->
+                    if (ele.targetCredits > 0.0 || ele.earnedCredits > 0.0) {
+                        SubcategoryProgressBar(
+                            label = "[ 選修 ]",
+                            earnedCredits = ele.earnedCredits,
+                            targetCredits = ele.targetCredits,
+                            inProgressCredits = ele.inProgressCredits,
+                            accentColor = accentColor.copy(alpha = 0.75f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SubcategoryProgressBar(
+    label: String,
+    earnedCredits: Double,
+    targetCredits: Double,
+    inProgressCredits: Double = 0.0,
+    accentColor: Color
+) {
+    val percentage = if (targetCredits > 0.0) ((earnedCredits / targetCredits) * 100.0).coerceIn(0.0, 100.0).toFloat() else if (earnedCredits > 0.0) 100f else 0f
+    val animatedProgress by animateFloatAsState(
+        targetValue = (percentage / 100f).coerceIn(0f, 1f),
+        animationSpec = tween(500),
+        label = "sub_progress"
+    )
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(3.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (inProgressCredits > 0) {
+                    Text(
+                        text = "(+${inProgressCredits.toInt()})",
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                        color = TealSecondary,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+            Text(
+                text = "${earnedCredits.toInt()} / ${targetCredits.toInt()} 學分 (${percentage.toInt()}%)",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = if (percentage >= 100f) EmeraldAccent else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        LinearProgressIndicator(
+            progress = { animatedProgress },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(4.dp)
+                .clip(RoundedCornerShape(2.dp)),
+            color = accentColor,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        )
     }
 }

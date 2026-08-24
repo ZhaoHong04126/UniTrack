@@ -40,6 +40,7 @@ fun TimetableScreen(
     val selectedSemester by viewModel.selectedSemester.collectAsStateWithLifecycle()
     val allSemesters by viewModel.allSemesters.collectAsStateWithLifecycle()
     val courses by viewModel.currentSemesterCourses.collectAsStateWithLifecycle()
+    val allCoursesList by viewModel.allCourses.collectAsStateWithLifecycle(emptyList())
     val graduationPlan by viewModel.graduationPlan.collectAsStateWithLifecycle()
 
     fun formatSemesterLabel(sem: String): String {
@@ -255,6 +256,8 @@ fun TimetableScreen(
         AddEditCourseDialog(
             initialCourse = editingCourse,
             defaultSemester = selectedSemester,
+            allCourses = allCoursesList,
+            plan = graduationPlan,
             onDismiss = { showAddDialog = false },
             onSave = { course ->
                 if (editingCourse == null) {
@@ -413,13 +416,12 @@ private fun WeeklyTimetableGrid(
 
                         Box(
                             modifier = Modifier
-                                .padding(1.dp)
+                                .padding(1.5.dp)
                                 .offset(y = periodHeight * (course.startPeriod - 1))
                                 .fillMaxWidth()
-                                .height(periodHeight * duration)
+                                .height(periodHeight * duration - 3.dp)
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(courseColor.copy(alpha = 0.2f))
-                                .border(1.5.dp, courseColor.copy(alpha = 0.7f), RoundedCornerShape(8.dp))
+                                .background(courseColor)
                                 .clickable { onCourseClick(course) }
                                 .padding(4.dp),
                             contentAlignment = Alignment.Center
@@ -436,7 +438,7 @@ private fun WeeklyTimetableGrid(
                                         lineHeight = 13.sp
                                     ),
                                     fontWeight = FontWeight.Bold,
-                                    color = courseColor,
+                                    color = Color.White,
                                     maxLines = duration * 2,
                                     overflow = TextOverflow.Ellipsis,
                                     textAlign = TextAlign.Center
@@ -446,7 +448,7 @@ private fun WeeklyTimetableGrid(
                                     Text(
                                         text = course.location,
                                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                                        color = Color.White.copy(alpha = 0.85f),
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                         textAlign = TextAlign.Center

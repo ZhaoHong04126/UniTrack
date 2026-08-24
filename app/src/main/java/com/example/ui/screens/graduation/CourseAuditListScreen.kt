@@ -314,6 +314,8 @@ fun CourseAuditListScreen(
         AddEditCourseDialog(
             initialCourse = editingCourse,
             defaultSemester = editingCourse?.semester ?: plan.currentSemester,
+            allCourses = allCourses,
+            plan = plan,
             onDismiss = {
                 showEditCourseDialog = false
                 editingCourse = null

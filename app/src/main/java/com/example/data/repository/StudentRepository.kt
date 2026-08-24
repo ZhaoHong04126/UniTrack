@@ -51,7 +51,11 @@ class StudentRepository(
     }
 
     suspend fun deleteCourse(course: Course) = withContext(Dispatchers.IO) {
-        courseDao.deleteCourse(course)
+        if (course.id != 0L) {
+            courseDao.deleteCourseById(course.id)
+        } else {
+            courseDao.deleteCourse(course)
+        }
     }
 
     // Graduation Plan & Thresholds

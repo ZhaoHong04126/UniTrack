@@ -127,20 +127,6 @@ fun GraduationPlanScreen(
                             contentDescription = "返回"
                         )
                     }
-                },
-                actions = {
-                    Button(
-                        onClick = { savePlan() },
-                        modifier = Modifier
-                            .padding(end = 8.dp)
-                            .testTag("save_plan_top_button"),
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
-                    ) {
-                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("儲存")
-                    }
                 }
             )
         },

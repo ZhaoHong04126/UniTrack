@@ -26,12 +26,22 @@ data class SemesterGpa(
     val courseCount: Int
 )
 
+data class SubcategoryCreditSummary(
+    val label: String, // "必修" 或 "選修"
+    val earnedCredits: Double,
+    val inProgressCredits: Double,
+    val targetCredits: Double,
+    val percentage: Float
+)
+
 data class CreditCategorySummary(
     val category: CourseCategory,
     val earnedCredits: Double,
     val inProgressCredits: Double,
     val targetCredits: Double,
-    val percentage: Float
+    val percentage: Float,
+    val requiredSummary: SubcategoryCreditSummary? = null,
+    val electiveSummary: SubcategoryCreditSummary? = null
 )
 
 data class GraduationAuditSummary(
@@ -306,27 +316,48 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
         var earnedGeneral = 0.0
         var inProgressGeneral = 0.0
+        var earnedGeneralReq = 0.0
+        var inProgressGeneralReq = 0.0
+        var earnedGeneralEle = 0.0
+        var inProgressGeneralEle = 0.0
 
         var earnedCollegeCore = 0.0
         var inProgressCollegeCore = 0.0
+        var earnedCollegeCoreReq = 0.0
+        var inProgressCollegeCoreReq = 0.0
 
         var earnedBasicModule = 0.0
         var inProgressBasicModule = 0.0
+        var earnedBasicModuleReq = 0.0
+        var inProgressBasicModuleReq = 0.0
+        var earnedBasicModuleEle = 0.0
+        var inProgressBasicModuleEle = 0.0
 
         var earnedCoreModule = 0.0
         var inProgressCoreModule = 0.0
+        var earnedCoreModuleReq = 0.0
+        var inProgressCoreModuleReq = 0.0
+        var earnedCoreModuleEle = 0.0
+        var inProgressCoreModuleEle = 0.0
 
         var earnedProfessionalModule = 0.0
         var inProgressProfessionalModule = 0.0
+        var earnedProfessionalModuleReq = 0.0
+        var inProgressProfessionalModuleReq = 0.0
+        var earnedProfessionalModuleEle = 0.0
+        var inProgressProfessionalModuleEle = 0.0
 
         var earnedFree = 0.0
         var inProgressFree = 0.0
+        var earnedFreeEle = 0.0
+        var inProgressFreeEle = 0.0
 
         var peCredits = 0.0
 
         for (c in courses) {
             val isPassed = c.isCompleted || (c.score != null && c.score >= plan.minPassingScore)
             val isInProgress = !isPassed && (c.semester == plan.currentSemester || c.score == null)
+            val isReq = c.requirementType == CourseRequirementType.REQUIRED || c.requirementType == CourseRequirementType.REQUIRED_ELECTIVE
 
             when (c.category) {
                 CourseCategory.REQUIRED -> {
@@ -338,28 +369,58 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                     else if (isInProgress) inProgressElective += c.credits
                 }
                 CourseCategory.GENERAL_EDU -> {
-                    if (isPassed) earnedGeneral += c.credits
-                    else if (isInProgress) inProgressGeneral += c.credits
+                    if (isPassed) {
+                        earnedGeneral += c.credits
+                        if (isReq) earnedGeneralReq += c.credits else earnedGeneralEle += c.credits
+                    } else if (isInProgress) {
+                        inProgressGeneral += c.credits
+                        if (isReq) inProgressGeneralReq += c.credits else inProgressGeneralEle += c.credits
+                    }
                 }
                 CourseCategory.COLLEGE_CORE -> {
-                    if (isPassed) earnedCollegeCore += c.credits
-                    else if (isInProgress) inProgressCollegeCore += c.credits
+                    if (isPassed) {
+                        earnedCollegeCore += c.credits
+                        earnedCollegeCoreReq += c.credits
+                    } else if (isInProgress) {
+                        inProgressCollegeCore += c.credits
+                        inProgressCollegeCoreReq += c.credits
+                    }
                 }
                 CourseCategory.BASIC_MODULE -> {
-                    if (isPassed) earnedBasicModule += c.credits
-                    else if (isInProgress) inProgressBasicModule += c.credits
+                    if (isPassed) {
+                        earnedBasicModule += c.credits
+                        if (isReq) earnedBasicModuleReq += c.credits else earnedBasicModuleEle += c.credits
+                    } else if (isInProgress) {
+                        inProgressBasicModule += c.credits
+                        if (isReq) inProgressBasicModuleReq += c.credits else inProgressBasicModuleEle += c.credits
+                    }
                 }
                 CourseCategory.CORE_MODULE -> {
-                    if (isPassed) earnedCoreModule += c.credits
-                    else if (isInProgress) inProgressCoreModule += c.credits
+                    if (isPassed) {
+                        earnedCoreModule += c.credits
+                        if (isReq) earnedCoreModuleReq += c.credits else earnedCoreModuleEle += c.credits
+                    } else if (isInProgress) {
+                        inProgressCoreModule += c.credits
+                        if (isReq) inProgressCoreModuleReq += c.credits else inProgressCoreModuleEle += c.credits
+                    }
                 }
                 CourseCategory.PROFESSIONAL_MODULE -> {
-                    if (isPassed) earnedProfessionalModule += c.credits
-                    else if (isInProgress) inProgressProfessionalModule += c.credits
+                    if (isPassed) {
+                        earnedProfessionalModule += c.credits
+                        if (isReq) earnedProfessionalModuleReq += c.credits else earnedProfessionalModuleEle += c.credits
+                    } else if (isInProgress) {
+                        inProgressProfessionalModule += c.credits
+                        if (isReq) inProgressProfessionalModuleReq += c.credits else inProgressProfessionalModuleEle += c.credits
+                    }
                 }
                 CourseCategory.FREE_ELECTIVE -> {
-                    if (isPassed) earnedFree += c.credits
-                    else if (isInProgress) inProgressFree += c.credits
+                    if (isPassed) {
+                        earnedFree += c.credits
+                        earnedFreeEle += c.credits
+                    } else if (isInProgress) {
+                        inProgressFree += c.credits
+                        inProgressFreeEle += c.credits
+                    }
                 }
                 CourseCategory.PE -> {
                     if (isPassed) peCredits += c.credits
@@ -382,6 +443,11 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         val proPercentage = if (plan.targetProfessionalModuleCredits > 0.0) ((earnedProfessionalModule / plan.targetProfessionalModuleCredits) * 100.0).coerceIn(0.0, 100.0).toFloat() else 0f
         val freePercentage = if (plan.targetFreeCredits > 0.0) ((earnedFree / plan.targetFreeCredits) * 100.0).coerceIn(0.0, 100.0).toFloat() else 0f
 
+        fun subSummary(label: String, earned: Double, inProgress: Double, target: Double): SubcategoryCreditSummary {
+            val pct = if (target > 0.0) ((earned / target) * 100.0).coerceIn(0.0, 100.0).toFloat() else if (earned > 0.0) 100f else 0f
+            return SubcategoryCreditSummary(label, earned, inProgress, target, pct)
+        }
+
         val completedThresholds = thresholds.count { it.isCompleted }
         val totalThresholds = thresholds.size
 
@@ -393,6 +459,13 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                 earnedProfessionalModule >= plan.targetProfessionalModuleCredits &&
                 (totalThresholds == 0 || completedThresholds == totalThresholds)
 
+        val genReqTarget = if (plan.targetGeneralRequiredCredits == 0.0 && plan.targetGeneralElectiveCredits == 0.0 && plan.targetGeneralCredits > 0.0) plan.targetGeneralCredits else plan.targetGeneralRequiredCredits
+        val colReqTarget = if (plan.targetCollegeCoreRequiredCredits > 0.0) plan.targetCollegeCoreRequiredCredits else plan.targetCollegeCoreCredits
+        val basReqTarget = if (plan.targetBasicModuleRequiredCredits == 0.0 && plan.targetBasicModuleElectiveCredits == 0.0 && plan.targetBasicModuleCredits > 0.0) plan.targetBasicModuleCredits else plan.targetBasicModuleRequiredCredits
+        val corReqTarget = if (plan.targetCoreModuleRequiredCredits == 0.0 && plan.targetCoreModuleElectiveCredits == 0.0 && plan.targetCoreModuleCredits > 0.0) plan.targetCoreModuleCredits else plan.targetCoreModuleRequiredCredits
+        val proReqTarget = if (plan.targetProfessionalModuleRequiredCredits == 0.0 && plan.targetProfessionalModuleElectiveCredits == 0.0 && plan.targetProfessionalModuleCredits > 0.0) plan.targetProfessionalModuleCredits else plan.targetProfessionalModuleRequiredCredits
+        val freeEleTarget = if (plan.targetFreeElectiveCredits > 0.0) plan.targetFreeElectiveCredits else plan.targetFreeCredits
+
         GraduationAuditSummary(
             plan = plan,
             totalEarnedCredits = totalEarned,
@@ -401,12 +474,36 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             overallPercentage = round(overallPercentage * 10f) / 10f,
             requiredSummary = CreditCategorySummary(CourseCategory.REQUIRED, earnedRequired, inProgressRequired, plan.targetRequiredCredits, reqPercentage),
             electiveSummary = CreditCategorySummary(CourseCategory.ELECTIVE, earnedElective, inProgressElective, plan.targetElectiveCredits, elePercentage),
-            generalSummary = CreditCategorySummary(CourseCategory.GENERAL_EDU, earnedGeneral, inProgressGeneral, plan.targetGeneralCredits, genPercentage),
-            collegeCoreSummary = CreditCategorySummary(CourseCategory.COLLEGE_CORE, earnedCollegeCore, inProgressCollegeCore, plan.targetCollegeCoreCredits, colPercentage),
-            basicModuleSummary = CreditCategorySummary(CourseCategory.BASIC_MODULE, earnedBasicModule, inProgressBasicModule, plan.targetBasicModuleCredits, basPercentage),
-            coreModuleSummary = CreditCategorySummary(CourseCategory.CORE_MODULE, earnedCoreModule, inProgressCoreModule, plan.targetCoreModuleCredits, corPercentage),
-            professionalModuleSummary = CreditCategorySummary(CourseCategory.PROFESSIONAL_MODULE, earnedProfessionalModule, inProgressProfessionalModule, plan.targetProfessionalModuleCredits, proPercentage),
-            freeSummary = CreditCategorySummary(CourseCategory.FREE_ELECTIVE, earnedFree, inProgressFree, plan.targetFreeCredits, freePercentage),
+            generalSummary = CreditCategorySummary(
+                CourseCategory.GENERAL_EDU, earnedGeneral, inProgressGeneral, plan.targetGeneralCredits, genPercentage,
+                requiredSummary = subSummary("必修", earnedGeneralReq, inProgressGeneralReq, genReqTarget),
+                electiveSummary = subSummary("選修", earnedGeneralEle, inProgressGeneralEle, plan.targetGeneralElectiveCredits)
+            ),
+            collegeCoreSummary = CreditCategorySummary(
+                CourseCategory.COLLEGE_CORE, earnedCollegeCore, inProgressCollegeCore, plan.targetCollegeCoreCredits, colPercentage,
+                requiredSummary = subSummary("必修", earnedCollegeCoreReq, inProgressCollegeCoreReq, colReqTarget),
+                electiveSummary = null
+            ),
+            basicModuleSummary = CreditCategorySummary(
+                CourseCategory.BASIC_MODULE, earnedBasicModule, inProgressBasicModule, plan.targetBasicModuleCredits, basPercentage,
+                requiredSummary = subSummary("必修", earnedBasicModuleReq, inProgressBasicModuleReq, basReqTarget),
+                electiveSummary = subSummary("選修", earnedBasicModuleEle, inProgressBasicModuleEle, plan.targetBasicModuleElectiveCredits)
+            ),
+            coreModuleSummary = CreditCategorySummary(
+                CourseCategory.CORE_MODULE, earnedCoreModule, inProgressCoreModule, plan.targetCoreModuleCredits, corPercentage,
+                requiredSummary = subSummary("必修", earnedCoreModuleReq, inProgressCoreModuleReq, corReqTarget),
+                electiveSummary = subSummary("選修", earnedCoreModuleEle, inProgressCoreModuleEle, plan.targetCoreModuleElectiveCredits)
+            ),
+            professionalModuleSummary = CreditCategorySummary(
+                CourseCategory.PROFESSIONAL_MODULE, earnedProfessionalModule, inProgressProfessionalModule, plan.targetProfessionalModuleCredits, proPercentage,
+                requiredSummary = subSummary("必修", earnedProfessionalModuleReq, inProgressProfessionalModuleReq, proReqTarget),
+                electiveSummary = subSummary("選修", earnedProfessionalModuleEle, inProgressProfessionalModuleEle, plan.targetProfessionalModuleElectiveCredits)
+            ),
+            freeSummary = CreditCategorySummary(
+                CourseCategory.FREE_ELECTIVE, earnedFree, inProgressFree, plan.targetFreeCredits, freePercentage,
+                requiredSummary = null,
+                electiveSummary = subSummary("選修", earnedFreeEle, inProgressFreeEle, freeEleTarget)
+            ),
             peCredits = peCredits,
             thresholdsCompletedCount = completedThresholds,
             thresholdsTotalCount = totalThresholds,
@@ -505,16 +602,28 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
     fun addCourse(course: Course) = viewModelScope.launch {
         repository.insertCourse(course)
+        val user = currentUser.value
+        if (user != null) {
+            firestoreSyncRepository.uploadAllToCloud(user.uid)
+        }
         _userMessage.value = "已成功新增課程：${course.name}"
     }
 
     fun updateCourse(course: Course) = viewModelScope.launch {
         repository.updateCourse(course)
+        val user = currentUser.value
+        if (user != null) {
+            firestoreSyncRepository.uploadAllToCloud(user.uid)
+        }
         _userMessage.value = "已更新課程：${course.name}"
     }
 
     fun deleteCourse(course: Course) = viewModelScope.launch {
         repository.deleteCourse(course)
+        val user = currentUser.value
+        if (user != null) {
+            firestoreSyncRepository.uploadAllToCloud(user.uid)
+        }
         _userMessage.value = "已刪除課程：${course.name}"
     }
 
