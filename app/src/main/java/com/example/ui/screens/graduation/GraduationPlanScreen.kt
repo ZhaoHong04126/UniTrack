@@ -4,6 +4,7 @@ import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -17,12 +18,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.data.model.CourseCategory
 import com.example.ui.components.SectionHeader
 import com.example.ui.theme.SapphireLight
 import com.example.ui.theme.SapphirePrimary
@@ -39,24 +42,64 @@ fun GraduationPlanScreen(
     val currentPlan by viewModel.graduationPlan.collectAsStateWithLifecycle()
 
     var totalTarget by remember(currentPlan) { mutableStateOf(currentPlan.targetTotalCredits.toString()) }
-    var genTarget by remember(currentPlan) { mutableStateOf(currentPlan.targetGeneralCredits.toString()) }
-    var colTarget by remember(currentPlan) { mutableStateOf(currentPlan.targetCollegeCoreCredits.toString()) }
-    var basTarget by remember(currentPlan) { mutableStateOf(currentPlan.targetBasicModuleCredits.toString()) }
-    var corTarget by remember(currentPlan) { mutableStateOf(currentPlan.targetCoreModuleCredits.toString()) }
-    var proTarget by remember(currentPlan) { mutableStateOf(currentPlan.targetProfessionalModuleCredits.toString()) }
-    var freeTarget by remember(currentPlan) { mutableStateOf(currentPlan.targetFreeCredits.toString()) }
+
+    // 通識教育
+    var genReqTarget by remember(currentPlan) { mutableStateOf(currentPlan.targetGeneralRequiredCredits.toString()) }
+    var genEleTarget by remember(currentPlan) { mutableStateOf(currentPlan.targetGeneralElectiveCredits.toString()) }
+
+    // 院共同
+    var colReqTarget by remember(currentPlan) { mutableStateOf(currentPlan.targetCollegeCoreRequiredCredits.toString()) }
+    var colEleTarget by remember(currentPlan) { mutableStateOf(currentPlan.targetCollegeCoreElectiveCredits.toString()) }
+
+    // 基礎模組
+    var basReqTarget by remember(currentPlan) { mutableStateOf(currentPlan.targetBasicModuleRequiredCredits.toString()) }
+    var basEleTarget by remember(currentPlan) { mutableStateOf(currentPlan.targetBasicModuleElectiveCredits.toString()) }
+
+    // 核心模組
+    var corReqTarget by remember(currentPlan) { mutableStateOf(currentPlan.targetCoreModuleRequiredCredits.toString()) }
+    var corEleTarget by remember(currentPlan) { mutableStateOf(currentPlan.targetCoreModuleElectiveCredits.toString()) }
+
+    // 專業模組
+    var proReqTarget by remember(currentPlan) { mutableStateOf(currentPlan.targetProfessionalModuleRequiredCredits.toString()) }
+    var proEleTarget by remember(currentPlan) { mutableStateOf(currentPlan.targetProfessionalModuleElectiveCredits.toString()) }
+
+    // 自由選修
+    var freeEleTarget by remember(currentPlan) { mutableStateOf(currentPlan.targetFreeElectiveCredits.toString()) }
 
     fun savePlan() {
+        val genReq = genReqTarget.toDoubleOrNull() ?: 0.0
+        val genEle = genEleTarget.toDoubleOrNull() ?: 0.0
+        val colReq = colReqTarget.toDoubleOrNull() ?: 0.0
+        val colEle = 0.0
+        val basReq = basReqTarget.toDoubleOrNull() ?: 0.0
+        val basEle = basEleTarget.toDoubleOrNull() ?: 0.0
+        val corReq = corReqTarget.toDoubleOrNull() ?: 0.0
+        val corEle = corEleTarget.toDoubleOrNull() ?: 0.0
+        val proReq = proReqTarget.toDoubleOrNull() ?: 0.0
+        val proEle = proEleTarget.toDoubleOrNull() ?: 0.0
+        val freeEle = freeEleTarget.toDoubleOrNull() ?: 0.0
+
         val updated = currentPlan.copy(
             targetTotalCredits = totalTarget.toDoubleOrNull() ?: 128.0,
             targetRequiredCredits = currentPlan.targetRequiredCredits,
             targetElectiveCredits = currentPlan.targetElectiveCredits,
-            targetGeneralCredits = genTarget.toDoubleOrNull() ?: 28.0,
-            targetCollegeCoreCredits = colTarget.toDoubleOrNull() ?: 9.0,
-            targetBasicModuleCredits = basTarget.toDoubleOrNull() ?: 24.0,
-            targetCoreModuleCredits = corTarget.toDoubleOrNull() ?: 24.0,
-            targetProfessionalModuleCredits = proTarget.toDoubleOrNull() ?: 23.0,
-            targetFreeCredits = freeTarget.toDoubleOrNull() ?: 20.0,
+            targetGeneralCredits = genReq + genEle,
+            targetCollegeCoreCredits = colReq,
+            targetBasicModuleCredits = basReq + basEle,
+            targetCoreModuleCredits = corReq + corEle,
+            targetProfessionalModuleCredits = proReq + proEle,
+            targetFreeCredits = freeEle,
+            targetGeneralRequiredCredits = genReq,
+            targetGeneralElectiveCredits = genEle,
+            targetCollegeCoreRequiredCredits = colReq,
+            targetCollegeCoreElectiveCredits = colEle,
+            targetBasicModuleRequiredCredits = basReq,
+            targetBasicModuleElectiveCredits = basEle,
+            targetCoreModuleRequiredCredits = corReq,
+            targetCoreModuleElectiveCredits = corEle,
+            targetProfessionalModuleRequiredCredits = proReq,
+            targetProfessionalModuleElectiveCredits = proEle,
+            targetFreeElectiveCredits = freeEle,
             gpaScale = currentPlan.gpaScale
         )
         viewModel.updateGraduationPlan(updated)
@@ -140,7 +183,7 @@ fun GraduationPlanScreen(
                         )
                     }
                     Text(
-                        text = "請依據您所屬系所入學年度之修業規章，設定畢業總學分與各模組門檻要求。",
+                        text = "請依據您所屬系所入學年度之修業規章，設定畢業總學分與各模組【必修】、【選修】之門檻要求。",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -177,100 +220,70 @@ fun GraduationPlanScreen(
                 }
             }
 
-            // Section 2: 各模組與類別學分門檻
+            // Section 2: 各模組與類別學分門檻 (必修 / 選修 子分類)
             SectionHeader(title = "各模組與類別學分門檻")
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    // Row 1: 通識學分 & 院共同學分
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = genTarget,
-                            onValueChange = { genTarget = it },
-                            label = { Text("通識學分") },
-                            placeholder = { Text("例：28.0") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            singleLine = true,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        OutlinedTextField(
-                            value = colTarget,
-                            onValueChange = { colTarget = it },
-                            label = { Text("院共同學分") },
-                            placeholder = { Text("例：9.0") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            singleLine = true,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                    }
 
-                    // Row 2: 基礎模組 & 核心模組
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = basTarget,
-                            onValueChange = { basTarget = it },
-                            label = { Text("基礎模組") },
-                            placeholder = { Text("例：24.0") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            singleLine = true,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        OutlinedTextField(
-                            value = corTarget,
-                            onValueChange = { corTarget = it },
-                            label = { Text("核心模組") },
-                            placeholder = { Text("例：24.0") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            singleLine = true,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                    }
+            // 1. 通識教育課程
+            ModuleThresholdCard(
+                title = "通識教育課程",
+                badgeColor = CourseCategory.GENERAL_EDU.badgeColor,
+                reqValue = genReqTarget,
+                onReqChange = { genReqTarget = it },
+                eleValue = genEleTarget,
+                onEleChange = { genEleTarget = it }
+            )
 
-                    // Row 3: 專業模組 & 自由選修
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = proTarget,
-                            onValueChange = { proTarget = it },
-                            label = { Text("專業模組") },
-                            placeholder = { Text("例：23.0") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            singleLine = true,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        OutlinedTextField(
-                            value = freeTarget,
-                            onValueChange = { freeTarget = it },
-                            label = { Text("自由選修") },
-                            placeholder = { Text("例：20.0") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            singleLine = true,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                    }
-                }
-            }
+            // 2. 院共同課程 (只有必修)
+            ModuleThresholdCard(
+                title = "院共同課程",
+                badgeColor = CourseCategory.COLLEGE_CORE.badgeColor,
+                reqValue = colReqTarget,
+                onReqChange = { colReqTarget = it },
+                eleValue = "",
+                onEleChange = {},
+                showRequiredOnly = true
+            )
+
+            // 3. 基礎模組
+            ModuleThresholdCard(
+                title = "基礎模組",
+                badgeColor = CourseCategory.BASIC_MODULE.badgeColor,
+                reqValue = basReqTarget,
+                onReqChange = { basReqTarget = it },
+                eleValue = basEleTarget,
+                onEleChange = { basEleTarget = it }
+            )
+
+            // 4. 核心模組
+            ModuleThresholdCard(
+                title = "核心模組",
+                badgeColor = CourseCategory.CORE_MODULE.badgeColor,
+                reqValue = corReqTarget,
+                onReqChange = { corReqTarget = it },
+                eleValue = corEleTarget,
+                onEleChange = { corEleTarget = it }
+            )
+
+            // 5. 專業模組
+            ModuleThresholdCard(
+                title = "專業模組",
+                badgeColor = CourseCategory.PROFESSIONAL_MODULE.badgeColor,
+                reqValue = proReqTarget,
+                onReqChange = { proReqTarget = it },
+                eleValue = proEleTarget,
+                onEleChange = { proEleTarget = it }
+            )
+
+            // 6. 自由選修 (只有選修)
+            ModuleThresholdCard(
+                title = "自由選修",
+                badgeColor = CourseCategory.FREE_ELECTIVE.badgeColor,
+                reqValue = "",
+                onReqChange = {},
+                eleValue = freeEleTarget,
+                onEleChange = { freeEleTarget = it },
+                showElectiveOnly = true
+            )
 
             // Bottom Save Button
             Button(
@@ -289,6 +302,97 @@ fun GraduationPlanScreen(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
+        }
+    }
+}
+
+@Composable
+private fun ModuleThresholdCard(
+    title: String,
+    badgeColor: Color,
+    reqValue: String,
+    onReqChange: (String) -> Unit,
+    eleValue: String,
+    onEleChange: (String) -> Unit,
+    showRequiredOnly: Boolean = false,
+    showElectiveOnly: Boolean = false
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .clip(CircleShape)
+                        .background(badgeColor)
+                )
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            if (showRequiredOnly) {
+                OutlinedTextField(
+                    value = reqValue,
+                    onValueChange = onReqChange,
+                    label = { Text("[ 必修 ] 目標學分") },
+                    placeholder = { Text("例：9.0") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+            } else if (showElectiveOnly) {
+                OutlinedTextField(
+                    value = eleValue,
+                    onValueChange = onEleChange,
+                    label = { Text("[ 選修 ] 目標學分") },
+                    placeholder = { Text("例：20.0") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    OutlinedTextField(
+                        value = reqValue,
+                        onValueChange = onReqChange,
+                        label = { Text("[ 必修 ] 目標學分") },
+                        placeholder = { Text("0.0") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    OutlinedTextField(
+                        value = eleValue,
+                        onValueChange = onEleChange,
+                        label = { Text("[ 選修 ] 目標學分") },
+                        placeholder = { Text("0.0") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                }
+            }
         }
     }
 }
