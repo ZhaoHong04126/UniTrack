@@ -99,6 +99,44 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         prefs.edit { putBoolean("pref_show_weekend", show) }
     }
 
+    // Semester Time Settings (開學日 & 總週數)
+    private val _semesterTimeConfigVersion = MutableStateFlow(0)
+    val semesterTimeConfigVersion: StateFlow<Int> = _semesterTimeConfigVersion.asStateFlow()
+
+    fun getSemesterStartDate(semester: String): String {
+        val key = "semester_start_date_$semester"
+        val saved = prefs.getString(key, null)
+        if (!saved.isNullOrBlank()) return saved
+        val semYear = semester.substringBefore("-").filter { it.isDigit() }.toIntOrNull() ?: 114
+        val semTerm = semester.substringAfter("-").filter { it.isDigit() }.toIntOrNull() ?: 1
+        val westernYear = semYear + 1911
+        return if (semTerm == 1) {
+            var d = java.time.LocalDate.of(westernYear, 9, 7)
+            while (d.dayOfWeek != java.time.DayOfWeek.MONDAY) {
+                d = d.plusDays(1)
+            }
+            d.format(java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd"))
+        } else {
+            var d = java.time.LocalDate.of(westernYear + 1, 2, 16)
+            while (d.dayOfWeek != java.time.DayOfWeek.MONDAY) {
+                d = d.plusDays(1)
+            }
+            d.format(java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd"))
+        }
+    }
+
+    fun getSemesterTotalWeeks(semester: String): Int {
+        return prefs.getInt("semester_total_weeks_$semester", 18)
+    }
+
+    fun saveSemesterTimeConfig(semester: String, startDate: String, totalWeeks: Int) {
+        prefs.edit {
+            putString("semester_start_date_$semester", startDate)
+            putInt("semester_total_weeks_$semester", totalWeeks.coerceIn(4, 18))
+        }
+        _semesterTimeConfigVersion.value += 1
+    }
+
     // Selected semester in timetable
     private val _selectedSemester = MutableStateFlow(DefaultData.getCurrentAcademicSemester())
     val selectedSemester: StateFlow<String> = _selectedSemester.asStateFlow()

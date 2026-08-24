@@ -5,9 +5,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -19,11 +16,11 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -35,6 +32,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.Course
 import com.example.ui.theme.SapphirePrimary
 import com.example.ui.viewmodel.StudentViewModel
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,8 +49,36 @@ fun TimetableScreen(
     val courses by viewModel.currentSemesterCourses.collectAsStateWithLifecycle()
     val allCoursesList by viewModel.allCourses.collectAsStateWithLifecycle(emptyList())
     val graduationPlan by viewModel.graduationPlan.collectAsStateWithLifecycle()
+    val semesterTimeConfigVersion by viewModel.semesterTimeConfigVersion.collectAsStateWithLifecycle()
 
-    fun formatSemesterLabel(sem: String): String {
+    val currentStartDateStr = remember(selectedSemester, semesterTimeConfigVersion) {
+        viewModel.getSemesterStartDate(selectedSemester)
+    }
+    val currentTotalWeeks = remember(selectedSemester, semesterTimeConfigVersion) {
+        viewModel.getSemesterTotalWeeks(selectedSemester)
+    }
+
+    val countdownBadgeText = remember(currentStartDateStr, currentTotalWeeks) {
+        try {
+            val formatter = DateTimeFormatter.ofPattern("yyyy.MM.dd")
+            val startDate = LocalDate.parse(currentStartDateStr, formatter)
+            val today = LocalDate.now()
+            val daysDiff = ChronoUnit.DAYS.between(today, startDate)
+            when {
+                daysDiff > 0 -> "開學 D-$daysDiff"
+                daysDiff == 0L -> "今日開學"
+                else -> {
+                    val daysPassed = -daysDiff
+                    val weekNum = (daysPassed / 7).toInt() + 1
+                    if (weekNum <= currentTotalWeeks) "第 $weekNum 週" else "學期結束"
+                }
+            }
+        } catch (_: Exception) {
+            "設定開學日"
+        }
+    }
+
+    fun formatSemesterHeaderLabel(sem: String): String {
         val startYear = graduationPlan.admissionSemester.substringBefore("-").filter { it.isDigit() }.toIntOrNull()
         val year = sem.substringBefore("-").filter { it.isDigit() }.toIntOrNull()
         val term = sem.substringAfter("-").filter { it.isDigit() }.toIntOrNull() ?: 1
@@ -63,22 +92,23 @@ fun TimetableScreen(
             }
             val termStr = if (term == 1) "上" else "下"
             if (grade.isNotEmpty()) {
-                return "$sem 學期 ($grade$termStr)"
+                return "$grade$termStr"
             }
         }
-        return "$sem 學期"
+        return sem
     }
 
     var showAddDialog by remember { mutableStateOf(false) }
     var editingCourse by remember { mutableStateOf<Course?>(null) }
     var selectedCourseDetail by remember { mutableStateOf<Course?>(null) }
     var showSemesterManageDialog by remember { mutableStateOf(false) }
+    var showTimeSettingsSheet by remember { mutableStateOf(false) }
     var isGridView by remember { mutableStateOf(true) }
     var isWeeklyMode by rememberSaveable { mutableStateOf(false) }
     val showWeekend by viewModel.showWeekend.collectAsStateWithLifecycle()
 
-    val weekPagerState = rememberPagerState(initialPage = 0) { 18 } // 0..17 represents Week 1..18
-    val currentWeek = weekPagerState.currentPage + 1
+    val weekPagerState = rememberPagerState(initialPage = 0) { currentTotalWeeks }
+    val currentWeek = (weekPagerState.currentPage + 1).coerceAtMost(currentTotalWeeks)
 
     val daysCount = if (showWeekend) 7 else 5
     val dayNames = if (showWeekend) {
@@ -97,23 +127,10 @@ fun TimetableScreen(
 
     fun getWeekDates(semester: String, week: Int, count: Int): List<String>? {
         return try {
-            val semYear = semester.substringBefore("-").filter { it.isDigit() }.toIntOrNull() ?: 114
-            val semTerm = semester.substringAfter("-").filter { it.isDigit() }.toIntOrNull() ?: 1
-            val westernYear = semYear + 1911
-            val baseDate = if (semTerm == 1) {
-                var d = java.time.LocalDate.of(westernYear, 9, 1)
-                while (d.dayOfWeek != java.time.DayOfWeek.MONDAY) {
-                    d = d.plusDays(1)
-                }
-                d
-            } else {
-                var d = java.time.LocalDate.of(westernYear + 1, 2, 15)
-                while (d.dayOfWeek != java.time.DayOfWeek.MONDAY) {
-                    d = d.plusDays(1)
-                }
-                d
-            }
-            val startOfWeek = baseDate.plusWeeks((week - 1).toLong())
+            val startDateStr = viewModel.getSemesterStartDate(semester)
+            val formatter = DateTimeFormatter.ofPattern("yyyy.MM.dd")
+            val startDate = LocalDate.parse(startDateStr, formatter)
+            val startOfWeek = startDate.plusWeeks((week - 1).toLong())
             (0 until count).map { dayOffset ->
                 val date = startOfWeek.plusDays(dayOffset.toLong())
                 "${date.monthValue}/${date.dayOfMonth}"
@@ -154,7 +171,7 @@ fun TimetableScreen(
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text(
-                    text = formatSemesterLabel(selectedSemester),
+                    text = formatSemesterHeaderLabel(selectedSemester),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -170,6 +187,18 @@ fun TimetableScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Time / Semester settings button (Clock icon)
+                FilledTonalIconButton(
+                    onClick = { showTimeSettingsSheet = true },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AccessTime,
+                        contentDescription = "時間設定",
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+
                 // Grade Entry Button (Calculator icon)
                 FilledTonalIconButton(
                     onClick = onNavigateToGrades,
@@ -205,7 +234,7 @@ fun TimetableScreen(
             }
         }
 
-        // Summary Chip & Mode Switcher Chip (1-Click Toggle)
+        // Summary Row with Countdown & Credits Badges
         val totalCredits = courses.sumOf { it.credits }
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -216,28 +245,39 @@ fun TimetableScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Text(
-                    text = if (!isWeeklyMode) "本學期共 ${courses.size} 門課・合計 ${totalCredits.toInt()} 學分"
-                           else "第 $currentWeek 週・共 ${displayCourses.size} 門課",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                // Countdown Badge (開學 D-13 / 第 X 週)
                 Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
                     modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .clickable { isWeeklyMode = !isWeeklyMode }
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { showTimeSettingsSheet = true }
                 ) {
                     Text(
-                        text = if (!isWeeklyMode) "整學期 ▾" else "第 $currentWeek 週 ▾",
-                        style = MaterialTheme.typography.labelSmall,
+                        text = countdownBadgeText,
+                        style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                    )
+                }
+
+                // Credits Badge (X 學分)
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                    modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                ) {
+                    Text(
+                        text = "${totalCredits.toInt()} 學分",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                     )
                 }
             }
+
             Text(
                 text = if (isGridView) (if (isWeeklyMode) "左右滑動切換週次" else "點擊左上角切換各週") else "點擊列表查看詳細",
                 style = MaterialTheme.typography.labelSmall,
@@ -245,54 +285,35 @@ fun TimetableScreen(
             )
         }
 
-        if (courses.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+        if (!isGridView) {
+            // List View Mode
+            if (courses.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.CalendarToday,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.size(48.dp)
-                    )
                     Text(
                         text = "這個學期還沒有排定課程",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Button(
-                        onClick = {
-                            editingCourse = null
-                            showAddDialog = true
-                        }
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = null)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("新增第一門課")
-                    }
                 }
-            }
-        } else if (!isGridView) {
-            // List View Mode
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(bottom = 16.dp)
-            ) {
-                items(displayCourses.sortedWith(compareBy({ it.dayOfWeek }, { it.startPeriod }))) { course ->
-                    CourseListItemCard(
-                        course = course,
-                        onClick = { selectedCourseDetail = course }
-                    )
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(bottom = 16.dp)
+                ) {
+                    items(displayCourses.sortedWith(compareBy({ it.dayOfWeek }, { it.startPeriod }))) { course ->
+                        CourseListItemCard(
+                            course = course,
+                            onClick = { selectedCourseDetail = course }
+                        )
+                    }
                 }
             }
         } else if (!isWeeklyMode) {
@@ -399,6 +420,226 @@ fun TimetableScreen(
             },
             onDismiss = { showSemesterManageDialog = false }
         )
+    }
+
+    if (showTimeSettingsSheet) {
+        SemesterTimeSettingsBottomSheet(
+            selectedSemester = selectedSemester,
+            initialStartDate = currentStartDateStr,
+            initialTotalWeeks = currentTotalWeeks,
+            onDismiss = { showTimeSettingsSheet = false },
+            onSave = { startDate, totalWeeks ->
+                viewModel.saveSemesterTimeConfig(selectedSemester, startDate, totalWeeks)
+                showTimeSettingsSheet = false
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SemesterTimeSettingsBottomSheet(
+    selectedSemester: String,
+    initialStartDate: String,
+    initialTotalWeeks: Int,
+    onDismiss: () -> Unit,
+    onSave: (startDate: String, totalWeeks: Int) -> Unit
+) {
+    val context = LocalContext.current
+    var tempStartDate by remember(initialStartDate) { mutableStateOf(initialStartDate) }
+    var tempTotalWeeks by remember(initialTotalWeeks) { mutableIntStateOf(initialTotalWeeks) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        dragHandle = { BottomSheetDefaults.DragHandle() },
+        containerColor = MaterialTheme.colorScheme.surface
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 12.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            Text(
+                text = "設定",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            // Section 1: 開學日
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "開學日",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable {
+                                val curYear = tempStartDate.substringBefore(".").toIntOrNull() ?: 2026
+                                val curMonth = tempStartDate.split(".").getOrNull(1)?.toIntOrNull()?.minus(1) ?: 8
+                                val curDay = tempStartDate.substringAfterLast(".").toIntOrNull() ?: 7
+                                android.app.DatePickerDialog(
+                                    context,
+                                    { _, y, m, d ->
+                                        tempStartDate = String.format(Locale.US, "%04d.%02d.%02d", y, m + 1, d)
+                                    },
+                                    curYear,
+                                    curMonth,
+                                    curDay
+                                ).show()
+                            }
+                    ) {
+                        Text(
+                            text = tempStartDate,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                        )
+                    }
+                }
+
+                Text(
+                    text = "學校預設 18 週，個人最多可設 18 週",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            // Section 2: 總週數
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "總週數",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Minus button
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                                .clickable(enabled = tempTotalWeeks > 4) {
+                                    if (tempTotalWeeks > 4) tempTotalWeeks--
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Remove,
+                                contentDescription = "減少週數",
+                                tint = if (tempTotalWeeks > 4) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline
+                            )
+                        }
+
+                        Text(
+                            text = "$tempTotalWeeks 週",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.width(52.dp),
+                            textAlign = TextAlign.Center
+                        )
+
+                        // Plus button
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                                .clickable(enabled = tempTotalWeeks < 18) {
+                                    if (tempTotalWeeks < 18) tempTotalWeeks++
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "增加週數",
+                                tint = if (tempTotalWeeks < 18) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline
+                            )
+                        }
+                    }
+                }
+
+                // Preset chips: 16 週 / 18 週
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(16, 18).forEach { weeks ->
+                            val isSelected = tempTotalWeeks == weeks
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { tempTotalWeeks = weeks }
+                            ) {
+                                Text(
+                                    text = "$weeks 週",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Text(
+                        text = "可自訂 4~18 週",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Save Button
+            Button(
+                onClick = {
+                    onSave(tempStartDate, tempTotalWeeks)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = SapphirePrimary)
+            ) {
+                Text(
+                    text = "儲存",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+        }
     }
 }
 

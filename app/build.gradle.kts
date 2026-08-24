@@ -10,12 +10,12 @@ plugins {
 }
 
 android {
-  namespace = "com.example"
+  namespace = "com.unitrack.app"
   compileSdk = 37
 
   defaultConfig {
     applicationId = "com.unitrack.app"
-    minSdk = 24
+    minSdk = 26
     targetSdk = 37
     versionCode = 1
     versionName = "1.0.0"
