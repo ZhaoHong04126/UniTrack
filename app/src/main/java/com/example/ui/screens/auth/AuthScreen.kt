@@ -1824,5 +1824,51 @@ private fun RegisterStep2PageView(
         ) {
             Text("建立帳號並登入", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
         }
+
+        // Divider
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            HorizontalDivider(modifier = Modifier.weight(1f), color = Color.White.copy(alpha = 0.15f))
+            Text("  或使用其他方式  ", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.45f))
+            HorizontalDivider(modifier = Modifier.weight(1f), color = Color.White.copy(alpha = 0.15f))
+        }
+
+        // Google One-Tap Sign In
+        OutlinedButton(
+            onClick = {
+                viewModel.signInWithGoogle { success, _ ->
+                    if (success) {
+                        val currentPlan = viewModel.graduationPlan.value
+                        val currentActiveSemester = com.example.data.local.DefaultData.getCurrentAcademicSemester()
+                        val updatedPlan = currentPlan.copy(
+                            studentName = name.ifBlank { currentPlan.studentName },
+                            department = department.ifBlank { currentPlan.department },
+                            admissionSemester = admissionCode.ifBlank { currentPlan.admissionSemester },
+                            currentSemester = currentActiveSemester
+                        )
+                        viewModel.updateGraduationPlan(updatedPlan)
+                        viewModel.uploadToCloud()
+                        onAuthSuccess()
+                    }
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White.copy(alpha = 0.06f)),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
+        ) {
+            Icon(
+                painter = painterResource(id = com.example.R.drawable.ic_google_logo),
+                contentDescription = "Google",
+                tint = Color.Unspecified,
+                modifier = Modifier.size(22.dp)
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Text("使用 Google 帳號一鍵登入", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = Color.White)
+        }
     }
 }
