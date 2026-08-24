@@ -53,6 +53,7 @@ fun SettingsScreen(
     var showPlanDialog by remember { mutableStateOf(false) }
     var showSignOutConfirmDialog by remember { mutableStateOf(false) }
     var showDeleteAccountConfirmDialog by remember { mutableStateOf(false) }
+    var showFinalExecutionDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -368,32 +369,161 @@ fun SettingsScreen(
         )
     }
 
-    // Delete Account Confirm Dialog
+    // Delete Account Confirm Dialog (嚴格雙重確認安全機制)
     if (showDeleteAccountConfirmDialog) {
         var isDeleting by remember { mutableStateOf(false) }
+        var confirmText by remember { mutableStateOf("") }
+        var agreeDataLoss by remember { mutableStateOf(false) }
+        var agreeIrreversible by remember { mutableStateOf(false) }
+
+        val requiredText = "刪除帳號"
+        val isConfirmed = agreeDataLoss && agreeIrreversible && confirmText.trim() == requiredText
 
         AlertDialog(
             onDismissRequest = { if (!isDeleting) showDeleteAccountConfirmDialog = false },
-            title = { Text("確認刪除帳號？", color = RoseAccent, fontWeight = FontWeight.Bold) },
+            icon = {
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .background(RoseLight),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = RoseAccent,
+                        modifier = Modifier.size(30.dp)
+                    )
+                }
+            },
+            title = {
+                Text(
+                    text = "危險操作：永久刪除帳號",
+                    color = RoseAccent,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleLarge
+                )
+            },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("這將會永久刪除您的帳號，並同步清空雲端與本機的所有課表、記帳與學業檔案。此操作無法復原。")
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = RoseLight.copy(alpha = 0.55f),
+                        border = BorderStroke(1.5.dp, RoseAccent.copy(alpha = 0.35f))
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "⚠️ 執行後將立即永久刪除：",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = RoseAccent
+                            )
+                            Text(
+                                text = "• 所有雲端與本機課表、成績學分紀錄\n• 所有收支記帳與預算明細\n• 帳號認證身分與學生檔案（無法復原）",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                lineHeight = 22.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+
+                    // Checkbox 1
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable(enabled = !isDeleting) { agreeDataLoss = !agreeDataLoss }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = agreeDataLoss,
+                            onCheckedChange = { agreeDataLoss = it },
+                            enabled = !isDeleting,
+                            colors = CheckboxDefaults.colors(checkedColor = RoseAccent)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "我了解所有雲端與本機資料將被立即抹除",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    // Checkbox 2
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable(enabled = !isDeleting) { agreeIrreversible = !agreeIrreversible }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = agreeIrreversible,
+                            onCheckedChange = { agreeIrreversible = it },
+                            enabled = !isDeleting,
+                            colors = CheckboxDefaults.colors(checkedColor = RoseAccent)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "我確認放棄此帳號，且此動作無法復原",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    // Type Confirmation Text Field
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "請在下方輸入「$requiredText」以解鎖按鈕：",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        OutlinedTextField(
+                            value = confirmText,
+                            onValueChange = { confirmText = it },
+                            placeholder = { Text("輸入「$requiredText」") },
+                            singleLine = true,
+                            enabled = !isDeleting,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = if (confirmText.trim() == requiredText) RoseAccent else MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = if (confirmText.trim() == requiredText) RoseAccent else MaterialTheme.colorScheme.outline
+                            )
+                        )
+                    }
+
                     if (isDeleting) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(top = 8.dp),
+                                .padding(top = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
+                                modifier = Modifier.size(22.dp),
                                 color = RoseAccent,
-                                strokeWidth = 2.dp
+                                strokeWidth = 2.5.dp
                             )
                             Text(
-                                text = "正在清除雲端與本機資料並刪除帳號...",
-                                style = MaterialTheme.typography.bodySmall,
+                                text = "正在註銷帳號並清除所有雲端與本機資料...",
+                                style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -403,21 +533,23 @@ fun SettingsScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        isDeleting = true
-                        viewModel.deleteAccount { success, errorMsg ->
-                            isDeleting = false
-                            if (success) {
-                                showDeleteAccountConfirmDialog = false
-                                onNavigateToAuth()
-                            } else {
-                                Toast.makeText(context, errorMsg ?: "刪除帳號失敗", Toast.LENGTH_LONG).show()
-                            }
+                        if (isConfirmed) {
+                            showFinalExecutionDialog = true
                         }
                     },
-                    enabled = !isDeleting,
-                    colors = ButtonDefaults.buttonColors(containerColor = RoseAccent)
+                    enabled = isConfirmed && !isDeleting,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = RoseAccent,
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                    ),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("確定刪除")
+                    Text(
+                        text = "確認永久刪除帳號",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (isConfirmed && !isDeleting) Color.White else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
                 }
             },
             dismissButton = {
@@ -425,7 +557,110 @@ fun SettingsScreen(
                     onClick = { showDeleteAccountConfirmDialog = false },
                     enabled = !isDeleting
                 ) {
-                    Text("取消")
+                    Text("取消", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        )
+    }
+
+    // Second-Stage Final Execution Dialog (最終二次執行確認)
+    if (showFinalExecutionDialog) {
+        var isExecutingDelete by remember { mutableStateOf(false) }
+
+        AlertDialog(
+            onDismissRequest = { if (!isExecutingDelete) showFinalExecutionDialog = false },
+            icon = {
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .background(RoseLight),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ErrorOutline,
+                        contentDescription = null,
+                        tint = RoseAccent,
+                        modifier = Modifier.size(30.dp)
+                    )
+                }
+            },
+            title = {
+                Text(
+                    text = "是否確認執行永久刪除？",
+                    color = RoseAccent,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleLarge
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = "這是最後一次確認！一旦點擊「確定執行刪除」，您的帳號及所有雲端、本機課表與學業記錄將被永久銷毀，無法進行任何還原。",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        lineHeight = 22.sp
+                    )
+                    if (isExecutingDelete) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(22.dp),
+                                color = RoseAccent,
+                                strokeWidth = 2.5.dp
+                            )
+                            Text(
+                                text = "正在執行註銷並抹除所有資料...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        isExecutingDelete = true
+                        viewModel.deleteAccount { success, errorMsg ->
+                            isExecutingDelete = false
+                            if (success) {
+                                showFinalExecutionDialog = false
+                                showDeleteAccountConfirmDialog = false
+                                onNavigateToAuth()
+                            } else {
+                                Toast.makeText(context, errorMsg ?: "刪除帳號失敗", Toast.LENGTH_LONG).show()
+                                if (errorMsg?.contains("重新登入") == true) {
+                                    showFinalExecutionDialog = false
+                                    showDeleteAccountConfirmDialog = false
+                                    onNavigateToAuth()
+                                }
+                            }
+                        }
+                    },
+                    enabled = !isExecutingDelete,
+                    colors = ButtonDefaults.buttonColors(containerColor = RoseAccent),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = "確定執行刪除",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showFinalExecutionDialog = false },
+                    enabled = !isExecutingDelete
+                ) {
+                    Text("再想想（取消）", style = MaterialTheme.typography.bodyMedium)
                 }
             }
         )

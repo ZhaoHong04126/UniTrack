@@ -274,9 +274,13 @@ class AuthRepository(private val context: Context) {
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(tag, "Delete Firebase account failed", e)
-            val message = if (e.message?.contains("requires-recent-login", ignoreCase = true) == true ||
-                e.message?.contains("CREDENTIAL_TOO_OLD", ignoreCase = true) == true) {
-                "為了您的帳號安全，刪除帳號需要重新登入驗證後再執行"
+            val msg = e.message.orEmpty()
+            val isRecentLoginRequired = msg.contains("requires-recent-login", ignoreCase = true) ||
+                msg.contains("recent authentication", ignoreCase = true) ||
+                msg.contains("CREDENTIAL_TOO_OLD", ignoreCase = true)
+
+            val message = if (isRecentLoginRequired) {
+                "此操作屬於敏感安全性操作，為了保障帳號安全，請先重新登入後再執行刪除帳號。"
             } else {
                 mapFirebaseAuthException(e)
             }
@@ -307,6 +311,9 @@ class AuthRepository(private val context: Context) {
     private fun mapFirebaseAuthException(e: Exception): String {
         val msg = e.message.orEmpty()
         return when {
+            msg.contains("recent authentication", ignoreCase = true) ||
+            msg.contains("requires-recent-login", ignoreCase = true) ||
+            msg.contains("CREDENTIAL_TOO_OLD", ignoreCase = true) -> "此操作屬於敏感安全性操作，請先重新登入後再執行刪除帳號"
             msg.contains("invalid-credential", ignoreCase = true) ||
             msg.contains("auth credential is incorrect", ignoreCase = true) ||
             msg.contains("INVALID_LOGIN_CREDENTIALS", ignoreCase = true) -> "帳號或密碼錯誤，請重新確認"

@@ -777,17 +777,17 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val uid = currentUser.value?.uid.orEmpty()
 
-            // 1. 刪除 Firestore 雲端所有資料
-            if (uid.isNotBlank()) {
-                firestoreSyncRepository.deleteAllCloudData(uid)
-            }
-
-            // 2. 清除本機 Room 資料庫（課表、記帳、審查門檻重置為預設空狀態）
-            repository.clearAllData()
-
-            // 3. 刪除 Firebase Auth 帳號並清除登入狀態憑證
+            // 1. 先嘗試刪除 Firebase Auth 帳號（若需要重新驗證，可避免提前清空本機資料造成狀態錯亂）
             val authDeleteResult = authRepository.deleteAccount()
             authDeleteResult.onSuccess {
+                // 2. 刪除 Firestore 雲端所有資料
+                if (uid.isNotBlank()) {
+                    firestoreSyncRepository.deleteAllCloudData(uid)
+                }
+
+                // 3. 清除本機 Room 資料庫
+                repository.clearAllData()
+
                 showToast("帳號已永久刪除，本機與雲端資料已完全清除")
                 onResult?.invoke(true, null)
             }.onFailure { e ->

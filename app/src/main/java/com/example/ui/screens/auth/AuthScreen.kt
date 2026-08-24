@@ -87,12 +87,12 @@ fun AuthScreen(
 
     // Auto-navigate on auth success or redirect to RegisterStep1 if profile incomplete
     val user = currentUser
-    LaunchedEffect(user, currentPage) {
-        if (user != null && currentPage != AuthPage.SPLASH) {
+    LaunchedEffect(user) {
+        if (user != null) {
             val plan = graduationPlan
             val isNew = user.isNewUser || plan.department.isBlank() || plan.department == "尚未設定系所"
             if (isNew) {
-                if (currentPage != AuthPage.REGISTER_STEP_1 && currentPage != AuthPage.REGISTER_STEP_2) {
+                if (currentPage == AuthPage.SPLASH || currentPage == AuthPage.LOGIN || currentPage == AuthPage.WELCOME) {
                     val defaultName = user.displayName?.ifBlank { null } ?: user.email?.substringBefore("@") ?: ""
                     if (name.isBlank() && defaultName.isNotBlank()) name = defaultName
                     if (!user.email.isNullOrBlank() && email.isBlank()) email = user.email
@@ -112,32 +112,43 @@ fun AuthScreen(
         viewModel.clearAuthError()
         when (currentPage) {
             AuthPage.REGISTER_STEP_2 -> currentPage = AuthPage.REGISTER_STEP_1
-            AuthPage.REGISTER_STEP_1 -> currentPage = AuthPage.WELCOME
+            AuthPage.REGISTER_STEP_1 -> {
+                if (currentUser != null) {
+                    viewModel.signOut()
+                }
+                currentPage = AuthPage.WELCOME
+            }
             AuthPage.LOGIN -> currentPage = AuthPage.WELCOME
             AuthPage.WELCOME, AuthPage.SPLASH -> {}
         }
     }
+
+    val authState by viewModel.authState.collectAsStateWithLifecycle()
+    val isAuthenticating = authState is AuthState.Loading && currentPage != AuthPage.SPLASH
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(Color(0xFF0F172A)) // Deep Slate / Campus Night Theme
     ) {
-        AnimatedContent(
-            targetState = currentPage,
-            transitionSpec = {
-                if (targetState.ordinal > initialState.ordinal) {
-                    (slideInHorizontally { width -> width } + fadeIn()).togetherWith(
-                        slideOutHorizontally { width -> -width } + fadeOut()
-                    )
-                } else {
-                    (slideInHorizontally { width -> -width } + fadeIn()).togetherWith(
-                        slideOutHorizontally { width -> width } + fadeOut()
-                    )
-                }
-            },
-            label = "AuthPageTransition"
-        ) { targetPage ->
+        if (isAuthenticating) {
+            AuthLoadingPageView()
+        } else {
+            AnimatedContent(
+                targetState = currentPage,
+                transitionSpec = {
+                    if (targetState.ordinal > initialState.ordinal) {
+                        (slideInHorizontally { width -> width } + fadeIn()).togetherWith(
+                            slideOutHorizontally { width -> -width } + fadeOut()
+                        )
+                    } else {
+                        (slideInHorizontally { width -> -width } + fadeIn()).togetherWith(
+                            slideOutHorizontally { width -> width } + fadeOut()
+                        )
+                    }
+                },
+                label = "AuthPageTransition"
+            ) { targetPage ->
             when (targetPage) {
                 AuthPage.SPLASH -> {
                     AuthSplashLoadingView(
@@ -204,6 +215,9 @@ fun AuthScreen(
                         isGoogleAuthenticated = currentUser != null,
                         onBack = {
                             viewModel.clearAuthError()
+                            if (currentUser != null) {
+                                viewModel.signOut()
+                            }
                             currentPage = AuthPage.WELCOME
                         },
                         onNext = {
@@ -253,6 +267,7 @@ fun AuthScreen(
                 }
             }
         }
+    }
     }
 
     // Password Reset Dialog (Redesigned Modern Glassmorphism Card)
@@ -387,6 +402,54 @@ fun AuthScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * 獨立全螢幕驗證與載入處理頁面 (Dedicated Full-Page Auth Loading Screen)
+ */
+@Composable
+private fun AuthLoadingPageView(
+    message: String = "正在進行帳號驗證與登入..."
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF0F172A)),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(horizontal = 32.dp)
+        ) {
+            AuthLogoMascot()
+
+            Spacer(modifier = Modifier.height(36.dp))
+
+            CircularProgressIndicator(
+                modifier = Modifier.size(38.dp),
+                color = SapphirePrimary,
+                strokeWidth = 3.dp
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Text(
+                text = message,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "正在同步雲端與本地端學業資料，請稍候...",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White.copy(alpha = 0.6f)
+            )
         }
     }
 }
@@ -829,36 +892,6 @@ private fun LoginPageView(
                 }
             }
 
-            // 登入進度條 (Login In-Progress Bar)
-            AnimatedVisibility(
-                visible = authState is AuthState.Loading,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically()
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    LinearProgressIndicator(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(6.dp)
-                            .clip(RoundedCornerShape(3.dp)),
-                        color = SapphirePrimary,
-                        trackColor = Color.White.copy(alpha = 0.12f)
-                    )
-                    Text(
-                        text = "正在進行帳號驗證與登入...",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF93C5FD),
-                        fontSize = 12.sp
-                    )
-                }
-            }
-
             Button(
                 onClick = {
                     focusManager.clearFocus()
@@ -884,11 +917,7 @@ private fun LoginPageView(
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = SapphirePrimary)
             ) {
-                if (authState is AuthState.Loading) {
-                    CircularProgressIndicator(modifier = Modifier.size(22.dp), color = Color.White, strokeWidth = 2.5.dp)
-                } else {
-                    Text("立即登入", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
-                }
+                Text("立即登入", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
             }
 
             // Divider
@@ -1797,36 +1826,6 @@ private fun RegisterStep2PageView(
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        // 註冊建立進度條
-        AnimatedVisibility(
-            visible = authState is AuthState.Loading,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically()
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                LinearProgressIndicator(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp)),
-                    color = EmeraldAccent,
-                    trackColor = Color.White.copy(alpha = 0.12f)
-                )
-                Text(
-                    text = "正在建立帳號並初始化學業檔案...",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = EmeraldLight,
-                    fontSize = 12.sp
-                )
-            }
-        }
-
         Button(
             onClick = {
                 focusManager.clearFocus()
@@ -1841,11 +1840,7 @@ private fun RegisterStep2PageView(
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.buttonColors(containerColor = EmeraldAccent)
         ) {
-            if (authState is AuthState.Loading) {
-                CircularProgressIndicator(modifier = Modifier.size(22.dp), color = Color.White, strokeWidth = 2.5.dp)
-            } else {
-                Text("建立帳號並登入", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
-            }
+            Text("建立帳號並登入", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
         }
     }
 }
