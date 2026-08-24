@@ -123,10 +123,14 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         }
         viewModelScope.launch {
             currentUser.collect { profile ->
-                if (profile != null && !profile.displayName.isNullOrBlank()) {
-                    val currentPlan = graduationPlan.value
-                    if (currentPlan.studentName == "同學" || currentPlan.studentName == "王大明") {
-                        updateGraduationPlan(currentPlan.copy(studentName = profile.displayName))
+                if (profile != null) {
+                    val nameToSet = profile.displayName?.ifBlank { null }
+                        ?: profile.email?.substringBefore("@")
+                    if (!nameToSet.isNullOrBlank()) {
+                        val currentPlan = graduationPlan.value
+                        if (currentPlan.studentName == "同學" || currentPlan.studentName == "王大明" || currentPlan.studentName == "大學生" || currentPlan.studentName.isBlank()) {
+                            updateGraduationPlan(currentPlan.copy(studentName = nameToSet))
+                        }
                     }
                 }
                 // Automatic background cloud sync on authenticated user login
@@ -690,7 +694,14 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val result = authRepository.signInWithGoogle(webClientId)
             result.onSuccess { user ->
-                showToast("歡迎，${user.displayName ?: "同學"}！")
+                val nameToSet = user.displayName?.ifBlank { null } ?: user.email?.substringBefore("@")
+                if (!nameToSet.isNullOrBlank()) {
+                    val currentPlan = graduationPlan.value
+                    if (currentPlan.studentName == "同學" || currentPlan.studentName == "王大明" || currentPlan.studentName == "大學生" || currentPlan.studentName.isBlank()) {
+                        updateGraduationPlan(currentPlan.copy(studentName = nameToSet))
+                    }
+                }
+                showToast("歡迎，${user.displayName ?: nameToSet ?: "同學"}！")
                 onResult?.invoke(true, null)
             }.onFailure { e ->
                 showToast(e.message ?: "Google 登入失敗")
@@ -703,7 +714,14 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val result = authRepository.signInWithEmail(email, pass)
             result.onSuccess { user ->
-                showToast("歡迎回來，${user.displayName ?: "同學"}！")
+                val nameToSet = user.displayName?.ifBlank { null } ?: email.substringBefore("@")
+                if (nameToSet.isNotBlank()) {
+                    val currentPlan = graduationPlan.value
+                    if (currentPlan.studentName == "同學" || currentPlan.studentName == "王大明" || currentPlan.studentName == "大學生" || currentPlan.studentName.isBlank()) {
+                        updateGraduationPlan(currentPlan.copy(studentName = nameToSet))
+                    }
+                }
+                showToast("歡迎回來，${user.displayName ?: nameToSet}！")
                 onResult?.invoke(true, null)
             }.onFailure { e ->
                 showToast(e.message ?: "登入失敗")
@@ -716,7 +734,14 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val result = authRepository.signUpWithEmail(name, email, pass)
             result.onSuccess { user ->
-                showToast("註冊成功！歡迎加入 UniTrack+，${user.displayName ?: "同學"}")
+                val nameToSet = user.displayName?.ifBlank { null } ?: name.ifBlank { email.substringBefore("@") }
+                if (nameToSet.isNotBlank()) {
+                    val currentPlan = graduationPlan.value
+                    if (currentPlan.studentName == "同學" || currentPlan.studentName == "王大明" || currentPlan.studentName == "大學生" || currentPlan.studentName.isBlank()) {
+                        updateGraduationPlan(currentPlan.copy(studentName = nameToSet))
+                    }
+                }
+                showToast("註冊成功！歡迎加入 UniTrack+，${user.displayName ?: nameToSet}")
                 onResult?.invoke(true, null)
             }.onFailure { e ->
                 showToast(e.message ?: "註冊失敗")

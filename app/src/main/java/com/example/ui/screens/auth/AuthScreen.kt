@@ -93,7 +93,8 @@ fun AuthScreen(
             val isNew = user.isNewUser || plan.department.isBlank() || plan.department == "尚未設定系所"
             if (isNew) {
                 if (currentPage != AuthPage.REGISTER_STEP_1 && currentPage != AuthPage.REGISTER_STEP_2) {
-                    if (!user.displayName.isNullOrBlank() && name.isBlank()) name = user.displayName
+                    val defaultName = user.displayName?.ifBlank { null } ?: user.email?.substringBefore("@") ?: ""
+                    if (name.isBlank() && defaultName.isNotBlank()) name = defaultName
                     if (!user.email.isNullOrBlank() && email.isBlank()) email = user.email
                     viewModel.showToast("首次登入請先選擇就讀系所")
                     currentPage = AuthPage.REGISTER_STEP_1
@@ -145,7 +146,8 @@ fun AuthScreen(
                             if (currentUser != null) {
                                 val plan = graduationPlan
                                 if (currentUser?.isNewUser == true || plan.department.isBlank() || plan.department == "尚未設定系所") {
-                                    if (!currentUser?.displayName.isNullOrBlank() && name.isBlank()) name = currentUser?.displayName ?: ""
+                                    val defaultName = currentUser?.displayName?.ifBlank { null } ?: currentUser?.email?.substringBefore("@") ?: ""
+                                    if (name.isBlank() && defaultName.isNotBlank()) name = defaultName
                                     if (!currentUser?.email.isNullOrBlank() && email.isBlank()) email = currentUser?.email ?: ""
                                     currentPage = AuthPage.REGISTER_STEP_1
                                 } else {
