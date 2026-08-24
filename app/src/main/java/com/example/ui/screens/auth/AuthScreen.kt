@@ -39,8 +39,11 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.AuthState
 import com.example.ui.theme.*
@@ -249,50 +252,139 @@ fun AuthScreen(
         }
     }
 
-    // Password Reset Dialog
+    // Password Reset Dialog (Redesigned Modern Glassmorphism Card)
     if (showResetDialog) {
-        AlertDialog(
+        Dialog(
             onDismissRequest = { showResetDialog = false },
-            title = { Text("重設密碼", fontWeight = FontWeight.Bold) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = "請輸入您註冊時使用的電子郵件，我們將寄送重設密碼連結至您的信箱：",
-                        style = MaterialTheme.typography.bodySmall
-                    )
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+                shape = RoundedCornerShape(28.dp),
+                color = Color(0xFF1E293B),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
+                shadowElevation = 16.dp
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(18.dp)
+                ) {
+                    // Top Glowing Icon Badge
+                    Surface(
+                        shape = CircleShape,
+                        color = SapphirePrimary.copy(alpha = 0.18f),
+                        border = BorderStroke(1.dp, SapphirePrimary.copy(alpha = 0.35f)),
+                        modifier = Modifier.size(56.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.LockReset,
+                                contentDescription = null,
+                                tint = Color(0xFF60A5FA),
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                    }
+
+                    // Title & Subtitle
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "重設密碼",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "請輸入您註冊時使用的電子郵件，我們將立即寄送重設密碼連結至您的信箱。",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.White.copy(alpha = 0.7f),
+                            textAlign = TextAlign.Center,
+                            lineHeight = 20.sp
+                        )
+                    }
+
+                    // Email Input Field
                     OutlinedTextField(
                         value = resetEmail,
                         onValueChange = { resetEmail = it },
-                        label = { Text("電子郵件") },
+                        label = { Text("電子郵件 (Email)") },
+                        placeholder = { Text("example@email.com", color = Color.White.copy(alpha = 0.3f)) },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Email,
+                                contentDescription = null,
+                                tint = if (resetEmail.isNotBlank()) SapphirePrimary else Color.White.copy(alpha = 0.5f)
+                            )
+                        },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(
                             capitalization = KeyboardCapitalization.None,
                             keyboardType = KeyboardType.Email
                         ),
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(16.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = SapphirePrimary,
+                            unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                            focusedLabelColor = SapphirePrimary,
+                            unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
+                            focusedContainerColor = Color.White.copy(alpha = 0.04f),
+                            unfocusedContainerColor = Color.White.copy(alpha = 0.04f)
+                        )
                     )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (resetEmail.isNotBlank()) {
-                            viewModel.sendPasswordReset(resetEmail)
-                            showResetDialog = false
+
+                    // Action Buttons
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { showResetDialog = false },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(50.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = Color.White.copy(alpha = 0.06f)
+                            ),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
+                        ) {
+                            Text("取消", color = Color.White.copy(alpha = 0.8f), fontWeight = FontWeight.Medium)
                         }
-                    },
-                    enabled = resetEmail.isNotBlank()
-                ) {
-                    Text("寄送重設信")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showResetDialog = false }) {
-                    Text("取消")
+
+                        Button(
+                            onClick = {
+                                if (resetEmail.isNotBlank()) {
+                                    viewModel.sendPasswordReset(resetEmail)
+                                    showResetDialog = false
+                                }
+                            },
+                            enabled = resetEmail.isNotBlank(),
+                            modifier = Modifier
+                                .weight(1.3f)
+                                .height(50.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = SapphirePrimary,
+                                disabledContainerColor = SapphirePrimary.copy(alpha = 0.35f)
+                            )
+                        ) {
+                            Text("寄送重設信", fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+                    }
                 }
             }
-        )
+        }
     }
 }
 
