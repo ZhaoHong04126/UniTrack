@@ -447,24 +447,61 @@ fun SettingsScreen(
 
     // Delete Account Confirm Dialog
     if (showDeleteAccountConfirmDialog) {
+        var isDeleting by remember { mutableStateOf(false) }
+
         AlertDialog(
-            onDismissRequest = { showDeleteAccountConfirmDialog = false },
+            onDismissRequest = { if (!isDeleting) showDeleteAccountConfirmDialog = false },
             title = { Text("確認刪除帳號？", color = RoseAccent, fontWeight = FontWeight.Bold) },
-            text = { Text("這將會登出並清除您的雲端帳號關聯設定。此操作無法復原。") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("這將會永久刪除您的帳號，並同步清空雲端與本機的所有課表、記帳與學業檔案。此操作無法復原。")
+                    if (isDeleting) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = RoseAccent,
+                                strokeWidth = 2.dp
+                            )
+                            Text(
+                                text = "正在清除雲端與本機資料並刪除帳號...",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            },
             confirmButton = {
                 Button(
                     onClick = {
-                        viewModel.signOut()
-                        showDeleteAccountConfirmDialog = false
-                        onNavigateToAuth()
+                        isDeleting = true
+                        viewModel.deleteAccount { success, errorMsg ->
+                            isDeleting = false
+                            if (success) {
+                                showDeleteAccountConfirmDialog = false
+                                onNavigateToAuth()
+                            } else {
+                                Toast.makeText(context, errorMsg ?: "刪除帳號失敗", Toast.LENGTH_LONG).show()
+                            }
+                        }
                     },
+                    enabled = !isDeleting,
                     colors = ButtonDefaults.buttonColors(containerColor = RoseAccent)
                 ) {
                     Text("確定刪除")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteAccountConfirmDialog = false }) {
+                TextButton(
+                    onClick = { showDeleteAccountConfirmDialog = false },
+                    enabled = !isDeleting
+                ) {
                     Text("取消")
                 }
             }

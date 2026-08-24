@@ -256,6 +256,36 @@ class AuthRepository(private val context: Context) {
         }
     }
 
+    /**
+     * 永久刪除 Firebase Auth 帳號 (Permanently delete Firebase Auth Account)
+     */
+    suspend fun deleteAccount(): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val auth = firebaseAuth
+            auth?.currentUser?.delete()?.await()
+
+            val credentialManager = CredentialManager.create(context)
+            runCatching {
+                credentialManager.clearCredentialState(ClearCredentialStateRequest())
+            }
+
+            _currentUser.value = null
+            _authState.value = AuthState.Unauthenticated
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(tag, "Delete Firebase account failed", e)
+            val message = if (e.message?.contains("requires-recent-login", ignoreCase = true) == true ||
+                e.message?.contains("CREDENTIAL_TOO_OLD", ignoreCase = true) == true) {
+                "為了您的帳號安全，刪除帳號需要重新登入驗證後再執行"
+            } else {
+                mapFirebaseAuthException(e)
+            }
+            _currentUser.value = null
+            _authState.value = AuthState.Unauthenticated
+            Result.failure(Exception(message))
+        }
+    }
+
     fun clearError() {
         if (_authState.value is AuthState.Error) {
             _authState.value = _currentUser.value?.let { AuthState.Authenticated(it) } ?: AuthState.Unauthenticated

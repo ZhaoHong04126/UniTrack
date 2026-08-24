@@ -338,4 +338,64 @@ class FirestoreSyncRepository(
             Result.failure(e)
         }
     }
+
+    /**
+     * 徹底刪除該用戶在 Cloud Firestore 上的所有資料（使用者檔案、課程、審查門檻、記帳、預算）
+     */
+    suspend fun deleteAllCloudData(userId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        if (userId.isBlank()) return@withContext Result.success(Unit)
+        val db = firestore ?: return@withContext Result.success(Unit)
+
+        try {
+            val userDocRef = db.collection("users").document(userId)
+
+            // 1. 刪除 profile / graduation_plan
+            runCatching {
+                userDocRef.collection("profile").document("graduation_plan").delete().await()
+            }
+
+            // 2. 刪除 courses
+            runCatching {
+                val coursesDocs = userDocRef.collection("courses").get().await()
+                for (doc in coursesDocs.documents) {
+                    doc.reference.delete().await()
+                }
+            }
+
+            // 3. 刪除 thresholds
+            runCatching {
+                val thresholdsDocs = userDocRef.collection("thresholds").get().await()
+                for (doc in thresholdsDocs.documents) {
+                    doc.reference.delete().await()
+                }
+            }
+
+            // 4. 刪除 expenses
+            runCatching {
+                val expensesDocs = userDocRef.collection("expenses").get().await()
+                for (doc in expensesDocs.documents) {
+                    doc.reference.delete().await()
+                }
+            }
+
+            // 5. 刪除 budgets
+            runCatching {
+                val budgetsDocs = userDocRef.collection("budgets").get().await()
+                for (doc in budgetsDocs.documents) {
+                    doc.reference.delete().await()
+                }
+            }
+
+            // 6. 刪除 user 主文檔
+            runCatching {
+                userDocRef.delete().await()
+            }
+
+            Log.i(tag, "All Cloud Firestore data deleted successfully for user: $userId")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(tag, "Delete all Cloud Firestore data failed", e)
+            Result.failure(e)
+        }
+    }
 }

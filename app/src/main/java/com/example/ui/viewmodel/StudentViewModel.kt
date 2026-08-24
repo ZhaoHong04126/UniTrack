@@ -720,6 +720,33 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    /**
+     * 真正刪除帳號：依序清空雲端 Firestore、本機資料庫、並永久刪除 Firebase Auth 帳號
+     */
+    fun deleteAccount(onResult: ((Boolean, String?) -> Unit)? = null) {
+        viewModelScope.launch {
+            val uid = currentUser.value?.uid.orEmpty()
+
+            // 1. 刪除 Firestore 雲端所有資料
+            if (uid.isNotBlank()) {
+                firestoreSyncRepository.deleteAllCloudData(uid)
+            }
+
+            // 2. 清除本機 Room 資料庫（課表、記帳、審查門檻重置為預設空狀態）
+            repository.clearAllData()
+
+            // 3. 刪除 Firebase Auth 帳號並清除登入狀態憑證
+            val authDeleteResult = authRepository.deleteAccount()
+            authDeleteResult.onSuccess {
+                showToast("帳號已永久刪除，本機與雲端資料已完全清除")
+                onResult?.invoke(true, null)
+            }.onFailure { e ->
+                showToast(e.message ?: "刪除帳號失敗")
+                onResult?.invoke(false, e.message)
+            }
+        }
+    }
+
     fun clearAuthError() {
         authRepository.clearError()
     }
