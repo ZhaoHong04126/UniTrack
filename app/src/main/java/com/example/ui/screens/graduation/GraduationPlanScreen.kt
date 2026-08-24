@@ -73,6 +73,7 @@ fun GraduationPlanScreen(
                         fontWeight = FontWeight.Bold
                     )
                 },
+                windowInsets = WindowInsets(0.dp),
                 navigationIcon = {
                     IconButton(
                         onClick = onNavigateBack,
@@ -100,6 +101,7 @@ fun GraduationPlanScreen(
                 }
             )
         },
+        contentWindowInsets = WindowInsets(0.dp),
         modifier = modifier.fillMaxSize()
     ) { innerPadding ->
         Column(

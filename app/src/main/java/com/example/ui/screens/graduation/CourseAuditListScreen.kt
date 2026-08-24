@@ -82,6 +82,7 @@ fun CourseAuditListScreen(
                         )
                     }
                 },
+                windowInsets = WindowInsets(0.dp),
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(

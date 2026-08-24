@@ -59,6 +59,7 @@ fun GradeEntryScreen(
                         fontWeight = FontWeight.Bold
                     )
                 },
+                windowInsets = WindowInsets(0.dp),
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
