@@ -10,7 +10,7 @@ plugins {
 }
 
 android {
-  namespace = "com.unitrack.app"
+  namespace = "com.example"
   compileSdk = 37
 
   defaultConfig {

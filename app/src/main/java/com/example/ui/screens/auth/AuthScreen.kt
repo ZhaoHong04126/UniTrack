@@ -8,6 +8,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import com.example.R
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -590,7 +591,7 @@ private fun AuthLogoMascot() {
 
         // Official App Logo
         Image(
-            painter = painterResource(id = com.unitrack.app.R.drawable.ic_launcher_foreground),
+            painter = painterResource(id = R.drawable.ic_launcher_foreground),
             contentDescription = "UniTrack+ Logo",
             modifier = Modifier
                 .size(230.dp)
@@ -784,7 +785,7 @@ private fun LoginPageView(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Image(
-                    painter = painterResource(id = com.unitrack.app.R.drawable.ic_launcher_foreground),
+                    painter = painterResource(id = R.drawable.ic_launcher_foreground),
                     contentDescription = "Logo",
                     modifier = Modifier
                         .size(46.dp)
@@ -956,7 +957,7 @@ private fun LoginPageView(
                 border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
             ) {
                 Icon(
-                    painter = painterResource(id = com.unitrack.app.R.drawable.ic_google_logo),
+                    painter = painterResource(id = R.drawable.ic_google_logo),
                     contentDescription = "Google",
                     tint = Color.Unspecified,
                     modifier = Modifier.size(22.dp)
@@ -1116,7 +1117,7 @@ private fun RegisterStep1PageView(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Image(
-                painter = painterResource(id = com.unitrack.app.R.drawable.ic_launcher_foreground),
+                painter = painterResource(id = R.drawable.ic_launcher_foreground),
                 contentDescription = "Logo",
                 modifier = Modifier
                     .size(46.dp)
@@ -1864,7 +1865,7 @@ private fun RegisterStep2PageView(
             border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
         ) {
             Icon(
-                painter = painterResource(id = com.unitrack.app.R.drawable.ic_google_logo),
+                painter = painterResource(id = R.drawable.ic_google_logo),
                 contentDescription = "Google",
                 tint = Color.Unspecified,
                 modifier = Modifier.size(22.dp)
