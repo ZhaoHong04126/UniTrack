@@ -1,6 +1,8 @@
 package com.example.ui.viewmodel
 
 import android.app.Application
+import android.content.Context
+import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.local.AppDatabase
@@ -73,6 +75,19 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
     val monthFormat = SimpleDateFormat("yyyy-MM", Locale.getDefault())
     val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+
+    // Persistent App Preferences
+    @Suppress("SpellCheckingInspection")
+    private val prefs = application.getSharedPreferences("unitrack_prefs", Context.MODE_PRIVATE)
+
+    // Timetable display setting (true: 7 days / 一週, false: 5 days / 平日)
+    private val _showWeekend = MutableStateFlow(prefs.getBoolean("pref_show_weekend", true))
+    val showWeekend: StateFlow<Boolean> = _showWeekend.asStateFlow()
+
+    fun setShowWeekend(show: Boolean) {
+        _showWeekend.value = show
+        prefs.edit { putBoolean("pref_show_weekend", show) }
+    }
 
     // Selected semester in timetable
     private val _selectedSemester = MutableStateFlow(DefaultData.getCurrentAcademicSemester())

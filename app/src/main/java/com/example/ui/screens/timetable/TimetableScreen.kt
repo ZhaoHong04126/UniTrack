@@ -67,7 +67,7 @@ fun TimetableScreen(
     var selectedCourseDetail by remember { mutableStateOf<Course?>(null) }
     var showSemesterManageDialog by remember { mutableStateOf(false) }
     var isGridView by remember { mutableStateOf(true) }
-    var showWeekend by remember { mutableStateOf(true) }
+    val showWeekend by viewModel.showWeekend.collectAsStateWithLifecycle()
 
     val daysCount = if (showWeekend) 7 else 5
     val dayNames = if (showWeekend) {

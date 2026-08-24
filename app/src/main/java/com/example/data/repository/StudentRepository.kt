@@ -86,9 +86,6 @@ class StudentRepository(
             expenseDao.insertExpenses(DefaultData.getDefaultExpenses())
             expenseDao.setBudget(DefaultData.getDefaultBudget())
         }
-
-        // Clean up previously seeded demo courses completely
-        courseDao.deleteAllCourses()
     }
 
     suspend fun resetToDefaultData() = withContext(Dispatchers.IO) {

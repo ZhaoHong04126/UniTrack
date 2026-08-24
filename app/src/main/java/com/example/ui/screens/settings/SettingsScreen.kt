@@ -49,8 +49,10 @@ fun SettingsScreen(
 
     val plan by viewModel.graduationPlan.collectAsStateWithLifecycle()
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
+    val showWeekend by viewModel.showWeekend.collectAsStateWithLifecycle()
 
     var showEditProfileDialog by remember { mutableStateOf(false) }
+    var showDaysOptionDialog by remember { mutableStateOf(false) }
     var showPlanDialog by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
     var exportedJsonText by remember { mutableStateOf("") }
@@ -113,7 +115,24 @@ fun SettingsScreen(
             )
         }
 
-        // Section 2: Data Backup & Security
+        // Section 2: Timetable Display Settings
+        SectionHeader(title = "課表與顯示偏好")
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        ) {
+            SettingTileRow(
+                icon = Icons.Default.CalendarViewWeek,
+                title = "每週顯示天數",
+                subtitle = if (showWeekend) "一週 (七天・含週末)" else "平日 (五天・週一至週五)",
+                iconTint = TealSecondary,
+                onClick = { showDaysOptionDialog = true }
+            )
+        }
+
+        // Section 3: Data Backup & Security
         SectionHeader(title = "資料備份與安全")
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -271,6 +290,107 @@ fun SettingsScreen(
                 )
                 Toast.makeText(context, "已更新個人與學期資料", Toast.LENGTH_SHORT).show()
                 showEditProfileDialog = false
+            }
+        )
+    }
+
+    // Timetable Days Option Dialog (5 days vs 7 days)
+    if (showDaysOptionDialog) {
+        AlertDialog(
+            onDismissRequest = { showDaysOptionDialog = false },
+            title = {
+                Text(
+                    text = "設定課表每週顯示天數",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    // Option 1: 平日 (五天)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(
+                                if (!showWeekend) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                            )
+                            .clickable {
+                                viewModel.setShowWeekend(false)
+                                showDaysOptionDialog = false
+                                Toast.makeText(context, "已切換為：平日 (週一至週五)", Toast.LENGTH_SHORT).show()
+                            }
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text(
+                                text = "平日 (五天)",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Text(
+                                text = "顯示週一至週五（版面更寬敞）",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        if (!showWeekend) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                    }
+
+                    // Option 2: 一週 (七天)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(
+                                if (showWeekend) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                            )
+                            .clickable {
+                                viewModel.setShowWeekend(true)
+                                showDaysOptionDialog = false
+                                Toast.makeText(context, "已切換為：一週 (週一至週日)", Toast.LENGTH_SHORT).show()
+                            }
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text(
+                                text = "一週 (七天)",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Text(
+                                text = "顯示週一至週日（含週末排課）",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        if (showWeekend) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDaysOptionDialog = false }) {
+                    Text("取消")
+                }
             }
         )
     }
