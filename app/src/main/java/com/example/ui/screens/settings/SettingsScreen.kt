@@ -82,10 +82,11 @@ fun SettingsScreen(
             }
         }
 
-        // Student ID Card Widget (學生證風格卡片 - 純展示)
+        // Student ID Card Widget (學生證風格卡片)
         StudentIdCard(
             plan = plan,
-            currentUser = currentUser
+            currentUser = currentUser,
+            onEditClick = { showEditProfileDialog = true }
         )
 
         // Section: Account (帳號設定)
@@ -673,11 +674,13 @@ fun SettingsScreen(
 @Composable
 private fun StudentIdCard(
     plan: GraduationPlan,
-    currentUser: UserProfile?
+    currentUser: UserProfile?,
+    onEditClick: () -> Unit = {}
 ) {
     val isLoggedIn = currentUser != null
 
     Card(
+        onClick = onEditClick,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
@@ -969,6 +972,16 @@ private fun EditProfileDialog(
     var admissionSem by remember { mutableStateOf(currentAdmissionSemester) }
     var semester by remember { mutableStateOf(currentSemester) }
 
+    var showDeptDialog by remember { mutableStateOf(false) }
+
+    if (showDeptDialog) {
+        DepartmentSelectDialog(
+            selectedDepartment = department,
+            onSelect = { department = it },
+            onDismiss = { showDeptDialog = false }
+        )
+    }
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
@@ -1154,18 +1167,15 @@ private fun EditProfileDialog(
                             )
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                             ProfileInfoRow(
-                                label = "姓名",
-                                value = name.ifBlank { "同學" }
-                            )
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-                            ProfileInfoRow(
                                 label = "學校",
                                 value = "國立臺東大學"
                             )
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-                            ProfileInfoRow(
-                                label = "科系",
-                                value = department.ifBlank { "尚未設定" }
+                            ProfileInteractiveRow(
+                                label = "主修科系",
+                                value = if (department.isBlank() || department == "尚未設定系所") "點擊選擇科系" else department,
+                                isPlaceholder = department.isBlank() || department == "尚未設定系所",
+                                onClick = { showDeptDialog = true }
                             )
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                             ProfileInfoRow(
@@ -1208,5 +1218,177 @@ private fun ProfileInfoRow(
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface
         )
+    }
+}
+
+@Suppress("SameParameterValue")
+@Composable
+private fun ProfileInteractiveRow(
+    label: String,
+    value: String,
+    isPlaceholder: Boolean = false,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .clickable { onClick() }
+            .padding(vertical = 14.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = if (isPlaceholder) SapphirePrimary else MaterialTheme.colorScheme.onSurface
+            )
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                contentDescription = null,
+                modifier = Modifier.size(13.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun DepartmentSelectDialog(
+    selectedDepartment: String,
+    onSelect: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.85f)
+                .padding(horizontal = 16.dp, vertical = 24.dp),
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "選擇主修系所",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "國立臺東大學",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.Close, contentDescription = "關閉")
+                    }
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    com.example.data.local.DefaultData.NTTU_COLLEGES.forEach { college ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(college.icon, fontSize = 20.sp)
+                                    Text(
+                                        text = college.name,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = SapphirePrimary
+                                    )
+                                }
+
+                                college.departments.forEach { dept ->
+                                    val isSelected = selectedDepartment == dept
+                                    Surface(
+                                        onClick = {
+                                            onSelect(dept)
+                                            onDismiss()
+                                        },
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = if (isSelected) SapphirePrimary.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surface,
+                                        border = BorderStroke(
+                                            1.dp,
+                                            if (isSelected) SapphirePrimary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                                        ),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = dept,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                color = if (isSelected) SapphirePrimary else MaterialTheme.colorScheme.onSurface
+                                            )
+                                            if (isSelected) {
+                                                Icon(
+                                                    imageVector = Icons.Default.CheckCircle,
+                                                    contentDescription = null,
+                                                    tint = SapphirePrimary,
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

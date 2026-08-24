@@ -135,7 +135,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                 }
                 // Automatic background cloud sync on authenticated user login
                 if (profile != null) {
-                    syncWithCloud()
+                    syncWithCloud(silent = true)
                 }
             }
         }
@@ -520,7 +520,10 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
     fun updateGraduationPlan(plan: GraduationPlan) = viewModelScope.launch {
         repository.updateGraduationPlan(plan)
-        _userMessage.value = "已儲存畢業審查標準"
+        val user = currentUser.value
+        if (user != null) {
+            firestoreSyncRepository.uploadAllToCloud(user.uid)
+        }
     }
 
     fun setPrimarySemester(semester: String) = viewModelScope.launch {
@@ -815,10 +818,10 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
     // ==================== Cloud Sync (Firestore) ====================
 
-    fun syncWithCloud(onResult: ((Boolean, String?) -> Unit)? = null) {
+    fun syncWithCloud(silent: Boolean = false, onResult: ((Boolean, String?) -> Unit)? = null) {
         val user = currentUser.value
         if (user == null) {
-            showToast("請先登入帳號以同步雲端資料")
+            if (!silent) showToast("請先登入帳號以同步雲端資料")
             onResult?.invoke(false, "未登入")
             return
         }
@@ -829,10 +832,14 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             _isSyncing.value = false
             result.onSuccess {
                 _lastSyncTime.value = System.currentTimeMillis()
-                showToast("雲端資料同步完成！")
+                if (!silent) {
+                    showToast("雲端資料同步完成！")
+                }
                 onResult?.invoke(true, null)
             }.onFailure { e ->
-                showToast("雲端同步失敗：${e.message}")
+                if (!silent) {
+                    showToast("雲端同步失敗：${e.message}")
+                }
                 onResult?.invoke(false, e.message)
             }
         }

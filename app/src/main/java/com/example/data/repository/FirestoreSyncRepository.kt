@@ -45,6 +45,8 @@ class FirestoreSyncRepository(
 
         try {
             val userDocRef = db.collection("users").document(userId)
+            // 寫入用戶主文檔以確保非虛擬節點
+            userDocRef.set(hashMapOf("lastActive" to System.currentTimeMillis()), SetOptions.merge()).await()
 
             // 1. 上傳 Graduation Plan
             val plan = graduationDao.getGraduationPlanOnce()
@@ -179,27 +181,86 @@ class FirestoreSyncRepository(
             // 1. 下載 Graduation Plan
             val planSnapshot = userDocRef.collection("profile").document("graduation_plan").get().await()
             if (planSnapshot.exists()) {
+                val localPlan = graduationDao.getGraduationPlanOnce()
+                val remoteDepartment = planSnapshot.getString("department")?.trim()
+                val remoteStudentName = planSnapshot.getString("studentName")?.trim()
+
+                // Resolution logic:
+                // If remote department is valid (not blank and not "尚未設定系所"), use remote.
+                // Else if local plan has a valid department, KEEP local department!
+                val resolvedDept = if (!remoteDepartment.isNullOrBlank() && remoteDepartment != "尚未設定系所") {
+                    remoteDepartment
+                } else if (localPlan != null && localPlan.department.isNotBlank() && localPlan.department != "尚未設定系所") {
+                    localPlan.department
+                } else {
+                    remoteDepartment ?: "尚未設定系所"
+                }
+
+                val isDefaultName = { n: String? -> n.isNullOrBlank() || n == "同學" || n == "王大明" || n == "大學生" }
+                val resolvedName = if (!isDefaultName(remoteStudentName)) {
+                    remoteStudentName!!
+                } else if (localPlan != null && !isDefaultName(localPlan.studentName)) {
+                    localPlan.studentName
+                } else {
+                    remoteStudentName ?: localPlan?.studentName ?: "同學"
+                }
+
                 val plan = GraduationPlan(
                     id = 1,
-                    department = planSnapshot.getString("department") ?: "尚未設定系所",
-                    studentName = planSnapshot.getString("studentName") ?: "同學",
-                    targetTotalCredits = planSnapshot.getDouble("targetTotalCredits") ?: 128.0,
-                    targetRequiredCredits = planSnapshot.getDouble("targetRequiredCredits") ?: 58.0,
-                    targetElectiveCredits = planSnapshot.getDouble("targetElectiveCredits") ?: 36.0,
-                    targetGeneralCredits = planSnapshot.getDouble("targetGeneralCredits") ?: 28.0,
-                    targetCollegeCoreCredits = planSnapshot.getDouble("targetCollegeCoreCredits") ?: 9.0,
-                    targetBasicModuleCredits = planSnapshot.getDouble("targetBasicModuleCredits") ?: 24.0,
-                    targetCoreModuleCredits = planSnapshot.getDouble("targetCoreModuleCredits") ?: 24.0,
-                    targetProfessionalModuleCredits = planSnapshot.getDouble("targetProfessionalModuleCredits") ?: 23.0,
-                    targetFreeCredits = planSnapshot.getDouble("targetFreeCredits") ?: 20.0,
-                    minPassingScore = planSnapshot.getDouble("minPassingScore") ?: 60.0,
+                    department = resolvedDept,
+                    studentName = resolvedName,
+                    targetTotalCredits = planSnapshot.getDouble("targetTotalCredits") ?: (localPlan?.targetTotalCredits ?: 128.0),
+                    targetRequiredCredits = planSnapshot.getDouble("targetRequiredCredits") ?: (localPlan?.targetRequiredCredits ?: 58.0),
+                    targetElectiveCredits = planSnapshot.getDouble("targetElectiveCredits") ?: (localPlan?.targetElectiveCredits ?: 36.0),
+                    targetGeneralCredits = planSnapshot.getDouble("targetGeneralCredits") ?: (localPlan?.targetGeneralCredits ?: 28.0),
+                    targetCollegeCoreCredits = planSnapshot.getDouble("targetCollegeCoreCredits") ?: (localPlan?.targetCollegeCoreCredits ?: 9.0),
+                    targetBasicModuleCredits = planSnapshot.getDouble("targetBasicModuleCredits") ?: (localPlan?.targetBasicModuleCredits ?: 24.0),
+                    targetCoreModuleCredits = planSnapshot.getDouble("targetCoreModuleCredits") ?: (localPlan?.targetCoreModuleCredits ?: 24.0),
+                    targetProfessionalModuleCredits = planSnapshot.getDouble("targetProfessionalModuleCredits") ?: (localPlan?.targetProfessionalModuleCredits ?: 23.0),
+                    targetFreeCredits = planSnapshot.getDouble("targetFreeCredits") ?: (localPlan?.targetFreeCredits ?: 20.0),
+                    minPassingScore = planSnapshot.getDouble("minPassingScore") ?: (localPlan?.minPassingScore ?: 60.0),
                     gpaScale = runCatching {
-                        GpaScale.valueOf(planSnapshot.getString("gpaScale") ?: GpaScale.PERCENTAGE.name)
-                    }.getOrDefault(GpaScale.PERCENTAGE),
-                    admissionSemester = planSnapshot.getString("admissionSemester") ?: DefaultData.getCurrentAcademicSemester(),
-                    currentSemester = planSnapshot.getString("currentSemester") ?: DefaultData.getCurrentAcademicSemester()
+                        GpaScale.valueOf(planSnapshot.getString("gpaScale") ?: (localPlan?.gpaScale?.name ?: GpaScale.PERCENTAGE.name))
+                    }.getOrDefault(localPlan?.gpaScale ?: GpaScale.PERCENTAGE),
+                    admissionSemester = planSnapshot.getString("admissionSemester") ?: (localPlan?.admissionSemester ?: DefaultData.getCurrentAcademicSemester()),
+                    currentSemester = planSnapshot.getString("currentSemester") ?: (localPlan?.currentSemester ?: DefaultData.getCurrentAcademicSemester())
                 )
                 graduationDao.insertOrUpdatePlan(plan)
+
+                // If local had a better department/name than cloud, update cloud as well so cloud is in sync!
+                if (resolvedDept != remoteDepartment || resolvedName != remoteStudentName) {
+                    val updateMap = mutableMapOf<String, Any>(
+                        "department" to resolvedDept,
+                        "studentName" to resolvedName,
+                        "lastUpdated" to System.currentTimeMillis()
+                    )
+                    userDocRef.collection("profile").document("graduation_plan")
+                        .set(updateMap, SetOptions.merge()).await()
+                }
+            } else {
+                val localPlan = graduationDao.getGraduationPlanOnce()
+                if (localPlan != null) {
+                    val planMap = hashMapOf(
+                        "department" to localPlan.department,
+                        "studentName" to localPlan.studentName,
+                        "targetTotalCredits" to localPlan.targetTotalCredits,
+                        "targetRequiredCredits" to localPlan.targetRequiredCredits,
+                        "targetElectiveCredits" to localPlan.targetElectiveCredits,
+                        "targetGeneralCredits" to localPlan.targetGeneralCredits,
+                        "targetCollegeCoreCredits" to localPlan.targetCollegeCoreCredits,
+                        "targetBasicModuleCredits" to localPlan.targetBasicModuleCredits,
+                        "targetCoreModuleCredits" to localPlan.targetCoreModuleCredits,
+                        "targetProfessionalModuleCredits" to localPlan.targetProfessionalModuleCredits,
+                        "targetFreeCredits" to localPlan.targetFreeCredits,
+                        "minPassingScore" to localPlan.minPassingScore,
+                        "gpaScale" to localPlan.gpaScale.name,
+                        "admissionSemester" to localPlan.admissionSemester,
+                        "currentSemester" to localPlan.currentSemester,
+                        "lastUpdated" to System.currentTimeMillis()
+                    )
+                    userDocRef.collection("profile").document("graduation_plan")
+                        .set(planMap, SetOptions.merge()).await()
+                }
             }
 
             // 2. 下載 Courses
@@ -325,9 +386,10 @@ class FirestoreSyncRepository(
         try {
             val userDocRef = db.collection("users").document(userId)
             val coursesSnapshot = userDocRef.collection("courses").limit(1).get().await()
+            val planSnapshot = userDocRef.collection("profile").document("graduation_plan").get().await()
 
-            if (!coursesSnapshot.isEmpty) {
-                // 雲端已有資料，從雲端拉取
+            if (!coursesSnapshot.isEmpty || planSnapshot.exists()) {
+                // 雲端已有資料，從雲端拉取並智慧合併
                 downloadAllFromCloud(userId)
             } else {
                 // 雲端為空，將本機資料備份至雲端

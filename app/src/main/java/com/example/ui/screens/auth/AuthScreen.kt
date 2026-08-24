@@ -87,15 +87,16 @@ fun AuthScreen(
 
     // Auto-navigate on auth success or redirect to RegisterStep1 if profile incomplete
     val user = currentUser
-    LaunchedEffect(user) {
+    LaunchedEffect(user, graduationPlan.department) {
         if (user != null) {
             val isNew = user.isNewUser
-            if (isNew) {
+            val isDeptUnset = graduationPlan.department.isBlank() || graduationPlan.department == "尚未設定系所"
+            if (isNew || isDeptUnset) {
                 if (currentPage == AuthPage.SPLASH || currentPage == AuthPage.LOGIN || currentPage == AuthPage.WELCOME) {
                     val defaultName = user.displayName?.ifBlank { null } ?: user.email?.substringBefore("@") ?: ""
                     if (name.isBlank() && defaultName.isNotBlank()) name = defaultName
                     if (!user.email.isNullOrBlank() && email.isBlank()) email = user.email
-                    viewModel.showToast("首次登入請先選擇就讀系所")
+                    viewModel.showToast("請先選擇就讀系所以完成設定")
                     currentPage = AuthPage.REGISTER_STEP_1
                 }
             } else {
@@ -154,7 +155,8 @@ fun AuthScreen(
                         viewModel = viewModel,
                         onFinishLoading = {
                             if (currentUser != null) {
-                                if (currentUser?.isNewUser == true) {
+                                val isDeptUnset = graduationPlan.department.isBlank() || graduationPlan.department == "尚未設定系所"
+                                if (currentUser?.isNewUser == true || isDeptUnset) {
                                     val defaultName = currentUser?.displayName?.ifBlank { null } ?: currentUser?.email?.substringBefore("@") ?: ""
                                     if (name.isBlank() && defaultName.isNotBlank()) name = defaultName
                                     if (!currentUser?.email.isNullOrBlank() && email.isBlank()) email = currentUser?.email ?: ""
@@ -937,7 +939,9 @@ private fun LoginPageView(
                     viewModel.signInWithGoogle { success, _ ->
                         if (success) {
                             val user = viewModel.currentUser.value
-                            if (user?.isNewUser == true) {
+                            val plan = viewModel.graduationPlan.value
+                            val isDeptUnset = plan.department.isBlank() || plan.department == "尚未設定系所"
+                            if (user?.isNewUser == true || isDeptUnset) {
                                 viewModel.showToast("首次登入請先選擇就讀系所")
                                 onNavigateToRegister()
                             } else {
