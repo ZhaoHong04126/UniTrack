@@ -16,7 +16,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -107,7 +106,6 @@ class MainActivity : ComponentActivity() {
                 val items = listOf(
                     AppDestination.Dashboard,
                     AppDestination.Timetable,
-                    AppDestination.Graduation,
                     AppDestination.Expense,
                     AppDestination.Settings
                 )
