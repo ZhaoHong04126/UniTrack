@@ -1,26 +1,29 @@
 <!DOCTYPE html>
-<!--suppress ALL -->
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>UniTrack+ | 重設密碼</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Firebase JS SDK Compatibility -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
     body {
       background-color: #0B1120;
       color: #F8FAFC;
-      font-family: sans-serif;
+      font-family: "Plus Jakarta Sans", "Noto Sans TC", system-ui, -apple-system, sans-serif;
     }
     .mesh-bg {
       background-image: 
-        radial-gradient(circle at 15% 20%, rgba(59, 130, 246, 0.15) 0%, transparent 45%),
-        radial-gradient(circle at 85% 80%, rgba(99, 102, 241, 0.12) 0%, transparent 45%);
+        radial-gradient(circle at 15% 15%, rgba(59, 130, 246, 0.15) 0%, transparent 45%),
+        radial-gradient(circle at 85% 85%, rgba(99, 102, 241, 0.12) 0%, transparent 45%);
     }
     .glass-card {
-      background: rgba(30, 41, 59, 0.75);
+      background: rgba(30, 41, 59, 0.7);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
       border: 1px solid rgba(255, 255, 255, 0.12);
@@ -50,13 +53,13 @@
     <!-- Reset Form -->
     <form id="reset-form" class="hidden space-y-4" onsubmit="handlePasswordReset(event)">
       <div class="space-y-1.5">
-        <label for="new-password" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">設定新密碼</label>
+        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">設定新密碼</label>
         <div class="relative">
           <input type="password" id="new-password" required minlength="6" placeholder="請輸入新密碼 (至少 6 位)"
             class="w-full px-4 py-3.5 pr-11 bg-slate-900/70 border border-white/15 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
             oninput="checkPasswordStrength()">
-          <button type="button" onclick="togglePasswordVisibility('new-password')" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <button type="button" onclick="togglePasswordVisibility(\x27new-password\x27, \x27eye-icon-1\x27)" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition">
+            <svg id="eye-icon-1" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
             </svg>
@@ -71,12 +74,12 @@
       </div>
 
       <div class="space-y-1.5">
-        <label for="confirm-password" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">確認新密碼</label>
+        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">確認新密碼</label>
         <div class="relative">
           <input type="password" id="confirm-password" required minlength="6" placeholder="請再次輸入新密碼"
             class="w-full px-4 py-3.5 pr-11 bg-slate-900/70 border border-white/15 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition">
-          <button type="button" onclick="togglePasswordVisibility('confirm-password')" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <button type="button" onclick="togglePasswordVisibility(\x27confirm-password\x27, \x27eye-icon-2\x27)" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition">
+            <svg id="eye-icon-2" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
             </svg>
@@ -100,7 +103,7 @@
   </div>
 
   <script>
-    var firebaseConfig = {
+    const firebaseConfig = {
       apiKey: "AIzaSyDAoH77HI5XamJ4-z4G85xf3YQs_a6JH50",
       authDomain: "unitrack2027-bbc01.firebaseapp.com",
       projectId: "unitrack2027-bbc01",
@@ -108,41 +111,42 @@
     };
 
     firebase.initializeApp(firebaseConfig);
-    var auth = firebase.auth();
+    const auth = firebase.auth();
 
-    var urlParams = new URLSearchParams(window.location.search);
-    var mode = urlParams.get("mode");
-    var oobCode = urlParams.get("oobCode");
+    const urlParams = new URLSearchParams(window.location.search);
+    const mode = urlParams.get("mode");
+    const oobCode = urlParams.get("oobCode");
 
-    var loadingBox = document.getElementById("loading-box");
-    var resetForm = document.getElementById("reset-form");
-    var accountHint = document.getElementById("account-hint");
+    const loadingBox = document.getElementById("loading-box");
+    const resetForm = document.getElementById("reset-form");
+    const accountHint = document.getElementById("account-hint");
 
     if (mode === "resetPassword" && oobCode) {
       auth.verifyPasswordResetCode(oobCode)
-        .then(function(email) {
+        .then(email => {
           loadingBox.classList.add("hidden");
           resetForm.classList.remove("hidden");
-          accountHint.innerHTML = "帳號 <span class=\"text-blue-400 font-semibold\">" + email + "</span>";
+          accountHint.innerHTML = `帳號 <span class="text-blue-400 font-semibold">${email}</span>`;
         })
-        .catch(function(err) {
+        .catch(err => {
           loadingBox.classList.add("hidden");
           showStatus("此重設密碼連結已過期或已被使用，請重新在 App 中發送重設信。", "error");
         });
     } else {
       loadingBox.classList.add("hidden");
-      showStatus("缺少有效的重設驗證代碼，請確認點擊信件中的完整連結。", "error");
+      showStatus("缺少有效的重設驗證代碼 (oobCode)，請確認點擊信件中的完整連結。", "error");
     }
 
-    function togglePasswordVisibility(inputId) {
-      var input = document.getElementById(inputId);
-      input.type = input.type === "password" ? "text" : "password";
+    function togglePasswordVisibility(inputId, iconId) {
+      const input = document.getElementById(inputId);
+      const isPassword = input.type === "password";
+      input.type = isPassword ? "text" : "password";
     }
 
     function checkPasswordStrength() {
-      var val = document.getElementById("new-password").value;
-      var bar = document.getElementById("strength-bar");
-      var text = document.getElementById("strength-text");
+      const val = document.getElementById("new-password").value;
+      const bar = document.getElementById("strength-bar");
+      const text = document.getElementById("strength-text");
 
       if (val.length === 0) {
         bar.style.width = "0%";
@@ -168,25 +172,25 @@
 
     function handlePasswordReset(e) {
       e.preventDefault();
-      var p1 = document.getElementById("new-password").value;
-      var p2 = document.getElementById("confirm-password").value;
+      const p1 = document.getElementById("new-password").value;
+      const p2 = document.getElementById("confirm-password").value;
 
       if (p1 !== p2) {
         showStatus("兩次輸入的密碼不一致，請再次確認。", "error");
         return;
       }
 
-      var btn = document.getElementById("submit-btn");
+      const btn = document.getElementById("submit-btn");
       btn.disabled = true;
       btn.textContent = "正在更新密碼...";
 
       auth.confirmPasswordReset(oobCode, p1)
-        .then(function() {
+        .then(() => {
           resetForm.classList.add("hidden");
           accountHint.textContent = "密碼重設完成";
           showStatus("🎉 密碼已成功更新！您現在可以使用新密碼返回 UniTrack+ App 登入。", "success");
         })
-        .catch(function(err) {
+        .catch(err => {
           btn.disabled = false;
           btn.textContent = "確認更新密碼";
           showStatus("密碼更新失敗：" + err.message, "error");
@@ -194,12 +198,13 @@
     }
 
     function showStatus(msg, type) {
-      var box = document.getElementById("status-box");
+      const box = document.getElementById("status-box");
       box.textContent = msg;
-      box.className = "p-4 rounded-2xl text-sm leading-relaxed text-center font-medium " + 
-        (type === "success" 
+      box.className = `p-4 rounded-2xl text-sm leading-relaxed text-center font-medium ${
+        type === "success" 
           ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" 
-          : "bg-rose-500/15 text-rose-300 border border-rose-500/30");
+          : "bg-rose-500/15 text-rose-300 border border-rose-500/30"
+      }`;
       box.classList.remove("hidden");
     }
   </script>

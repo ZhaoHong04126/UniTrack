@@ -233,19 +233,10 @@ class AuthRepository(private val context: Context) {
     suspend fun sendPasswordResetEmail(email: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val auth = firebaseAuth ?: return@withContext Result.success(Unit)
-            val actionCodeSettings = com.google.firebase.auth.ActionCodeSettings.newBuilder()
-                .setUrl("https://unitrack2027-bbc01.web.app")
-                .setHandleCodeInApp(false)
-                .build()
-            auth.sendPasswordResetEmail(email.trim(), actionCodeSettings).await()
+            auth.sendPasswordResetEmail(email.trim()).await()
             Result.success(Unit)
-        } catch (_: Exception) {
-            try {
-                firebaseAuth?.sendPasswordResetEmail(email.trim())?.await()
-                Result.success(Unit)
-            } catch (fallbackEx: Exception) {
-                Result.failure(Exception(mapFirebaseAuthException(fallbackEx)))
-            }
+        } catch (e: Exception) {
+            Result.failure(Exception(mapFirebaseAuthException(e)))
         }
     }
 
