@@ -206,12 +206,13 @@ fun AuthScreen(
                         },
                         onNext = {
                             val yearNum = admissionYear.filter { it.isDigit() }.take(3).ifBlank { (java.util.Calendar.getInstance().get(java.util.Calendar.YEAR) - 1911).toString() }
-                            val semesterCode = "$yearNum-1"
+                            val admissionCode = "$yearNum-1"
+                            val currentActiveSemester = com.example.data.local.DefaultData.getCurrentAcademicSemester()
 
                             val updatedPlan = graduationPlan.copy(
                                 department = department.ifBlank { "尚未設定系所" },
-                                admissionSemester = semesterCode,
-                                currentSemester = semesterCode
+                                admissionSemester = admissionCode,
+                                currentSemester = currentActiveSemester
                             )
                             viewModel.updateGraduationPlan(updatedPlan)
 
@@ -666,17 +667,17 @@ private fun LoginPageView(
     val authState by viewModel.authState.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp)
-            .padding(top = 6.dp, bottom = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp)
+            .padding(top = 8.dp, bottom = 24.dp)
     ) {
-        // Top Nav
+        // Top Nav (Pinned at the top)
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.TopCenter),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -703,227 +704,234 @@ private fun LoginPageView(
             }
         }
 
-        Spacer(modifier = Modifier.height(6.dp))
-
-        // Title Header
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        // Main Login Form (Vertically Centered in Screen)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.Center)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
-            Image(
-                painter = painterResource(id = com.example.R.drawable.ic_launcher_foreground),
-                contentDescription = "Logo",
-                modifier = Modifier
-                    .size(46.dp)
-                    .scale(1.25f)
-            )
-            Column {
-                Text(
-                    text = "歡迎回到 UniTrack+",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
+            // Title Header
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Image(
+                    painter = painterResource(id = com.example.R.drawable.ic_launcher_foreground),
+                    contentDescription = "Logo",
+                    modifier = Modifier
+                        .size(46.dp)
+                        .scale(1.25f)
                 )
-                Text(
-                    text = "登入以同步你的課表、學分與記帳資料",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.65f)
-                )
-            }
-        }
-
-        // Form Fields
-        val isAuthError = authState is AuthState.Error
-
-        OutlinedTextField(
-            value = email,
-            onValueChange = {
-                onEmailChange(it)
-                if (authState is AuthState.Error) viewModel.clearAuthError()
-            },
-            isError = isAuthError,
-            label = { Text("電子郵件 (Email)") },
-            leadingIcon = { Icon(Icons.Default.Email, contentDescription = null, tint = if (isAuthError) RoseAccent else SapphirePrimary) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
-            keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White,
-                focusedBorderColor = SapphirePrimary,
-                unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
-                focusedLabelColor = SapphirePrimary,
-                unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
-                errorBorderColor = RoseAccent,
-                errorLabelColor = RoseAccent,
-                errorLeadingIconColor = RoseAccent,
-                errorTextColor = Color.White,
-                errorContainerColor = RoseAccent.copy(alpha = 0.05f)
-            )
-        )
-
-        OutlinedTextField(
-            value = password,
-            onValueChange = {
-                onPasswordChange(it)
-                if (authState is AuthState.Error) viewModel.clearAuthError()
-            },
-            isError = isAuthError,
-            label = { Text("密碼") },
-            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = if (isAuthError) RoseAccent else SapphirePrimary) },
-            trailingIcon = {
-                IconButton(onClick = onTogglePasswordVisible) {
-                    Icon(
-                        imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                        contentDescription = if (passwordVisible) "隱藏密碼" else "顯示密碼",
-                        tint = if (isAuthError) RoseAccent else Color.White.copy(alpha = 0.7f)
+                Column {
+                    Text(
+                        text = "歡迎回到 UniTrack+",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Text(
+                        text = "登入以同步你的課表、學分與記帳資料",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.65f)
                     )
                 }
-            },
-            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = {
-                focusManager.clearFocus()
-                if (email.isNotBlank() && password.isNotBlank()) {
-                    viewModel.signInWithEmail(email, password) { success, _ ->
-                        if (success) onAuthSuccess()
-                    }
-                }
-            }),
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White,
-                focusedBorderColor = SapphirePrimary,
-                unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
-                focusedLabelColor = SapphirePrimary,
-                unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
-                errorBorderColor = RoseAccent,
-                errorLabelColor = RoseAccent,
-                errorLeadingIconColor = RoseAccent,
-                errorTrailingIconColor = RoseAccent,
-                errorTextColor = Color.White,
-                errorContainerColor = RoseAccent.copy(alpha = 0.05f)
-            )
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
-        ) {
-            TextButton(onClick = onForgotPassword) {
-                Text("忘記密碼？", style = MaterialTheme.typography.bodySmall, color = Color(0xFF60A5FA), fontWeight = FontWeight.SemiBold)
             }
-        }
 
-        // 登入進度條 (Login In-Progress Bar)
-        AnimatedVisibility(
-            visible = authState is AuthState.Loading,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically()
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+            // Form Fields
+            val isAuthError = authState is AuthState.Error
+
+            OutlinedTextField(
+                value = email,
+                onValueChange = {
+                    onEmailChange(it)
+                    if (authState is AuthState.Error) viewModel.clearAuthError()
+                },
+                isError = isAuthError,
+                label = { Text("電子郵件 (Email)") },
+                leadingIcon = { Icon(Icons.Default.Email, contentDescription = null, tint = if (isAuthError) RoseAccent else SapphirePrimary) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedBorderColor = SapphirePrimary,
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                    focusedLabelColor = SapphirePrimary,
+                    unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
+                    errorBorderColor = RoseAccent,
+                    errorLabelColor = RoseAccent,
+                    errorLeadingIconColor = RoseAccent,
+                    errorTextColor = Color.White,
+                    errorContainerColor = RoseAccent.copy(alpha = 0.05f)
+                )
+            )
+
+            OutlinedTextField(
+                value = password,
+                onValueChange = {
+                    onPasswordChange(it)
+                    if (authState is AuthState.Error) viewModel.clearAuthError()
+                },
+                isError = isAuthError,
+                label = { Text("密碼") },
+                leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = if (isAuthError) RoseAccent else SapphirePrimary) },
+                trailingIcon = {
+                    IconButton(onClick = onTogglePasswordVisible) {
+                        Icon(
+                            imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                            contentDescription = if (passwordVisible) "隱藏密碼" else "顯示密碼",
+                            tint = if (isAuthError) RoseAccent else Color.White.copy(alpha = 0.7f)
+                        )
+                    }
+                },
+                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = {
+                    focusManager.clearFocus()
+                    if (email.isNotBlank() && password.isNotBlank()) {
+                        viewModel.signInWithEmail(email, password) { success, _ ->
+                            if (success) onAuthSuccess()
+                        }
+                    }
+                }),
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedBorderColor = SapphirePrimary,
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                    focusedLabelColor = SapphirePrimary,
+                    unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
+                    errorBorderColor = RoseAccent,
+                    errorLabelColor = RoseAccent,
+                    errorLeadingIconColor = RoseAccent,
+                    errorTrailingIconColor = RoseAccent,
+                    errorTextColor = Color.White,
+                    errorContainerColor = RoseAccent.copy(alpha = 0.05f)
+                )
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
             ) {
-                LinearProgressIndicator(
+                TextButton(onClick = onForgotPassword) {
+                    Text("忘記密碼？", style = MaterialTheme.typography.bodySmall, color = Color(0xFF60A5FA), fontWeight = FontWeight.SemiBold)
+                }
+            }
+
+            // 登入進度條 (Login In-Progress Bar)
+            AnimatedVisibility(
+                visible = authState is AuthState.Loading,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp)),
-                    color = SapphirePrimary,
-                    trackColor = Color.White.copy(alpha = 0.12f)
-                )
-                Text(
-                    text = "正在進行帳號驗證與登入...",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF93C5FD),
-                    fontSize = 12.sp
-                )
-            }
-        }
-
-        Button(
-            onClick = {
-                focusManager.clearFocus()
-                viewModel.signInWithEmail(email, password) { success, errMsg ->
-                    if (success) {
-                        val plan = viewModel.graduationPlan.value
-                        if (plan.department.isBlank() || plan.department == "尚未設定系所") {
-                            viewModel.showToast("尚未設定就讀系所，請先選擇系所")
-                            onNavigateToRegister()
-                        } else {
-                            onAuthSuccess()
-                        }
-                    } else if (errMsg?.contains("不存在") == true || errMsg?.contains("註冊") == true || errMsg?.contains("尚未註冊") == true) {
-                        viewModel.showToast("此帳號尚未註冊，請先設定就讀系所進行註冊")
-                        onNavigateToRegister()
-                    }
+                        .padding(vertical = 4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    LinearProgressIndicator(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp)),
+                        color = SapphirePrimary,
+                        trackColor = Color.White.copy(alpha = 0.12f)
+                    )
+                    Text(
+                        text = "正在進行帳號驗證與登入...",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF93C5FD),
+                        fontSize = 12.sp
+                    )
                 }
-            },
-            enabled = email.isNotBlank() && password.isNotBlank() && authState !is AuthState.Loading,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(54.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = SapphirePrimary)
-        ) {
-            if (authState is AuthState.Loading) {
-                CircularProgressIndicator(modifier = Modifier.size(22.dp), color = Color.White, strokeWidth = 2.5.dp)
-            } else {
-                Text("立即登入", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
             }
-        }
 
-        // Divider
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            HorizontalDivider(modifier = Modifier.weight(1f), color = Color.White.copy(alpha = 0.15f))
-            Text("  或使用其他方式  ", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.45f))
-            HorizontalDivider(modifier = Modifier.weight(1f), color = Color.White.copy(alpha = 0.15f))
-        }
-
-        // Google One-Tap Sign In
-        OutlinedButton(
-            onClick = {
-                viewModel.signInWithGoogle { success, _ ->
-                    if (success) {
-                        val user = viewModel.currentUser.value
-                        val plan = viewModel.graduationPlan.value
-                        val isNew = (user?.isNewUser == true) || plan.department.isBlank() || plan.department == "尚未設定系所"
-                        if (isNew) {
-                            viewModel.showToast("首次登入請先選擇就讀系所")
+            Button(
+                onClick = {
+                    focusManager.clearFocus()
+                    viewModel.signInWithEmail(email, password) { success, errMsg ->
+                        if (success) {
+                            val plan = viewModel.graduationPlan.value
+                            if (plan.department.isBlank() || plan.department == "尚未設定系所") {
+                                viewModel.showToast("尚未設定就讀系所，請先選擇系所")
+                                onNavigateToRegister()
+                            } else {
+                                onAuthSuccess()
+                            }
+                        } else if (errMsg?.contains("不存在") == true || errMsg?.contains("註冊") == true || errMsg?.contains("尚未註冊") == true) {
+                            viewModel.showToast("此帳號尚未註冊，請先設定就讀系所進行註冊")
                             onNavigateToRegister()
-                        } else {
-                            onAuthSuccess()
                         }
                     }
+                },
+                enabled = email.isNotBlank() && password.isNotBlank() && authState !is AuthState.Loading,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = SapphirePrimary)
+            ) {
+                if (authState is AuthState.Loading) {
+                    CircularProgressIndicator(modifier = Modifier.size(22.dp), color = Color.White, strokeWidth = 2.5.dp)
+                } else {
+                    Text("立即登入", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
                 }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White.copy(alpha = 0.06f)),
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
-        ) {
-            Icon(
-                painter = painterResource(id = com.example.R.drawable.ic_google_logo),
-                contentDescription = "Google",
-                tint = Color.Unspecified,
-                modifier = Modifier.size(22.dp)
-            )
-            Spacer(modifier = Modifier.width(10.dp))
-            Text("使用 Google 帳號一鍵登入", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = Color.White)
+            }
+
+            // Divider
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                HorizontalDivider(modifier = Modifier.weight(1f), color = Color.White.copy(alpha = 0.15f))
+                Text("  或使用其他方式  ", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.45f))
+                HorizontalDivider(modifier = Modifier.weight(1f), color = Color.White.copy(alpha = 0.15f))
+            }
+
+            // Google One-Tap Sign In
+            OutlinedButton(
+                onClick = {
+                    viewModel.signInWithGoogle { success, _ ->
+                        if (success) {
+                            val user = viewModel.currentUser.value
+                            val plan = viewModel.graduationPlan.value
+                            val isNew = (user?.isNewUser == true) || plan.department.isBlank() || plan.department == "尚未設定系所"
+                            if (isNew) {
+                                viewModel.showToast("首次登入請先選擇就讀系所")
+                                onNavigateToRegister()
+                            } else {
+                                onAuthSuccess()
+                            }
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White.copy(alpha = 0.06f)),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
+            ) {
+                Icon(
+                    painter = painterResource(id = com.example.R.drawable.ic_google_logo),
+                    contentDescription = "Google",
+                    tint = Color.Unspecified,
+                    modifier = Modifier.size(22.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text("使用 Google 帳號一鍵登入", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = Color.White)
+            }
         }
     }
 }
