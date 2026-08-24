@@ -30,6 +30,14 @@ data class Course(
     val repeatMode: String = "每週"
 )
 
+data class CourseNote(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    val category: String = "一般", // 一般, 作業, 考試, 公告, 重點
+    val content: String = "",
+    val timestamp: Long = System.currentTimeMillis(),
+    val week: Int? = null
+)
+
 @Entity(tableName = "graduation_plans")
 data class GraduationPlan(
     @PrimaryKey

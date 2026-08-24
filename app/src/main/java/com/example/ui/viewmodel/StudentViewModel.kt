@@ -141,6 +141,84 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         _semesterTimeConfigVersion.value += 1
     }
 
+    fun getCourseAttendance(courseId: Long): Map<Int, String> {
+        val key = "course_attendance_$courseId"
+        val raw = prefs.getString(key, null) ?: return emptyMap()
+        return try {
+            val json = org.json.JSONObject(raw)
+            val map = mutableMapOf<Int, String>()
+            val keys = json.keys()
+            while (keys.hasNext()) {
+                val k = keys.next()
+                val week = k.toIntOrNull()
+                if (week != null) {
+                    map[week] = json.getString(k)
+                }
+            }
+            map
+        } catch (_: Exception) {
+            emptyMap()
+        }
+    }
+
+    fun saveCourseAttendance(courseId: Long, attendance: Map<Int, String>) {
+        val key = "course_attendance_$courseId"
+        val json = org.json.JSONObject()
+        attendance.forEach { (week, status) ->
+            json.put(week.toString(), status)
+        }
+        prefs.edit {
+            putString(key, json.toString())
+        }
+        _semesterTimeConfigVersion.value += 1
+    }
+
+    fun getCourseNotes(courseId: Long): List<CourseNote> {
+        val key = "course_notes_$courseId"
+        val raw = prefs.getString(key, null)
+        if (!raw.isNullOrBlank()) {
+            return try {
+                val arr = org.json.JSONArray(raw)
+                val list = mutableListOf<CourseNote>()
+                for (i in 0 until arr.length()) {
+                    val obj = arr.getJSONObject(i)
+                    list.add(
+                        CourseNote(
+                            id = obj.optString("id", UUID.randomUUID().toString()),
+                            category = obj.optString("category", "一般"),
+                            content = obj.optString("content", ""),
+                            timestamp = obj.optLong("timestamp", System.currentTimeMillis()),
+                            week = if (obj.has("week") && !obj.isNull("week")) obj.getInt("week") else null
+                        )
+                    )
+                }
+                list.sortedByDescending { it.timestamp }
+            } catch (_: Exception) {
+                emptyList()
+            }
+        }
+        return emptyList()
+    }
+
+    fun saveCourseNotes(courseId: Long, notes: List<CourseNote>) {
+        val key = "course_notes_$courseId"
+        val arr = org.json.JSONArray()
+        notes.forEach { n ->
+            val obj = org.json.JSONObject().apply {
+                put("id", n.id)
+                put("category", n.category)
+                put("content", n.content)
+                put("timestamp", n.timestamp)
+                if (n.week != null) put("week", n.week) else put("week", org.json.JSONObject.NULL)
+            }
+            arr.put(obj)
+        }
+        prefs.edit {
+            putString(key, arr.toString())
+        }
+        _semesterTimeConfigVersion.value += 1
+    }
+
     // Selected semester in timetable
     private val _selectedSemester = MutableStateFlow(DefaultData.getCurrentAcademicSemester())
     val selectedSemester: StateFlow<String> = _selectedSemester.asStateFlow()

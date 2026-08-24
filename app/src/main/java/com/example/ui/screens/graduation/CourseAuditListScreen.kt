@@ -329,8 +329,36 @@ fun CourseAuditListScreen(
     }
 
     selectedCourseDetail?.let { course ->
+        val attendanceMap = remember(course.id) {
+            viewModel.getCourseAttendance(course.id)
+        }
+        val notesList = remember(course.id) {
+            viewModel.getCourseNotes(course.id)
+        }
         CourseDetailBottomSheet(
             course = course,
+            semesterStartDate = viewModel.getSemesterStartDate(course.semester),
+            totalWeeks = viewModel.getSemesterTotalWeeks(course.semester),
+            attendanceMap = attendanceMap,
+            notesList = notesList,
+            onUpdateAttendance = { week, status ->
+                val newMap = attendanceMap.toMutableMap()
+                if (newMap[week] == status) {
+                    newMap.remove(week)
+                } else {
+                    newMap[week] = status
+                }
+                viewModel.saveCourseAttendance(course.id, newMap)
+            },
+            onAddNote = { content, category, week ->
+                val currentNotes = viewModel.getCourseNotes(course.id).toMutableList()
+                currentNotes.add(0, com.example.data.model.CourseNote(content = content, category = category, week = week))
+                viewModel.saveCourseNotes(course.id, currentNotes)
+            },
+            onDeleteNote = { noteId ->
+                val currentNotes = viewModel.getCourseNotes(course.id).filter { it.id != noteId }
+                viewModel.saveCourseNotes(course.id, currentNotes)
+            },
             onDismiss = { selectedCourseDetail = null },
             onEdit = {
                 editingCourse = course
