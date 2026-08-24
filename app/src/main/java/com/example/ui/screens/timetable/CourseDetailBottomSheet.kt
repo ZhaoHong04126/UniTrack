@@ -311,9 +311,9 @@ private fun AttendanceTabView(
     }
 
     val isSemesterStarted = !today.isBefore(parsedStart)
-    val daysUntilStart = java.time.temporal.ChronoUnit.DAYS.between(today, parsedStart)
 
     if (!isSemesterStarted && startDateStr.isNotBlank()) {
+        val daysUntilStart = java.time.temporal.ChronoUnit.DAYS.between(today, parsedStart)
         Box(
             modifier = Modifier
                 .fillMaxSize()

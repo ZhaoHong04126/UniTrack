@@ -243,9 +243,6 @@ class MainActivity : ComponentActivity() {
                                 viewModel = studentViewModel,
                                 onNavigateToAuth = {
                                     navController.navigate("auth")
-                                },
-                                onNavigateToPlanSetting = {
-                                    navController.navigate("graduation_plan_setting")
                                 }
                             )
                         }

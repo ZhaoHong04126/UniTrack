@@ -39,8 +39,7 @@ import com.example.ui.viewmodel.StudentViewModel
 fun SettingsScreen(
     viewModel: StudentViewModel,
     modifier: Modifier = Modifier,
-    onNavigateToAuth: () -> Unit = {},
-    onNavigateToPlanSetting: () -> Unit = {}
+    onNavigateToAuth: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -105,22 +104,6 @@ fun SettingsScreen(
             )
         }
 
-        // Section 1: Academic & Profile Settings
-        SectionHeader(title = "學業與審查設定")
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-        ) {
-            SettingTileRow(
-                icon = Icons.Default.Tune,
-                title = "畢業審查標準設定",
-                subtitle = "總目標 ${plan.targetTotalCredits.toInt()} 學分・各模組門檻",
-                iconTint = IndigoAccent,
-                onClick = onNavigateToPlanSetting
-            )
-        }
 
         // Section 2: Timetable Display Settings
         SectionHeader(title = "課表與顯示偏好")
