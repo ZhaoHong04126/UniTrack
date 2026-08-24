@@ -744,9 +744,9 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                 val nameToSet = user.displayName?.ifBlank { null } ?: name.ifBlank { email.substringBefore("@") }
                 val currentPlan = graduationPlan.value
                 val updatedPlan = currentPlan.copy(
-                    studentName = if (nameToSet.isNotBlank()) nameToSet else currentPlan.studentName,
-                    department = if (department.isNotBlank()) department else currentPlan.department,
-                    admissionSemester = if (admissionSemester.isNotBlank()) admissionSemester else currentPlan.admissionSemester
+                    studentName = nameToSet.ifBlank { currentPlan.studentName },
+                    department = department.ifBlank { currentPlan.department },
+                    admissionSemester = admissionSemester.ifBlank { currentPlan.admissionSemester }
                 )
                 repository.updateGraduationPlan(updatedPlan)
 
