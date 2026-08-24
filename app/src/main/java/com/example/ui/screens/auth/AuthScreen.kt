@@ -702,6 +702,53 @@ private fun LoginPageView(
             }
         }
 
+        // 查無帳號或錯誤提示：引導前往註冊新帳號
+        AnimatedVisibility(
+            visible = isAuthError,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(onClick = onNavigateToRegister),
+                color = RoseAccent.copy(alpha = 0.12f),
+                border = BorderStroke(1.dp, RoseAccent.copy(alpha = 0.35f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = null,
+                            tint = RoseAccent,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = "尚未擁有帳號？",
+                            color = RoseAccent,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                    Text(
+                        text = "請進入註冊新帳號 →",
+                        color = Color(0xFF60A5FA),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
         // 登入進度條 (Login In-Progress Bar)
         AnimatedVisibility(
             visible = authState is AuthState.Loading,
@@ -785,6 +832,29 @@ private fun LoginPageView(
             )
             Spacer(modifier = Modifier.width(10.dp))
             Text("使用 Google 帳號一鍵登入", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = Color.White)
+        }
+
+        // 底部引導前往註冊
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 6.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "還沒有帳號？",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.65f)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "請進入註冊新帳號",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF60A5FA),
+                modifier = Modifier.clickable(onClick = onNavigateToRegister)
+            )
         }
     }
 }
