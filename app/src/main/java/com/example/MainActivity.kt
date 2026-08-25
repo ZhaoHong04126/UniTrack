@@ -171,9 +171,6 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onNavigateToExpense = {
                                     navController.navigate(AppDestination.Expense.route)
-                                },
-                                onNavigateToSettings = {
-                                    navController.navigate(AppDestination.Settings.route)
                                 }
                             )
                         }
