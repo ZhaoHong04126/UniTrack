@@ -5,9 +5,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/widget_background"
-    android:fitsSystemWindows="true"
     android:orientation="vertical"
-    android:padding="8dp"
+    android:padding="16dp"
     tools:ignore="SmallSp,HardcodedText,ContentDescription,TouchTargetSizeCheck">
 
     <!-- Top Header -->
@@ -18,6 +17,7 @@
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingHorizontal="4dp"
+        android:paddingTop="4dp"
         android:paddingBottom="4dp">
 
         <ImageView
@@ -75,7 +75,8 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:contentDescription="@string/widget_weekly_grid_name"
-            android:scaleType="fitXY" />
+            android:scaleType="fitXY"
+            android:src="@drawable/widget_weekly_grid_preview" />
 
         <!-- Empty State -->
         <LinearLayout

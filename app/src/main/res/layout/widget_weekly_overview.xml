@@ -153,7 +153,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:contentDescription="@string/widget_weekly_overview_name"
-                android:scaleType="fitXY" />
+                android:scaleType="fitXY"
+                android:src="@drawable/widget_weekly_overview_preview" />
 
             <TextView
                 android:id="@+id/tv_overview_empty"

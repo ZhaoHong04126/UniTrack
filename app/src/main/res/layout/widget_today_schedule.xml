@@ -5,9 +5,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/widget_background"
-    android:fitsSystemWindows="true"
     android:orientation="vertical"
-    android:padding="12dp"
+    android:padding="16dp"
     tools:ignore="SmallSp,HardcodedText,ContentDescription">
 
     <!-- Header Row -->
@@ -16,6 +15,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
+        android:paddingTop="2dp"
         android:orientation="horizontal">
 
         <ImageView
@@ -178,7 +178,7 @@
             android:orientation="horizontal"
             android:paddingHorizontal="6dp"
             android:paddingVertical="4dp"
-            android:visibility="gone">
+            android:visibility="visible">
 
             <TextView
                 android:id="@+id/tv_course_period_1"
@@ -186,7 +186,7 @@
                 android:layout_height="22dp"
                 android:background="@drawable/widget_badge_bg"
                 android:gravity="center"
-                tools:text="1"
+                android:text="1"
                 android:textColor="@color/widget_badge_text"
                 android:textSize="10sp"
                 android:textStyle="bold" />
@@ -204,7 +204,7 @@
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
                     android:maxLines="1"
-                    tools:text="作業系統概論"
+                    android:text="作業系統概論"
                     android:textColor="@color/widget_text_primary"
                     android:textSize="12sp"
                     android:textStyle="bold" />
@@ -215,7 +215,7 @@
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
                     android:maxLines="1"
-                    tools:text="08:10-09:00 • 電機館 101"
+                    android:text="08:10-09:00 • 電機館 101"
                     android:textColor="@color/widget_text_secondary"
                     android:textSize="10sp" />
             </LinearLayout>
@@ -232,7 +232,7 @@
             android:orientation="horizontal"
             android:paddingHorizontal="6dp"
             android:paddingVertical="4dp"
-            android:visibility="gone">
+            android:visibility="visible">
 
             <TextView
                 android:id="@+id/tv_course_period_2"
@@ -240,7 +240,7 @@
                 android:layout_height="22dp"
                 android:background="@drawable/widget_badge_bg"
                 android:gravity="center"
-                tools:text="2"
+                android:text="2"
                 android:textColor="@color/widget_badge_text"
                 android:textSize="10sp"
                 android:textStyle="bold" />
@@ -258,7 +258,7 @@
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
                     android:maxLines="1"
-                    tools:text="微積分 (二)"
+                    android:text="微積分 (二)"
                     android:textColor="@color/widget_text_primary"
                     android:textSize="12sp"
                     android:textStyle="bold" />
@@ -269,7 +269,7 @@
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
                     android:maxLines="1"
-                    tools:text="09:10-10:00 • 共同教室 203"
+                    android:text="09:10-10:00 • 共同教室 203"
                     android:textColor="@color/widget_text_secondary"
                     android:textSize="10sp" />
             </LinearLayout>
