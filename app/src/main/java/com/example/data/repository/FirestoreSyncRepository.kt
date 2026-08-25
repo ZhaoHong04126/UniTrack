@@ -78,6 +78,8 @@ class FirestoreSyncRepository(
                     "gpaScale" to plan.gpaScale.name,
                     "admissionSemester" to plan.admissionSemester,
                     "currentSemester" to plan.currentSemester,
+                    "subcategoriesJson" to plan.subcategoriesJson,
+                    "customCategoriesJson" to plan.customCategoriesJson,
                     "lastUpdated" to System.currentTimeMillis()
                 )
                 userDocRef.collection("profile").document("graduation_plan")
@@ -111,6 +113,7 @@ class FirestoreSyncRepository(
                     "requirementType" to course.requirementType.name,
                     "generalEduSubtype" to course.generalEduSubtype.name,
                     "subcategory" to course.subcategory,
+                    "customCategory" to course.customCategory,
                     "semester" to course.semester,
                     "score" to course.score,
                     "letterGrade" to course.letterGrade,
@@ -279,6 +282,8 @@ class FirestoreSyncRepository(
                         "gpaScale" to localPlan.gpaScale.name,
                         "admissionSemester" to localPlan.admissionSemester,
                         "currentSemester" to localPlan.currentSemester,
+                        "subcategoriesJson" to localPlan.subcategoriesJson,
+                        "customCategoriesJson" to localPlan.customCategoriesJson,
                         "lastUpdated" to System.currentTimeMillis()
                     )
                     userDocRef.collection("profile").document("graduation_plan")
@@ -315,6 +320,7 @@ class FirestoreSyncRepository(
                             GeneralEduSubtype.valueOf(doc.getString("generalEduSubtype") ?: GeneralEduSubtype.NONE.name)
                         }.getOrDefault(GeneralEduSubtype.NONE),
                         subcategory = doc.getString("subcategory") ?: "",
+                        customCategory = doc.getString("customCategory") ?: "",
                         semester = doc.getString("semester") ?: DefaultData.getCurrentAcademicSemester(),
                         score = doc.getDouble("score"),
                         letterGrade = doc.getString("letterGrade"),

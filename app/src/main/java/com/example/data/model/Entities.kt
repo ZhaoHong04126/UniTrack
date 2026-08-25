@@ -21,6 +21,7 @@ data class Course(
     val requirementType: CourseRequirementType = CourseRequirementType.REQUIRED,
     val generalEduSubtype: GeneralEduSubtype = GeneralEduSubtype.NONE,
     val subcategory: String = "", // 自訂子分類 / 領域 / 類別 (如：國語文、向度一、AI通識)
+    val customCategory: String = "", // 自訂母體分類名稱 (若為自訂母體分類時使用)
     val semester: String = "", // e.g. 113-1, 113-2
     val score: Double? = null, // 0~100 or null if currently taking
     val letterGrade: String? = null, // "A+", "A", "B+", etc.
@@ -70,33 +71,115 @@ data class GraduationPlan(
     val gpaScale: GpaScale = GpaScale.PERCENTAGE,
     val admissionSemester: String = "",
     val currentSemester: String = "",
-    val subcategoriesJson: String = "" // JSON map of Category -> List<SubcategoryName>
+    val subcategoriesJson: String = "", // JSON map of Category -> List<SubcategoryRule>
+    val customCategoriesJson: String = "" // JSON list of CustomParentCategory
 ) {
-    fun getSubcategories(category: CourseCategory): List<String> {
+    fun getSubcategoryRules(category: CourseCategory): List<SubcategoryRule> {
         if (subcategoriesJson.isBlank()) {
             return if (category == CourseCategory.GENERAL_EDU) {
                 listOf(
-                    "語文：國語文能力",
-                    "語文：英語文能力",
-                    "資訊能力課程",
-                    "跨領域核心：人文藝術領域",
-                    "跨領域核心：社會科學領域",
-                    "跨領域核心：自然科學領域",
-                    "博雅：美學、哲學與文化實踐",
-                    "博雅：公民、社會與全球視野",
-                    "博雅：科技、自然與環境生態",
-                    "博雅：自我、人際與成長調適",
-                    "體適能：運動與健康"
+                    SubcategoryRule(name = "語文：國語文能力", requiredCredits = 4.0, electiveCredits = 0.0),
+                    SubcategoryRule(name = "語文：英語文能力", requiredCredits = 6.0, electiveCredits = 0.0),
+                    SubcategoryRule(name = "資訊能力課程", requiredCredits = 2.0, electiveCredits = 0.0),
+                    SubcategoryRule(name = "跨領域核心：人文藝術領域", requiredCredits = 0.0, electiveCredits = 2.0),
+                    SubcategoryRule(name = "跨領域核心：社會科學領域", requiredCredits = 0.0, electiveCredits = 2.0),
+                    SubcategoryRule(name = "跨領域核心：自然科學領域", requiredCredits = 0.0, electiveCredits = 2.0),
+                    SubcategoryRule(name = "博雅：美學、哲學與文化實踐", requiredCredits = 0.0, electiveCredits = 2.0),
+                    SubcategoryRule(name = "博雅：公民、社會與全球視野", requiredCredits = 0.0, electiveCredits = 2.0),
+                    SubcategoryRule(name = "博雅：科技、自然與環境生態", requiredCredits = 0.0, electiveCredits = 2.0),
+                    SubcategoryRule(name = "博雅：自我、人際與成長調適", requiredCredits = 0.0, electiveCredits = 2.0),
+                    SubcategoryRule(name = "體適能：運動與健康", requiredCredits = 2.0, electiveCredits = 0.0)
                 )
             } else emptyList()
         }
         return try {
             val json = org.json.JSONObject(subcategoriesJson)
+            if (!json.has(category.name)) {
+                return if (category == CourseCategory.GENERAL_EDU) {
+                    listOf(
+                        SubcategoryRule(name = "語文：國語文能力", requiredCredits = 4.0, electiveCredits = 0.0),
+                        SubcategoryRule(name = "語文：英語文能力", requiredCredits = 6.0, electiveCredits = 0.0),
+                        SubcategoryRule(name = "資訊能力課程", requiredCredits = 2.0, electiveCredits = 0.0),
+                        SubcategoryRule(name = "跨領域核心：人文藝術領域", requiredCredits = 0.0, electiveCredits = 2.0),
+                        SubcategoryRule(name = "跨領域核心：社會科學領域", requiredCredits = 0.0, electiveCredits = 2.0),
+                        SubcategoryRule(name = "跨領域核心：自然科學領域", requiredCredits = 0.0, electiveCredits = 2.0),
+                        SubcategoryRule(name = "博雅：美學、哲學與文化實踐", requiredCredits = 0.0, electiveCredits = 2.0),
+                        SubcategoryRule(name = "博雅：公民、社會與全球視野", requiredCredits = 0.0, electiveCredits = 2.0),
+                        SubcategoryRule(name = "博雅：科技、自然與環境生態", requiredCredits = 0.0, electiveCredits = 2.0),
+                        SubcategoryRule(name = "博雅：自我、人際與成長調適", requiredCredits = 0.0, electiveCredits = 2.0),
+                        SubcategoryRule(name = "體適能：運動與健康", requiredCredits = 2.0, electiveCredits = 0.0)
+                    )
+                } else emptyList()
+            }
             val arr = json.optJSONArray(category.name) ?: return emptyList()
-            val list = mutableListOf<String>()
+            val list = mutableListOf<SubcategoryRule>()
             for (i in 0 until arr.length()) {
-                val item = arr.optString(i)
-                if (item.isNotBlank()) list.add(item)
+                val item = arr.opt(i)
+                if (item is org.json.JSONObject) {
+                    val name = item.optString("name", "")
+                    if (name.isNotBlank()) {
+                        list.add(
+                            SubcategoryRule(
+                                id = item.optString("id", java.util.UUID.randomUUID().toString()),
+                                name = name,
+                                requiredCredits = item.optDouble("requiredCredits", 0.0),
+                                electiveCredits = item.optDouble("electiveCredits", 0.0)
+                            )
+                        )
+                    }
+                } else if (item is String && item.isNotBlank()) {
+                    list.add(SubcategoryRule(name = item))
+                }
+            }
+            list
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    fun getSubcategories(category: CourseCategory): List<String> {
+        return getSubcategoryRules(category).map { it.name }
+    }
+
+    fun getCustomCategories(): List<CustomParentCategory> {
+        if (customCategoriesJson.isBlank()) return emptyList()
+        return try {
+            val arr = org.json.JSONArray(customCategoriesJson)
+            val list = mutableListOf<CustomParentCategory>()
+            for (i in 0 until arr.length()) {
+                val obj = arr.optJSONObject(i) ?: continue
+                val subsArr = obj.optJSONArray("subcategories")
+                val subs = mutableListOf<SubcategoryRule>()
+                if (subsArr != null) {
+                    for (j in 0 until subsArr.length()) {
+                        val item = subsArr.opt(j)
+                        if (item is org.json.JSONObject) {
+                            val name = item.optString("name", "")
+                            if (name.isNotBlank()) {
+                                subs.add(
+                                    SubcategoryRule(
+                                        id = item.optString("id", java.util.UUID.randomUUID().toString()),
+                                        name = name,
+                                        requiredCredits = item.optDouble("requiredCredits", 0.0),
+                                        electiveCredits = item.optDouble("electiveCredits", 0.0)
+                                    )
+                                )
+                            }
+                        } else if (item is String && item.isNotBlank()) {
+                            subs.add(SubcategoryRule(name = item))
+                        }
+                    }
+                }
+                list.add(
+                    CustomParentCategory(
+                        id = obj.optString("id", java.util.UUID.randomUUID().toString()),
+                        name = obj.optString("name", ""),
+                        colorHex = obj.optString("colorHex", "#8B5CF6"),
+                        requiredCredits = obj.optDouble("requiredCredits", 0.0),
+                        electiveCredits = obj.optDouble("electiveCredits", 0.0),
+                        subcategories = subs
+                    )
+                )
             }
             list
         } catch (_: Exception) {
@@ -109,16 +192,77 @@ data class GraduationPlan(
             val obj = org.json.JSONObject()
             map.forEach { (cat, list) ->
                 val cleanList = list.filter { it.isNotBlank() }.distinct()
-                if (cleanList.isNotEmpty()) {
-                    val arr = org.json.JSONArray()
-                    cleanList.forEach { arr.put(it) }
-                    obj.put(cat.name, arr)
-                }
+                val arr = org.json.JSONArray()
+                cleanList.forEach { arr.put(it) }
+                obj.put(cat.name, arr)
             }
             return obj.toString()
         }
+
+        fun encodeSubcategoryRules(map: Map<CourseCategory, List<SubcategoryRule>>): String {
+            val obj = org.json.JSONObject()
+            map.forEach { (cat, list) ->
+                val arr = org.json.JSONArray()
+                list.filter { it.name.isNotBlank() }.forEach { rule ->
+                    val ruleObj = org.json.JSONObject().apply {
+                        put("id", rule.id)
+                        put("name", rule.name)
+                        put("requiredCredits", rule.requiredCredits)
+                        put("electiveCredits", rule.electiveCredits)
+                    }
+                    arr.put(ruleObj)
+                }
+                obj.put(cat.name, arr)
+            }
+            return obj.toString()
+        }
+
+        fun encodeCustomCategories(list: List<CustomParentCategory>): String {
+            val arr = org.json.JSONArray()
+            list.forEach { cat ->
+                if (cat.name.isNotBlank()) {
+                    val obj = org.json.JSONObject()
+                    obj.put("id", cat.id)
+                    obj.put("name", cat.name)
+                    obj.put("colorHex", cat.colorHex)
+                    obj.put("requiredCredits", cat.requiredCredits)
+                    obj.put("electiveCredits", cat.electiveCredits)
+                    val subsArr = org.json.JSONArray()
+                    cat.subcategories.filter { it.name.isNotBlank() }.forEach { rule ->
+                        val ruleObj = org.json.JSONObject().apply {
+                            put("id", rule.id)
+                            put("name", rule.name)
+                            put("requiredCredits", rule.requiredCredits)
+                            put("electiveCredits", rule.electiveCredits)
+                        }
+                        subsArr.put(ruleObj)
+                    }
+                    obj.put("subcategories", subsArr)
+                    arr.put(obj)
+                }
+            }
+            return arr.toString()
+        }
     }
 }
+
+data class SubcategoryRule(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    val name: String,
+    val requiredCredits: Double = 0.0,
+    val electiveCredits: Double = 0.0
+) {
+    val totalCredits: Double get() = requiredCredits + electiveCredits
+}
+
+data class CustomParentCategory(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    val name: String,
+    val colorHex: String = "#8B5CF6",
+    val requiredCredits: Double = 0.0,
+    val electiveCredits: Double = 0.0,
+    val subcategories: List<SubcategoryRule> = emptyList()
+)
 
 @Entity(tableName = "graduation_thresholds")
 data class GraduationThreshold(

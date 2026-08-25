@@ -39,9 +39,17 @@ import androidx.core.graphics.toColorInt
 import com.example.data.model.Course
 import com.example.data.model.CourseCategory
 import com.example.data.model.CourseRequirementType
+import com.example.data.model.CustomParentCategory
 import com.example.data.model.GeneralEduSubtype
 import com.example.data.model.GraduationPlan
 import java.util.Locale
+
+data class CategoryOption(
+    val standardCat: CourseCategory? = null,
+    val customCat: CustomParentCategory? = null,
+    val label: String,
+    val shortLabel: String
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -109,15 +117,15 @@ fun AddEditCourseDialog(
     var isPickingStartTime by remember { mutableStateOf(true) }
 
     var creditsText by remember { mutableStateOf(initialCourse?.credits?.toString() ?: "3.0") }
-    var category by remember { mutableStateOf<CourseCategory?>(initialCourse?.category) }
-    var requirementType by remember { mutableStateOf<CourseRequirementType?>(initialCourse?.requirementType) }
+    var category by remember { mutableStateOf(initialCourse?.category) }
+    var customCategoryName by remember { mutableStateOf(initialCourse?.customCategory ?: "") }
+    var requirementType by remember { mutableStateOf(initialCourse?.requirementType) }
     var subcategoryText by remember {
         mutableStateOf(
             initialCourse?.subcategory?.ifBlank { null }
                 ?: if (initialCourse?.generalEduSubtype != null && initialCourse.generalEduSubtype != GeneralEduSubtype.NONE) initialCourse.generalEduSubtype.label else ""
         )
     }
-    var generalEduSubtype by remember { mutableStateOf(initialCourse?.generalEduSubtype ?: GeneralEduSubtype.NONE) }
     var semester by remember { mutableStateOf(initialCourse?.semester ?: defaultSemester) }
     var colorHex by remember { mutableStateOf(initialCourse?.colorHex ?: "#3B82F6") }
     var notes by remember { mutableStateOf(initialCourse?.notes ?: "") }
@@ -169,93 +177,26 @@ fun AddEditCourseDialog(
         null
     }
 
-    val minScore = plan?.minPassingScore ?: 60.0
-
-    fun isPassed(c: Course): Boolean {
-        return c.isCompleted || (c.score != null && c.score >= minScore)
-    }
-
-    fun getCategoryTargets(cat: CourseCategory): Triple<Double, Double, Double> {
-        if (plan == null) return Triple(0.0, 0.0, 0.0)
-        return when (cat) {
-            CourseCategory.GENERAL_EDU -> {
-                val total = plan.targetGeneralCredits
-                val req = if (plan.targetGeneralRequiredCredits == 0.0 && plan.targetGeneralElectiveCredits == 0.0 && total > 0.0) total else plan.targetGeneralRequiredCredits
-                val ele = plan.targetGeneralElectiveCredits
-                Triple(req, ele, if (total > 0.0) total else (req + ele))
-            }
-            CourseCategory.COLLEGE_CORE -> {
-                val total = plan.targetCollegeCoreCredits
-                val req = if (plan.targetCollegeCoreRequiredCredits > 0.0) plan.targetCollegeCoreRequiredCredits else total
-                Triple(req, 0.0, if (total > 0.0) total else req)
-            }
-            CourseCategory.BASIC_MODULE -> {
-                val total = plan.targetBasicModuleCredits
-                val req = if (plan.targetBasicModuleRequiredCredits == 0.0 && plan.targetBasicModuleElectiveCredits == 0.0 && total > 0.0) total else plan.targetBasicModuleRequiredCredits
-                val ele = plan.targetBasicModuleElectiveCredits
-                Triple(req, ele, if (total > 0.0) total else (req + ele))
-            }
-            CourseCategory.CORE_MODULE -> {
-                val total = plan.targetCoreModuleCredits
-                val req = if (plan.targetCoreModuleRequiredCredits == 0.0 && plan.targetCoreModuleElectiveCredits == 0.0 && total > 0.0) total else plan.targetCoreModuleRequiredCredits
-                val ele = plan.targetCoreModuleElectiveCredits
-                Triple(req, ele, if (total > 0.0) total else (req + ele))
-            }
-            CourseCategory.PROFESSIONAL_MODULE -> {
-                val total = plan.targetProfessionalModuleCredits
-                val req = if (plan.targetProfessionalModuleRequiredCredits == 0.0 && plan.targetProfessionalModuleElectiveCredits == 0.0 && total > 0.0) total else plan.targetProfessionalModuleRequiredCredits
-                val ele = plan.targetProfessionalModuleElectiveCredits
-                Triple(req, ele, if (total > 0.0) total else (req + ele))
-            }
-            CourseCategory.FREE_ELECTIVE -> {
-                val total = plan.targetFreeCredits
-                val ele = if (plan.targetFreeElectiveCredits > 0.0) plan.targetFreeElectiveCredits else total
-                Triple(0.0, ele, if (total > 0.0) total else ele)
-            }
-            else -> Triple(0.0, 0.0, 0.0)
-        }
-    }
-
-    fun getCategoryEarned(cat: CourseCategory): Triple<Double, Double, Double> {
-        val catCourses = relevantCourses.filter { it.category == cat && isPassed(it) }
-        val earnedReq = catCourses.filter { it.requirementType == CourseRequirementType.REQUIRED || it.requirementType == CourseRequirementType.REQUIRED_ELECTIVE }.sumOf { it.credits }
-        val earnedEle = catCourses.filter { it.requirementType == CourseRequirementType.ELECTIVE }.sumOf { it.credits }
-        return Triple(earnedReq, earnedEle, earnedReq + earnedEle)
-    }
-
-    fun isRequirementFull(cat: CourseCategory, req: CourseRequirementType): Boolean {
-        if (plan == null) return false
-        val (targetReq, targetEle, _) = getCategoryTargets(cat)
-        val (earnedReq, earnedEle, _) = getCategoryEarned(cat)
-        return when (req) {
-            CourseRequirementType.REQUIRED -> targetReq > 0.0 && earnedReq >= targetReq
-            CourseRequirementType.ELECTIVE -> targetEle > 0.0 && earnedEle >= targetEle
-            CourseRequirementType.REQUIRED_ELECTIVE -> (targetReq > 0.0 && earnedReq >= targetReq) && (targetEle > 0.0 && earnedEle >= targetEle)
-        }
-    }
-
-    fun isCategoryFull(cat: CourseCategory): Boolean {
-        if (plan == null) return false
-        val (targetReq, targetEle, targetTotal) = getCategoryTargets(cat)
-        val (earnedReq, earnedEle, earnedTotal) = getCategoryEarned(cat)
-
-        if (targetTotal > 0.0 && earnedTotal >= targetTotal) return true
-
-        val reqSatisfied = if (targetReq > 0.0) earnedReq >= targetReq else true
-        val eleSatisfied = if (targetEle > 0.0) earnedEle >= targetEle else true
-        val hasAnyTarget = targetReq > 0.0 || targetEle > 0.0 || targetTotal > 0.0
-
-        return hasAnyTarget && reqSatisfied && eleSatisfied
-    }
-
-    val availableCategories = remember(relevantCourses, plan, initialCourse) {
+    val allCategoryOptions = remember(plan, initialCourse) {
+        val list = mutableListOf<CategoryOption>()
         val baseCategories = CourseCategory.entries.filter {
             it != CourseCategory.REQUIRED && it != CourseCategory.ELECTIVE && it != CourseCategory.PE
         }
-        val uncompleted = baseCategories.filter { cat ->
-            !isCategoryFull(cat) || (initialCourse != null && initialCourse.category == cat)
+        baseCategories.forEach { cat ->
+            list.add(CategoryOption(standardCat = cat, label = cat.label, shortLabel = cat.shortLabel))
         }
-        uncompleted.ifEmpty { baseCategories }
+        plan?.getCustomCategories()?.forEach { customCat ->
+            list.add(CategoryOption(customCat = customCat, label = customCat.name, shortLabel = customCat.name.take(2)))
+        }
+        list
+    }
+
+    val selectedCategoryOption = remember(category, customCategoryName, allCategoryOptions) {
+        if (customCategoryName.isNotBlank()) {
+            allCategoryOptions.firstOrNull { it.customCat?.name == customCategoryName }
+        } else if (category != null) {
+            allCategoryOptions.firstOrNull { it.standardCat == category }
+        } else null
     }
 
     val availableRequirementTypes = remember {
@@ -266,27 +207,20 @@ fun AddEditCourseDialog(
         )
     }
 
-    val activeSubcategories = remember(category, plan) {
-        val selectedCat = category
-        if (selectedCat == null || plan == null) {
-            emptyList()
-        } else {
-            plan.getSubcategories(selectedCat)
-        }
+    val activeSubcategories = remember(selectedCategoryOption, plan) {
+        if (selectedCategoryOption?.customCat != null) {
+            selectedCategoryOption.customCat.subcategories.map { it.name }
+        } else if (selectedCategoryOption?.standardCat != null && plan != null) {
+            plan.getSubcategories(selectedCategoryOption.standardCat)
+        } else emptyList()
     }
 
-    LaunchedEffect(availableCategories) {
-        if (category != null && category !in availableCategories && availableCategories.isNotEmpty()) {
-            category = availableCategories.first()
-        }
-    }
-
-    val otherInfoSummary = remember(teacher, code, creditsText, category, requirementType, subcategoryText) {
+    val otherInfoSummary = remember(teacher, code, creditsText, selectedCategoryOption, requirementType, subcategoryText) {
         val items = mutableListOf<String>()
         if (teacher.isNotBlank()) items.add(teacher)
         if (code.isNotBlank()) items.add(code)
         if (creditsText.isNotBlank()) items.add("${creditsText}學分")
-        category?.let { items.add(it.shortLabel) }
+        selectedCategoryOption?.let { items.add(it.shortLabel) }
         requirementType?.let { items.add(it.label) }
         if (subcategoryText.isNotBlank()) items.add(subcategoryText)
         if (items.isNotEmpty()) items.joinToString(" · ") else "教授 · 課程代碼 · 學分"
@@ -430,13 +364,13 @@ fun AddEditCourseDialog(
                                     modifier = Modifier.weight(1.3f)
                                 ) {
                                     OutlinedTextField(
-                                        value = category?.label ?: "請選擇屬性",
+                                        value = selectedCategoryOption?.label ?: "請選擇屬性",
                                         onValueChange = {},
                                         readOnly = true,
                                         label = { Text("學分屬性 *") },
                                         singleLine = true,
                                         shape = RoundedCornerShape(10.dp),
-                                        colors = if (category == null) {
+                                        colors = if (selectedCategoryOption == null) {
                                             OutlinedTextFieldDefaults.colors(
                                                 unfocusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                                                 focusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
@@ -451,11 +385,13 @@ fun AddEditCourseDialog(
                                         expanded = categoryDropdownExpanded,
                                         onDismissRequest = { categoryDropdownExpanded = false }
                                     ) {
-                                        availableCategories.forEach { cat ->
+                                        allCategoryOptions.forEach { opt ->
                                             DropdownMenuItem(
-                                                text = { Text(cat.label) },
+                                                text = { Text(opt.label) },
                                                 onClick = {
-                                                    category = cat
+                                                    category = opt.standardCat ?: CourseCategory.FREE_ELECTIVE
+                                                    customCategoryName = opt.customCat?.name ?: ""
+                                                    subcategoryText = ""
                                                     categoryDropdownExpanded = false
                                                 }
                                             )
@@ -947,6 +883,7 @@ fun AddEditCourseDialog(
                                 endTime = "",
                                 credits = credits,
                                 category = finalCategory,
+                                customCategory = customCategoryName.trim(),
                                 requirementType = finalRequirementType,
                                 generalEduSubtype = if (finalCategory == CourseCategory.GENERAL_EDU) matchedGeneralSubtype else GeneralEduSubtype.NONE,
                                 subcategory = cleanSubcategory,
@@ -981,6 +918,7 @@ fun AddEditCourseDialog(
                                     endTime = slot.endTimeStr,
                                     credits = if (idx == 0) credits else 0.0,
                                     category = finalCategory,
+                                    customCategory = customCategoryName.trim(),
                                     requirementType = finalRequirementType,
                                     generalEduSubtype = if (finalCategory == CourseCategory.GENERAL_EDU) matchedGeneralSubtype else GeneralEduSubtype.NONE,
                                     subcategory = cleanSubcategory,

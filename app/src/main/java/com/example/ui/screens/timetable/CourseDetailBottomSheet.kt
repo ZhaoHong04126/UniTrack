@@ -1185,8 +1185,9 @@ private fun InfoTabView(
             value = "${course.credits} 學分 (${course.semester} 學期)"
         )
 
+        val baseCategoryTitle = course.customCategory.ifBlank { course.category.label }
         val categoryLabel = buildString {
-            append("${course.category.label}・${course.requirementType.label}")
+            append("$baseCategoryTitle・${course.requirementType.label}")
             if (course.subcategory.isNotBlank()) {
                 append(" (${course.subcategory})")
             } else if (course.generalEduSubtype != GeneralEduSubtype.NONE) {
