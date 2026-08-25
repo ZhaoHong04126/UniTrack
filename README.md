@@ -15,6 +15,7 @@
 ## 📑 目錄
 
 - [✨ 核心功能亮點](#-核心功能亮點)
+- [📱 應用介面預覽](#-應用介面預覽)
 - [🏗️ 技術架構](#️-技術架構)
 - [📂 專案目錄結構](#-專案目錄結構)
 - [🚀 快速開始](#-快速開始)
@@ -44,6 +45,22 @@
 * 🔒 **隱私優先 & 訪客模式 (Guest Mode)**：無須註冊登入即可離線使用，所有資料安全儲存於手機本機 SQLite (Room) 資料庫。
 * ☁️ **雲端雙向同步 (Cloud Sync)**：整合 Firebase Auth（Google Sign-In 與 Email 登入）及 Cloud Firestore，支援多裝置一鍵備份與雲端還原。
 * 📦 **JSON 格式備份與還原**：支援標準 JSON 格式本機一鍵匯出與匯入，方便資料備份與設備無痛遷移。
+
+---
+
+## 📱 應用介面預覽
+
+<!-- ======================================================== -->
+<!-- 📸 預覽總覽放置區：可將圖片放至 docs/images/ 目錄並取消註解 -->
+<!-- ======================================================== -->
+
+| 儀表板 (Dashboard) | 智慧週課表 (Timetable) | 考勤與筆記 (Attendance/Notes) |
+| :---: | :---: | :---: |
+| <!-- 📸 照片標記 1: 儀表板 --> <img src="docs/images/dashboard_preview.png" width="240" alt="Dashboard" /> | <!-- 📸 照片標記 2: 週課表 --> <img src="docs/images/timetable_preview.png" width="240" alt="Timetable" /> | <!-- 📸 照片標記 3: 考勤與筆記 --> <img src="docs/images/attendance_preview.png" width="240" alt="Attendance & Notes" /> |
+
+| 畢業審查 (Graduation Audit) | 個人記帳 (Expense Tracker) | 帳號與同步 (Settings & Sync) |
+| :---: | :---: | :---: |
+| <!-- 📸 照片標記 4: 畢業審查 --> <img src="docs/images/graduation_preview.png" width="240" alt="Graduation Audit" /> | <!-- 📸 照片標記 5: 記帳與預算 --> <img src="docs/images/expense_preview.png" width="240" alt="Expense Tracker" /> | <!-- 📸 照片標記 6: 設定與同步 --> <img src="docs/images/settings_preview.png" width="240" alt="Settings & Sync" /> |
 
 ---
 
@@ -123,6 +140,8 @@ UniTrack+/
 │   │   │   │   └── res/                          # 應用程式資源 (圖標、字串、主題樣式)
 │   │   └── test/                                 # Robolectric 單元測試與 Roborazzi 截圖測試
 │   └── build.gradle.kts                          # App 模組建置設定與依賴版本配置
+├── docs/
+│   └── images/                                   # README 相關螢幕截圖與展示資源
 ├── gradle/                                       # Gradle Wrapper 與 Version Catalog (libs.versions.toml)
 ├── .env.example                                  # 環境變數範本檔案
 ├── build.gradle.kts                              # 專案級 Gradle 建置設定
@@ -180,6 +199,11 @@ UniTrack+/
 * **學業概況速覽**：即時呈現歷年累計 GPA、平均分數及修習學分進度。
 * **財務與生活動態**：顯示當月可用預算剩餘百分比與今日消費總覽。
 
+<!-- 📸 [照片標記 1.1：儀表板畫面截圖] -->
+<!-- <p align="center"><img src="docs/images/dashboard_detail.png" width="360" alt="Dashboard Detail" /></p> -->
+
+---
+
 ### 2. 智慧週課表、考勤與課程筆記 (Timetable & Attendance)
 * **視覺化課表視圖**：支援週一至週日、第 1 至 14 節網格排課，自訂色彩標籤避免視覺疲勞。
 * **學期與週次管理**：支援多學期動態切換、開學日期設定與單雙週過濾。
@@ -190,23 +214,52 @@ UniTrack+/
   * 支援分類管理：`一般`、`作業`、`考試`、`公告`、`重點`。
   * 可關聯特定週次與時間戳記，方便期中/期末考前快速複習。
 
+<!-- 📸 [照片標記 2.1：週課表介面截圖] -->
+<!-- <p align="center"><img src="docs/images/timetable_detail.png" width="360" alt="Timetable Detail" /></p> -->
+
+<!-- 📸 [照片標記 2.2：考勤點名與筆記 BottomSheet 截圖] -->
+<!-- <p align="center"><img src="docs/images/attendance_bottomsheet.png" width="360" alt="Attendance & Notes BottomSheet" /></p> -->
+
+---
+
 ### 3. 成績登錄與 GPA 試算 (Grades & GPA)
 * **成績管理**：支援百分制成績與等第成績（A+、A、B+ 等）輸入與即時計算。
 * **多元計算機制**：支援 4.3 制、4.0 制與百分制，精準換算單學期與歷年 GPA。
+
+<!-- 📸 [照片標記 3.1：成績登記與 GPA 試算畫面截圖] -->
+<!-- <p align="center"><img src="docs/images/grades_detail.png" width="360" alt="Grades & GPA Detail" /></p> -->
+
+---
 
 ### 4. 畢業審查與學分稽核 (Graduation Audit)
 * **自訂畢業學分門檻**：支援依各大專院校系所修業規範，彈性設定校共同、院核心、系專業（基礎/核心/專業模組）、通識與自由選修之總學分及**必修/選修細項門檻**。
 * **視覺化進度檢驗**：圖表化清晰比對「已修畢 (Earned)」、「修習中 (In-progress)」與「目標學分 (Target)」。
 * **畢業門檻檢核清單**：支援自訂與追蹤外語檢定 (如 TOEIC/TOEFL)、服務學習、畢業專題、專業證照等非學分門檻。
 
+<!-- 📸 [照片標記 4.1：畢業學分進度圖表截圖] -->
+<!-- <p align="center"><img src="docs/images/graduation_detail.png" width="360" alt="Graduation Detail" /></p> -->
+
+<!-- 📸 [照片標記 4.2：學分門檻設定對話框截圖] -->
+<!-- <p align="center"><img src="docs/images/graduation_thresholds.png" width="360" alt="Graduation Thresholds Dialog" /></p> -->
+
+---
+
 ### 5. 個人記帳與預算管理 (Expense & Budget)
 * **極速記帳**：提供餐飲、交通、娛樂、學習、住宿等豐富標籤，記錄支付方式與消費備註。
 * **預算警戒機制**：設定每月總預算，以動態進度條即時警示花費進度，防範超支。
+
+<!-- 📸 [照片標記 5.1：記帳明細與預算進度條截圖] -->
+<!-- <p align="center"><img src="docs/images/expense_detail.png" width="360" alt="Expense Detail" /></p> -->
+
+---
 
 ### 6. 帳號、資料同步與備份 (Auth & Data Management)
 * **免登入離線優先**：無需連網即可享受完整功能，保障個人隱私。
 * **雲端一鍵備份/還原**：登入 Google 帳號後，支援將課表、學分、記帳數據同步至 Cloud Firestore。
 * **標準 JSON 檔案匯出/匯入**：提供純文字 JSON 匯出與匯入功能，方便本機備份、跨設備遷移或手動分析。
+
+<!-- 📸 [照片標記 6.1：登入與雲端備份設定截圖] -->
+<!-- <p align="center"><img src="docs/images/settings_detail.png" width="360" alt="Settings & Auth Detail" /></p> -->
 
 ---
 
@@ -226,3 +279,10 @@ UniTrack+/
   ```bash
   ./gradlew recordRoborazziDebug
   ```
+
+---
+
+## 📄 授權條款
+
+本專案依據 [MIT License](LICENSE) 授權條款開源發布。
+
