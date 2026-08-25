@@ -1,21 +1,35 @@
 package com.example.ui.screens.expense
 
+import android.app.DatePickerDialog
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.data.model.ExpenseCategory
 import com.example.data.model.ExpenseRecord
 import com.example.data.model.ExpenseType
@@ -32,6 +46,7 @@ fun AddEditExpenseDialog(
     onSave: (ExpenseRecord) -> Unit,
     onDelete: ((ExpenseRecord) -> Unit)? = null
 ) {
+    val context = LocalContext.current
     val locale = LocalConfiguration.current.locales[0]
     val dateFormat = remember(locale) { SimpleDateFormat("yyyy-MM-dd", locale) }
 
@@ -43,298 +58,593 @@ fun AddEditExpenseDialog(
     var dateString by remember { mutableStateOf(initialExpense?.dateString ?: dateFormat.format(Date())) }
     var note by remember { mutableStateOf(initialExpense?.note ?: "") }
 
-    var categoryDropdownExpanded by remember { mutableStateOf(false) }
-    var paymentDropdownExpanded by remember { mutableStateOf(false) }
-    var presetDropdownExpanded by remember { mutableStateOf(false) }
+    var showCategorySheet by remember { mutableStateOf(false) }
+    var showPaymentSheet by remember { mutableStateOf(false) }
 
-    val quickExpensePresets = listOf(
-        "學餐午餐" to ExpenseCategory.FOOD,
-        "咖啡/手搖飲" to ExpenseCategory.FOOD,
-        "教科書/講義" to ExpenseCategory.BOOKS_STUDY,
-        "通勤公車/捷運" to ExpenseCategory.TRANSPORT,
-        "房租水電" to ExpenseCategory.RENT_UTILITY,
-        "生活用品" to ExpenseCategory.DAILY,
-        "家教/工讀薪資" to ExpenseCategory.SALARY_JOB,
-        "獎助學金" to ExpenseCategory.SCHOLARSHIP
-    )
+    val expensePresets = remember {
+        listOf(
+            "學餐午餐" to ExpenseCategory.FOOD,
+            "咖啡手搖" to ExpenseCategory.FOOD,
+            "超商點心" to ExpenseCategory.FOOD,
+            "教科書講義" to ExpenseCategory.BOOKS_STUDY,
+            "公車捷運" to ExpenseCategory.TRANSPORT,
+            "機車加油" to ExpenseCategory.TRANSPORT,
+            "房租水電" to ExpenseCategory.RENT_UTILITY,
+            "生活日用" to ExpenseCategory.DAILY,
+            "聚餐娛樂" to ExpenseCategory.ENTERTAINMENT,
+            "其他支出" to ExpenseCategory.OTHER
+        )
+    }
 
-    AlertDialog(
+    val incomePresets = remember {
+        listOf(
+            "打工薪資" to ExpenseCategory.SALARY_JOB,
+            "家教收入" to ExpenseCategory.SALARY_JOB,
+            "獎助學金" to ExpenseCategory.SCHOLARSHIP,
+            "生活費補貼" to ExpenseCategory.OTHER,
+            "實習津貼" to ExpenseCategory.SALARY_JOB,
+            "二手出清" to ExpenseCategory.OTHER,
+            "投資回饋" to ExpenseCategory.OTHER,
+            "其他收入" to ExpenseCategory.OTHER
+        )
+    }
+
+    val currentPresets = if (type == ExpenseType.EXPENSE) expensePresets else incomePresets
+
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        title = {
+        sheetState = sheetState,
+        dragHandle = { BottomSheetDefaults.DragHandle() },
+        containerColor = MaterialTheme.colorScheme.surface
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 24.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
             Text(
                 text = if (initialExpense == null) "記一筆收支" else "編輯收支記錄",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
             )
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+
+            // Type Switcher (Expense vs Income)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Type Switcher (Expense vs Income)
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    FilterChip(
+                FilterChip(
+                    selected = type == ExpenseType.EXPENSE,
+                    onClick = {
+                        type = ExpenseType.EXPENSE
+                        if (category == ExpenseCategory.SALARY_JOB || category == ExpenseCategory.SCHOLARSHIP) {
+                            category = ExpenseCategory.FOOD
+                        }
+                    },
+                    label = {
+                        Text(
+                            "支出",
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center,
+                            fontWeight = if (type == ExpenseType.EXPENSE) FontWeight.Bold else FontWeight.Normal
+                        )
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = RoseLight,
+                        selectedLabelColor = RoseAccent
+                    ),
+                    border = FilterChipDefaults.filterChipBorder(
+                        enabled = true,
                         selected = type == ExpenseType.EXPENSE,
-                        onClick = { type = ExpenseType.EXPENSE },
-                        label = {
-                            Text(
-                                "支出",
-                                modifier = Modifier.fillMaxWidth(),
-                                textAlign = TextAlign.Center,
-                                fontWeight = if (type == ExpenseType.EXPENSE) FontWeight.Bold else FontWeight.Normal
-                            )
-                        },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = RoseLight,
-                            selectedLabelColor = RoseAccent
-                        ),
-                        border = FilterChipDefaults.filterChipBorder(
-                            enabled = true,
-                            selected = type == ExpenseType.EXPENSE,
-                            selectedBorderColor = RoseAccent
-                        ),
-                        modifier = Modifier.weight(1f)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    FilterChip(
-                        selected = type == ExpenseType.INCOME,
-                        onClick = {
-                            type = ExpenseType.INCOME
-                            if (category == ExpenseCategory.FOOD) category = ExpenseCategory.SALARY_JOB
-                        },
-                        label = {
-                            Text(
-                                "收入",
-                                modifier = Modifier.fillMaxWidth(),
-                                textAlign = TextAlign.Center,
-                                fontWeight = if (type == ExpenseType.INCOME) FontWeight.Bold else FontWeight.Normal
-                            )
-                        },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = EmeraldLight,
-                            selectedLabelColor = EmeraldAccent
-                        ),
-                        border = FilterChipDefaults.filterChipBorder(
-                            enabled = true,
-                            selected = type == ExpenseType.INCOME,
-                            selectedBorderColor = EmeraldAccent
-                        ),
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                // Amount
-                OutlinedTextField(
-                    value = amountText,
-                    onValueChange = { amountText = it },
-                    label = { Text("金額 ($) *") },
-                    placeholder = { Text("0") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
+                        selectedBorderColor = RoseAccent
+                    ),
+                    shape = RoundedCornerShape(10.dp),
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("expense_amount_input")
+                        .weight(1f)
+                        .height(44.dp)
                 )
-
-                // Title with Quick Presets Dropdown
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    OutlinedTextField(
-                        value = title,
-                        onValueChange = { title = it },
-                        label = { Text("項目說明 *") },
-                        placeholder = { Text("例如：午餐排骨飯、微積分課本") },
-                        singleLine = true,
-                        trailingIcon = {
-                            IconButton(
-                                onClick = { presetDropdownExpanded = true },
-                                modifier = Modifier.testTag("quick_presets_dropdown_button")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.ArrowDropDown,
-                                    contentDescription = "常用快捷項目"
-                                )
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("expense_title_input")
-                    )
-
-                    DropdownMenu(
-                        expanded = presetDropdownExpanded,
-                        onDismissRequest = { presetDropdownExpanded = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    "常用快捷項目",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            },
-                            onClick = {},
-                            enabled = false
-                        )
-                        HorizontalDivider()
-                        quickExpensePresets.forEach { (presetTitle, presetCat) ->
-                            DropdownMenuItem(
-                                text = {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(presetTitle, style = MaterialTheme.typography.bodyMedium)
-                                        Spacer(modifier = Modifier.width(16.dp))
-                                        Text(
-                                            text = presetCat.label,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                },
-                                onClick = {
-                                    title = presetTitle
-                                    category = presetCat
-                                    type = if (presetCat == ExpenseCategory.SALARY_JOB || presetCat == ExpenseCategory.SCHOLARSHIP) {
-                                        ExpenseType.INCOME
-                                    } else {
-                                        ExpenseType.EXPENSE
-                                    }
-                                    presetDropdownExpanded = false
-                                }
-                            )
+                FilterChip(
+                    selected = type == ExpenseType.INCOME,
+                    onClick = {
+                        type = ExpenseType.INCOME
+                        if (category != ExpenseCategory.SALARY_JOB && category != ExpenseCategory.SCHOLARSHIP && category != ExpenseCategory.OTHER) {
+                            category = ExpenseCategory.SALARY_JOB
                         }
-                    }
-                }
-
-                // Category & Payment Method
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    ExposedDropdownMenuBox(
-                        expanded = categoryDropdownExpanded,
-                        onExpandedChange = { categoryDropdownExpanded = !categoryDropdownExpanded },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        OutlinedTextField(
-                            value = category.label,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("分類") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryDropdownExpanded) },
-                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                    },
+                    label = {
+                        Text(
+                            "收入",
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center,
+                            fontWeight = if (type == ExpenseType.INCOME) FontWeight.Bold else FontWeight.Normal
                         )
-                        ExposedDropdownMenu(
-                            expanded = categoryDropdownExpanded,
-                            onDismissRequest = { categoryDropdownExpanded = false }
-                        ) {
-                            ExpenseCategory.entries.forEach { cat ->
-                                DropdownMenuItem(
-                                    text = { Text(cat.label) },
-                                    onClick = {
-                                        category = cat
-                                        categoryDropdownExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-
-                    ExposedDropdownMenuBox(
-                        expanded = paymentDropdownExpanded,
-                        onExpandedChange = { paymentDropdownExpanded = !paymentDropdownExpanded },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        OutlinedTextField(
-                            value = paymentMethod.label,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("支付方式") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = paymentDropdownExpanded) },
-                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
-                        )
-                        ExposedDropdownMenu(
-                            expanded = paymentDropdownExpanded,
-                            onDismissRequest = { paymentDropdownExpanded = false }
-                        ) {
-                            PaymentMethod.entries.forEach { method ->
-                                DropdownMenuItem(
-                                    text = { Text(method.label) },
-                                    onClick = {
-                                        paymentMethod = method
-                                        paymentDropdownExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // Date
-                OutlinedTextField(
-                    value = dateString,
-                    onValueChange = { dateString = it },
-                    label = { Text("日期 (YYYY-MM-DD)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // Note
-                OutlinedTextField(
-                    value = note,
-                    onValueChange = { note = it },
-                    label = { Text("備註 (選填)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = EmeraldLight,
+                        selectedLabelColor = EmeraldAccent
+                    ),
+                    border = FilterChipDefaults.filterChipBorder(
+                        enabled = true,
+                        selected = type == ExpenseType.INCOME,
+                        selectedBorderColor = EmeraldAccent
+                    ),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp)
                 )
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    val amt = amountText.toDoubleOrNull() ?: 0.0
-                    if (title.isNotBlank() && amt > 0) {
-                        val record = (initialExpense ?: ExpenseRecord(title = title, amount = amt)).copy(
-                            title = title.trim(),
-                            amount = amt,
-                            type = type,
-                            category = category,
-                            paymentMethod = paymentMethod,
-                            dateString = dateString.trim(),
-                            note = note.trim()
-                        )
-                        onSave(record)
+
+            // Amount Input
+            OutlinedTextField(
+                value = amountText,
+                onValueChange = { input ->
+                    if (input.isEmpty() || input.all { it.isDigit() }) {
+                        amountText = input
                     }
                 },
-                enabled = title.isNotBlank() && (amountText.toDoubleOrNull() ?: 0.0) > 0,
-                modifier = Modifier.testTag("save_expense_button")
-            ) {
-                Text("儲存記錄")
-            }
-        },
-        dismissButton = {
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                if (initialExpense != null && onDelete != null) {
-                    TextButton(
-                        onClick = { onDelete(initialExpense) },
-                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                        modifier = Modifier.testTag("delete_expense_button")
-                    ) {
-                        Text("刪除")
+                label = { Text("金額 ($) *") },
+                placeholder = { Text("0") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.AttachMoney,
+                        contentDescription = null,
+                        tint = if (type == ExpenseType.EXPENSE) RoseAccent else EmeraldAccent
+                    )
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("expense_amount_input")
+            )
+
+            // Title Field
+            OutlinedTextField(
+                value = title,
+                onValueChange = { title = it },
+                label = { Text("項目說明 *") },
+                placeholder = { Text("例如：午餐排骨飯、微積分課本") },
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("expense_title_input")
+            )
+
+            // Quick Presets Row
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = if (type == ExpenseType.EXPENSE) "常用支出項目" else "常用收入項目",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    currentPresets.forEach { (presetTitle, presetCat) ->
+                        SuggestionChip(
+                            onClick = {
+                                title = presetTitle
+                                category = presetCat
+                            },
+                            label = { Text(presetTitle, style = MaterialTheme.typography.bodySmall) },
+                            shape = RoundedCornerShape(8.dp),
+                            colors = SuggestionChipDefaults.suggestionChipColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            )
+                        )
                     }
                 }
-                TextButton(onClick = onDismiss) {
-                    Text("取消")
+            }
+
+            // Category & Payment Method Selectors
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                // Category Card Selector
+                Surface(
+                    onClick = { showCategorySheet = true },
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    color = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "分類",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier.weight(1f, fill = false)
+                            ) {
+                                Icon(
+                                    imageVector = getCategoryIcon(category),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = category.label,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1
+                                )
+                            }
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowDown,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+
+                // Payment Method Card Selector
+                Surface(
+                    onClick = { showPaymentSheet = true },
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    color = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "支付方式",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = paymentMethod.label,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowDown,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Date Picker Card Field
+            Surface(
+                onClick = {
+                    val parts = dateString.split("-")
+                    val curYear = parts.getOrNull(0)?.toIntOrNull() ?: Calendar.getInstance().get(Calendar.YEAR)
+                    val curMonth = (parts.getOrNull(1)?.toIntOrNull() ?: (Calendar.getInstance().get(Calendar.MONTH) + 1)) - 1
+                    val curDay = parts.getOrNull(2)?.toIntOrNull() ?: Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
+
+                    DatePickerDialog(
+                        context,
+                        { _, y, m, d ->
+                            dateString = String.format(Locale.US, "%04d-%02d-%02d", y, m + 1, d)
+                        },
+                        curYear,
+                        curMonth,
+                        curDay
+                    ).show()
+                },
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                color = MaterialTheme.colorScheme.surface,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CalendarToday,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Column {
+                            Text(
+                                text = "記帳日期",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = dateString,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                    Text(
+                        text = "變更",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            // Note Input
+            OutlinedTextField(
+                value = note,
+                onValueChange = { note = it },
+                label = { Text("備註 (選填)") },
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            // Bottom Action Buttons
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (initialExpense != null && onDelete != null) {
+                    OutlinedButton(
+                        onClick = { onDelete(initialExpense) },
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .testTag("delete_expense_button")
+                    ) {
+                        Text("刪除", style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+                OutlinedButton(
+                    onClick = onDismiss,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp)
+                ) {
+                    Text("取消", style = MaterialTheme.typography.bodyLarge)
+                }
+                Button(
+                    onClick = {
+                        val amt = amountText.toDoubleOrNull() ?: 0.0
+                        if (title.isNotBlank() && amt > 0) {
+                            val record = (initialExpense ?: ExpenseRecord(title = title, amount = amt)).copy(
+                                title = title.trim(),
+                                amount = amt,
+                                type = type,
+                                category = category,
+                                paymentMethod = paymentMethod,
+                                dateString = dateString.trim(),
+                                note = note.trim()
+                            )
+                            onSave(record)
+                        }
+                    },
+                    enabled = title.isNotBlank() && (amountText.toDoubleOrNull() ?: 0.0) > 0,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .weight(if (initialExpense != null && onDelete != null) 1.2f else 1.5f)
+                        .height(48.dp)
+                        .testTag("save_expense_button")
+                ) {
+                    Text(
+                        if (initialExpense == null) "儲存記錄" else "完成",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }
-    )
+    }
+
+    // Category Selection Bottom Sheet
+    if (showCategorySheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showCategorySheet = false },
+            dragHandle = { BottomSheetDefaults.DragHandle() },
+            containerColor = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                val displayCategories = if (type == ExpenseType.EXPENSE) {
+                    listOf(
+                        ExpenseCategory.FOOD,
+                        ExpenseCategory.BOOKS_STUDY,
+                        ExpenseCategory.TRANSPORT,
+                        ExpenseCategory.RENT_UTILITY,
+                        ExpenseCategory.ENTERTAINMENT,
+                        ExpenseCategory.DAILY,
+                        ExpenseCategory.OTHER
+                    )
+                } else {
+                    listOf(
+                        ExpenseCategory.SALARY_JOB,
+                        ExpenseCategory.SCHOLARSHIP,
+                        ExpenseCategory.OTHER
+                    )
+                }
+
+                Text(
+                    text = if (type == ExpenseType.EXPENSE) "選擇支出分類" else "選擇收入分類",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(3),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(displayCategories) { cat ->
+                        val isSelected = category == cat
+                        Card(
+                            onClick = {
+                                category = cat
+                                showCategorySheet = false
+                            },
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isSelected) {
+                                    SapphirePrimary.copy(alpha = 0.12f)
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                                }
+                            ),
+                            border = if (isSelected) {
+                                BorderStroke(1.5.dp, SapphirePrimary)
+                            } else null,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(76.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = getCategoryIcon(cat),
+                                    contentDescription = cat.label,
+                                    tint = if (isSelected) SapphirePrimary else MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = cat.label,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isSelected) SapphirePrimary else MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Payment Method Selection Bottom Sheet
+    if (showPaymentSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showPaymentSheet = false },
+            dragHandle = { BottomSheetDefaults.DragHandle() },
+            containerColor = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "選擇支付方式",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+
+                PaymentMethod.entries.forEach { method ->
+                    val isSelected = paymentMethod == method
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(
+                                if (isSelected) SapphirePrimary.copy(alpha = 0.12f)
+                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                            )
+                            .clickable {
+                                paymentMethod = method
+                                showPaymentSheet = false
+                            }
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = method.label,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSelected) SapphirePrimary else MaterialTheme.colorScheme.onSurface
+                        )
+                        if (isSelected) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = SapphirePrimary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun getCategoryIcon(category: ExpenseCategory): ImageVector {
+    return when (category) {
+        ExpenseCategory.FOOD -> Icons.Default.Restaurant
+        ExpenseCategory.BOOKS_STUDY -> Icons.AutoMirrored.Filled.MenuBook
+        ExpenseCategory.TRANSPORT -> Icons.Default.DirectionsBus
+        ExpenseCategory.RENT_UTILITY -> Icons.Default.Home
+        ExpenseCategory.ENTERTAINMENT -> Icons.Default.SportsEsports
+        ExpenseCategory.DAILY -> Icons.Default.ShoppingBag
+        ExpenseCategory.SALARY_JOB -> Icons.Default.Work
+        ExpenseCategory.SCHOLARSHIP -> Icons.Default.School
+        ExpenseCategory.OTHER -> Icons.Default.MoreHoriz
+    }
 }
 
 @Composable
@@ -369,6 +679,7 @@ fun BudgetDialog(
                     placeholder = { Text("請輸入預算金額") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
             }
