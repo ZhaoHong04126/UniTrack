@@ -1,6 +1,5 @@
 package com.example.ui.screens.timetable
 
-import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -81,26 +80,6 @@ fun TimetableScreen(
         }
     }
 
-    fun formatSemesterHeaderLabel(sem: String): String {
-        val startYear = graduationPlan.admissionSemester.substringBefore("-").filter { it.isDigit() }.toIntOrNull()
-        val year = sem.substringBefore("-").filter { it.isDigit() }.toIntOrNull()
-        val term = sem.substringAfter("-").filter { it.isDigit() }.toIntOrNull() ?: 1
-        if (startYear != null && year != null) {
-            val grade = when (val diff = year - startYear) {
-                0 -> "大一"
-                1 -> "大二"
-                2 -> "大三"
-                3 -> "大四"
-                else -> if (diff > 3) "延畢" else ""
-            }
-            val termStr = if (term == 1) "上" else "下"
-            if (grade.isNotEmpty()) {
-                return "$grade$termStr"
-            }
-        }
-        return sem
-    }
-
     var showAddDialog by remember { mutableStateOf(false) }
     var editingCourse by remember { mutableStateOf<Course?>(null) }
     var selectedCourseDetail by remember { mutableStateOf<Course?>(null) }
@@ -118,31 +97,6 @@ fun TimetableScreen(
         listOf("週一", "週二", "週三", "週四", "週五", "週六", "週日")
     } else {
         listOf("週一", "週二", "週三", "週四", "週五")
-    }
-
-    fun isCourseInWeek(course: Course, week: Int): Boolean {
-        if (course.repeatMode == "每週" || course.repeatWeeks == "1-18" || course.repeatWeeks.isBlank()) return true
-        if (course.repeatMode == "單週") return week % 2 != 0
-        if (course.repeatMode == "雙週") return week % 2 == 0
-        val weeks = course.repeatWeeks.split(",").mapNotNull { it.trim().toIntOrNull() }
-        return week in weeks
-    }
-
-    fun getWeekDates(semester: String, week: Int, count: Int): List<String>? {
-        return try {
-            val startDateStr = viewModel.getSemesterStartDate(semester)
-            val formatter = DateTimeFormatter.ofPattern("yyyy.MM.dd")
-            val startDate = LocalDate.parse(startDateStr, formatter)
-            // 課表第一欄為週一，故先校準至開學週的週一 (DayOfWeek: MONDAY=1, SUNDAY=7)
-            val mondayOfFirstWeek = startDate.minusDays((startDate.dayOfWeek.value - 1).toLong())
-            val mondayOfWeek = mondayOfFirstWeek.plusWeeks((week - 1).toLong())
-            (0 until count).map { dayOffset ->
-                val date = mondayOfWeek.plusDays(dayOffset.toLong())
-                "${date.monthValue}/${date.dayOfMonth}"
-            }
-        } catch (_: Exception) {
-            null
-        }
     }
 
     val displayCourses = remember(courses, isWeeklyMode, currentWeek) {
@@ -176,7 +130,7 @@ fun TimetableScreen(
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text(
-                    text = formatSemesterHeaderLabel(selectedSemester),
+                    text = formatSemesterHeaderLabel(selectedSemester, graduationPlan.admissionSemester),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -213,7 +167,7 @@ fun TimetableScreen(
                 // Share Timetable Image Button (Direct image share)
                 FilledTonalIconButton(
                     onClick = {
-                        val semesterLabel = formatSemesterHeaderLabel(selectedSemester)
+                        val semesterLabel = formatSemesterHeaderLabel(selectedSemester, graduationPlan.admissionSemester)
                         TimetableImageGenerator.shareTimetableImage(
                             context = context,
                             semesterLabel = semesterLabel,
@@ -375,8 +329,8 @@ fun TimetableScreen(
                 val pageCourses = remember(courses, weekNum) {
                     courses.filter { isCourseInWeek(it, weekNum) }
                 }
-                val pageDates = remember(selectedSemester, weekNum, daysCount) {
-                    getWeekDates(selectedSemester, weekNum, daysCount)
+                val pageDates = remember(currentStartDateStr, weekNum, daysCount) {
+                    getWeekDates(currentStartDateStr, weekNum, daysCount)
                 }
 
                 WeeklyTimetableGrid(
@@ -1002,5 +956,49 @@ private fun CourseListItemCard(
                 }
             }
         }
+    }
+}
+
+private fun formatSemesterHeaderLabel(sem: String, admissionSemester: String): String {
+    val startYear = admissionSemester.substringBefore("-").filter { it.isDigit() }.toIntOrNull()
+    val year = sem.substringBefore("-").filter { it.isDigit() }.toIntOrNull()
+    val term = sem.substringAfter("-").filter { it.isDigit() }.toIntOrNull() ?: 1
+    if (startYear != null && year != null) {
+        val grade = when (val diff = year - startYear) {
+            0 -> "大一"
+            1 -> "大二"
+            2 -> "大三"
+            3 -> "大四"
+            else -> if (diff > 3) "延畢" else ""
+        }
+        val termStr = if (term == 1) "上" else "下"
+        if (grade.isNotEmpty()) {
+            return "$grade$termStr"
+        }
+    }
+    return sem
+}
+
+private fun isCourseInWeek(course: Course, week: Int): Boolean {
+    if (course.repeatMode == "每週" || course.repeatWeeks == "1-18" || course.repeatWeeks.isBlank()) return true
+    if (course.repeatMode == "單週") return week % 2 != 0
+    if (course.repeatMode == "雙週") return week % 2 == 0
+    val weeks = course.repeatWeeks.split(",").mapNotNull { it.trim().toIntOrNull() }
+    return week in weeks
+}
+
+private fun getWeekDates(startDateStr: String, week: Int, count: Int): List<String>? {
+    return try {
+        val formatter = DateTimeFormatter.ofPattern("yyyy.MM.dd")
+        val startDate = LocalDate.parse(startDateStr, formatter)
+        // 課表第一欄為週一，故先校準至開學週的週一 (DayOfWeek: MONDAY=1, SUNDAY=7)
+        val mondayOfFirstWeek = startDate.minusDays((startDate.dayOfWeek.value - 1).toLong())
+        val mondayOfWeek = mondayOfFirstWeek.plusWeeks((week - 1).toLong())
+        (0 until count).map { dayOffset ->
+            val date = mondayOfWeek.plusDays(dayOffset.toLong())
+            "${date.monthValue}/${date.dayOfMonth}"
+        }
+    } catch (_: Exception) {
+        null
     }
 }
