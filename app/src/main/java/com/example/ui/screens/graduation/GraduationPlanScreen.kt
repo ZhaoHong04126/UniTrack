@@ -1,6 +1,7 @@
 package com.example.ui.screens.graduation
 
 import android.widget.Toast
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -10,7 +11,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.*
@@ -26,6 +28,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.CourseCategory
+import com.example.data.model.GraduationPlan
 import com.example.ui.components.SectionHeader
 import com.example.ui.theme.SapphireLight
 import com.example.ui.theme.SapphirePrimary
@@ -66,6 +69,36 @@ fun GraduationPlanScreen(
     // 自由選修
     var freeEleTarget by remember(currentPlan) { mutableStateOf(currentPlan.targetFreeElectiveCredits.toString()) }
 
+    var subcategoriesMap by remember(currentPlan) {
+        mutableStateOf(
+            CourseCategory.entries.associateWith { cat ->
+                currentPlan.getSubcategories(cat).toMutableList()
+            }.toMutableMap()
+        )
+    }
+
+    fun addSubcategory(category: CourseCategory, name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isNotBlank()) {
+            val list = subcategoriesMap[category]?.toMutableList() ?: mutableListOf()
+            if (trimmed !in list) {
+                list.add(trimmed)
+                val newMap = subcategoriesMap.toMutableMap()
+                newMap[category] = list
+                subcategoriesMap = newMap
+            }
+        }
+    }
+
+    fun removeSubcategory(category: CourseCategory, name: String) {
+        val list = subcategoriesMap[category]?.toMutableList() ?: mutableListOf()
+        if (list.remove(name)) {
+            val newMap = subcategoriesMap.toMutableMap()
+            newMap[category] = list
+            subcategoriesMap = newMap
+        }
+    }
+
     fun savePlan() {
         val genReq = genReqTarget.toDoubleOrNull() ?: 0.0
         val genEle = genEleTarget.toDoubleOrNull() ?: 0.0
@@ -100,7 +133,8 @@ fun GraduationPlanScreen(
             targetProfessionalModuleRequiredCredits = proReq,
             targetProfessionalModuleElectiveCredits = proEle,
             targetFreeElectiveCredits = freeEle,
-            gpaScale = currentPlan.gpaScale
+            gpaScale = currentPlan.gpaScale,
+            subcategoriesJson = GraduationPlan.encodeSubcategories(subcategoriesMap)
         )
         viewModel.updateGraduationPlan(updated)
         Toast.makeText(context, "畢業審查標準已儲存更新", Toast.LENGTH_SHORT).show()
@@ -216,7 +250,10 @@ fun GraduationPlanScreen(
                 reqValue = genReqTarget,
                 onReqChange = { genReqTarget = it },
                 eleValue = genEleTarget,
-                onEleChange = { genEleTarget = it }
+                onEleChange = { genEleTarget = it },
+                subcategories = subcategoriesMap[CourseCategory.GENERAL_EDU] ?: emptyList(),
+                onAddSubcategory = { addSubcategory(CourseCategory.GENERAL_EDU, it) },
+                onRemoveSubcategory = { removeSubcategory(CourseCategory.GENERAL_EDU, it) }
             )
 
             // 2. 院共同課程
@@ -226,7 +263,10 @@ fun GraduationPlanScreen(
                 reqValue = colReqTarget,
                 onReqChange = { colReqTarget = it },
                 eleValue = colEleTarget,
-                onEleChange = { colEleTarget = it }
+                onEleChange = { colEleTarget = it },
+                subcategories = subcategoriesMap[CourseCategory.COLLEGE_CORE] ?: emptyList(),
+                onAddSubcategory = { addSubcategory(CourseCategory.COLLEGE_CORE, it) },
+                onRemoveSubcategory = { removeSubcategory(CourseCategory.COLLEGE_CORE, it) }
             )
 
             // 3. 基礎模組
@@ -236,7 +276,10 @@ fun GraduationPlanScreen(
                 reqValue = basReqTarget,
                 onReqChange = { basReqTarget = it },
                 eleValue = basEleTarget,
-                onEleChange = { basEleTarget = it }
+                onEleChange = { basEleTarget = it },
+                subcategories = subcategoriesMap[CourseCategory.BASIC_MODULE] ?: emptyList(),
+                onAddSubcategory = { addSubcategory(CourseCategory.BASIC_MODULE, it) },
+                onRemoveSubcategory = { removeSubcategory(CourseCategory.BASIC_MODULE, it) }
             )
 
             // 4. 核心模組
@@ -246,7 +289,10 @@ fun GraduationPlanScreen(
                 reqValue = corReqTarget,
                 onReqChange = { corReqTarget = it },
                 eleValue = corEleTarget,
-                onEleChange = { corEleTarget = it }
+                onEleChange = { corEleTarget = it },
+                subcategories = subcategoriesMap[CourseCategory.CORE_MODULE] ?: emptyList(),
+                onAddSubcategory = { addSubcategory(CourseCategory.CORE_MODULE, it) },
+                onRemoveSubcategory = { removeSubcategory(CourseCategory.CORE_MODULE, it) }
             )
 
             // 5. 專業模組
@@ -256,7 +302,10 @@ fun GraduationPlanScreen(
                 reqValue = proReqTarget,
                 onReqChange = { proReqTarget = it },
                 eleValue = proEleTarget,
-                onEleChange = { proEleTarget = it }
+                onEleChange = { proEleTarget = it },
+                subcategories = subcategoriesMap[CourseCategory.PROFESSIONAL_MODULE] ?: emptyList(),
+                onAddSubcategory = { addSubcategory(CourseCategory.PROFESSIONAL_MODULE, it) },
+                onRemoveSubcategory = { removeSubcategory(CourseCategory.PROFESSIONAL_MODULE, it) }
             )
 
             // 6. 自由選修 (只有選修)
@@ -267,6 +316,9 @@ fun GraduationPlanScreen(
                 onReqChange = {},
                 eleValue = freeEleTarget,
                 onEleChange = { freeEleTarget = it },
+                subcategories = subcategoriesMap[CourseCategory.FREE_ELECTIVE] ?: emptyList(),
+                onAddSubcategory = { addSubcategory(CourseCategory.FREE_ELECTIVE, it) },
+                onRemoveSubcategory = { removeSubcategory(CourseCategory.FREE_ELECTIVE, it) },
                 showElectiveOnly = true
             )
 
@@ -291,6 +343,7 @@ fun GraduationPlanScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ModuleThresholdCard(
     title: String,
@@ -299,9 +352,56 @@ private fun ModuleThresholdCard(
     onReqChange: (String) -> Unit,
     eleValue: String,
     onEleChange: (String) -> Unit,
+    subcategories: List<String> = emptyList(),
+    onAddSubcategory: (String) -> Unit = {},
+    onRemoveSubcategory: (String) -> Unit = {},
     showRequiredOnly: Boolean = false,
     showElectiveOnly: Boolean = false
 ) {
+    var showAddDialog by remember { mutableStateOf(false) }
+    var newSubcategoryName by remember { mutableStateOf("") }
+
+    if (showAddDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showAddDialog = false
+                newSubcategoryName = ""
+            },
+            title = { Text("新增「$title」子分類") },
+            text = {
+                OutlinedTextField(
+                    value = newSubcategoryName,
+                    onValueChange = { newSubcategoryName = it },
+                    label = { Text("子分類 / 類別名稱") },
+                    placeholder = { Text("例：語文、程式能力、向度一") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (newSubcategoryName.isNotBlank()) {
+                            onAddSubcategory(newSubcategoryName.trim())
+                            showAddDialog = false
+                            newSubcategoryName = ""
+                        }
+                    }
+                ) {
+                    Text("新增")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showAddDialog = false
+                    newSubcategoryName = ""
+                }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -375,6 +475,64 @@ private fun ModuleThresholdCard(
                         singleLine = true,
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp)
+                    )
+                }
+            }
+
+            // Subcategories Management
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "子階級分類 / 領域 (${subcategories.size})",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    TextButton(
+                        onClick = { showAddDialog = true },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("新增子分類", style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+
+                if (subcategories.isNotEmpty()) {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        subcategories.forEach { sub ->
+                            InputChip(
+                                selected = false,
+                                onClick = {},
+                                label = { Text(sub, style = MaterialTheme.typography.labelSmall) },
+                                trailingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "刪除",
+                                        modifier = Modifier
+                                            .size(14.dp)
+                                            .clickable { onRemoveSubcategory(sub) }
+                                    )
+                                },
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                        }
+                    }
+                } else {
+                    Text(
+                        text = "無設定子分類（排課時該母體將不顯示子分類選單）",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )
                 }
             }

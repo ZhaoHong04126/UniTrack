@@ -111,6 +111,12 @@ fun AddEditCourseDialog(
     var creditsText by remember { mutableStateOf(initialCourse?.credits?.toString() ?: "3.0") }
     var category by remember { mutableStateOf<CourseCategory?>(initialCourse?.category) }
     var requirementType by remember { mutableStateOf<CourseRequirementType?>(initialCourse?.requirementType) }
+    var subcategoryText by remember {
+        mutableStateOf(
+            initialCourse?.subcategory?.ifBlank { null }
+                ?: if (initialCourse?.generalEduSubtype != null && initialCourse.generalEduSubtype != GeneralEduSubtype.NONE) initialCourse.generalEduSubtype.label else ""
+        )
+    }
     var generalEduSubtype by remember { mutableStateOf(initialCourse?.generalEduSubtype ?: GeneralEduSubtype.NONE) }
     var semester by remember { mutableStateOf(initialCourse?.semester ?: defaultSemester) }
     var colorHex by remember { mutableStateOf(initialCourse?.colorHex ?: "#3B82F6") }
@@ -119,7 +125,7 @@ fun AddEditCourseDialog(
     var otherInfoExpanded by remember { mutableStateOf(false) }
     var categoryDropdownExpanded by remember { mutableStateOf(false) }
     var requirementTypeDropdownExpanded by remember { mutableStateOf(false) }
-    var generalSubtypeDropdownExpanded by remember { mutableStateOf(false) }
+    var subcategoryDropdownExpanded by remember { mutableStateOf(false) }
 
     val weekdays = listOf(
         1 to "一",
@@ -252,45 +258,20 @@ fun AddEditCourseDialog(
         uncompleted.ifEmpty { baseCategories }
     }
 
-    val availableRequirementTypes = remember(category, relevantCourses, plan, initialCourse) {
+    val availableRequirementTypes = remember {
+        listOf(
+            CourseRequirementType.REQUIRED,
+            CourseRequirementType.ELECTIVE,
+            CourseRequirementType.REQUIRED_ELECTIVE
+        )
+    }
+
+    val activeSubcategories = remember(category, plan) {
         val selectedCat = category
-        if (selectedCat == null) {
-            listOf(CourseRequirementType.REQUIRED, CourseRequirementType.ELECTIVE)
+        if (selectedCat == null || plan == null) {
+            emptyList()
         } else {
-            val (targetReq, targetEle, _) = getCategoryTargets(selectedCat)
-
-            val types = mutableListOf<CourseRequirementType>()
-
-            if (targetReq > 0.0) {
-                val isFull = isRequirementFull(selectedCat, CourseRequirementType.REQUIRED)
-                if (!isFull || (initialCourse != null && initialCourse.category == selectedCat && initialCourse.requirementType == CourseRequirementType.REQUIRED)) {
-                    types.add(CourseRequirementType.REQUIRED)
-                }
-            }
-
-            if (targetEle > 0.0 || selectedCat == CourseCategory.FREE_ELECTIVE) {
-                val isFull = isRequirementFull(selectedCat, CourseRequirementType.ELECTIVE)
-                if (!isFull || (initialCourse != null && initialCourse.category == selectedCat && initialCourse.requirementType == CourseRequirementType.ELECTIVE)) {
-                    types.add(CourseRequirementType.ELECTIVE)
-                }
-            }
-
-            if (targetReq > 0.0 && targetEle > 0.0) {
-                val isFull = isRequirementFull(selectedCat, CourseRequirementType.REQUIRED_ELECTIVE)
-                if (!isFull || (initialCourse != null && initialCourse.category == selectedCat && initialCourse.requirementType == CourseRequirementType.REQUIRED_ELECTIVE)) {
-                    types.add(CourseRequirementType.REQUIRED_ELECTIVE)
-                }
-            }
-
-            if (types.isEmpty()) {
-                if (targetEle > 0.0 || selectedCat == CourseCategory.FREE_ELECTIVE) {
-                    listOf(CourseRequirementType.ELECTIVE)
-                } else {
-                    listOf(CourseRequirementType.REQUIRED)
-                }
-            } else {
-                types
-            }
+            plan.getSubcategories(selectedCat)
         }
     }
 
@@ -300,19 +281,14 @@ fun AddEditCourseDialog(
         }
     }
 
-    LaunchedEffect(availableRequirementTypes) {
-        if (requirementType != null && requirementType !in availableRequirementTypes && availableRequirementTypes.isNotEmpty()) {
-            requirementType = availableRequirementTypes.first()
-        }
-    }
-
-    val otherInfoSummary = remember(teacher, code, creditsText, category, requirementType) {
+    val otherInfoSummary = remember(teacher, code, creditsText, category, requirementType, subcategoryText) {
         val items = mutableListOf<String>()
         if (teacher.isNotBlank()) items.add(teacher)
         if (code.isNotBlank()) items.add(code)
         if (creditsText.isNotBlank()) items.add("${creditsText}學分")
         category?.let { items.add(it.shortLabel) }
         requirementType?.let { items.add(it.label) }
+        if (subcategoryText.isNotBlank()) items.add(subcategoryText)
         if (items.isNotEmpty()) items.joinToString(" · ") else "教授 · 課程代碼 · 學分"
     }
 
@@ -527,32 +503,49 @@ fun AddEditCourseDialog(
                                 }
                             }
 
-                            if (category == CourseCategory.GENERAL_EDU) {
+                            if (activeSubcategories.isNotEmpty()) {
                                 ExposedDropdownMenuBox(
-                                    expanded = generalSubtypeDropdownExpanded,
-                                    onExpandedChange = { generalSubtypeDropdownExpanded = !generalSubtypeDropdownExpanded },
+                                    expanded = subcategoryDropdownExpanded,
+                                    onExpandedChange = { subcategoryDropdownExpanded = !subcategoryDropdownExpanded },
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     OutlinedTextField(
-                                        value = generalEduSubtype.label,
+                                        value = subcategoryText.ifBlank { "請選擇子分類 / 類別 (選填)" },
                                         onValueChange = {},
                                         readOnly = true,
-                                        label = { Text("通識類別 *") },
+                                        label = { Text("子分類 / 類別") },
                                         singleLine = true,
                                         shape = RoundedCornerShape(10.dp),
-                                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = generalSubtypeDropdownExpanded) },
+                                        colors = if (subcategoryText.isBlank()) {
+                                            OutlinedTextFieldDefaults.colors(
+                                                unfocusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                                focusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                            )
+                                        } else {
+                                            OutlinedTextFieldDefaults.colors()
+                                        },
+                                        trailingIcon = {
+                                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = subcategoryDropdownExpanded)
+                                        },
                                         modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
                                     )
                                     ExposedDropdownMenu(
-                                        expanded = generalSubtypeDropdownExpanded,
-                                        onDismissRequest = { generalSubtypeDropdownExpanded = false }
+                                        expanded = subcategoryDropdownExpanded,
+                                        onDismissRequest = { subcategoryDropdownExpanded = false }
                                     ) {
-                                        GeneralEduSubtype.entries.forEach { subtype ->
+                                        DropdownMenuItem(
+                                            text = { Text("未指定 / 無") },
+                                            onClick = {
+                                                subcategoryText = ""
+                                                subcategoryDropdownExpanded = false
+                                            }
+                                        )
+                                        activeSubcategories.forEach { sub ->
                                             DropdownMenuItem(
-                                                text = { Text(subtype.label) },
+                                                text = { Text(sub) },
                                                 onClick = {
-                                                    generalEduSubtype = subtype
-                                                    generalSubtypeDropdownExpanded = false
+                                                    subcategoryText = sub
+                                                    subcategoryDropdownExpanded = false
                                                 }
                                             )
                                         }
@@ -938,6 +931,9 @@ fun AddEditCourseDialog(
                         }
 
                         val credits = creditsText.toDoubleOrNull() ?: 3.0
+                        val matchedGeneralSubtype = GeneralEduSubtype.entries.firstOrNull { it.label == subcategoryText.trim() } ?: GeneralEduSubtype.NONE
+                        val cleanSubcategory = subcategoryText.trim()
+
                         if (isTimeTBD) {
                             val course = (initialCourse ?: Course(name = name)).copy(
                                 name = name.trim(),
@@ -952,7 +948,8 @@ fun AddEditCourseDialog(
                                 credits = credits,
                                 category = finalCategory,
                                 requirementType = finalRequirementType,
-                                generalEduSubtype = if (finalCategory == CourseCategory.GENERAL_EDU) generalEduSubtype else GeneralEduSubtype.NONE,
+                                generalEduSubtype = if (finalCategory == CourseCategory.GENERAL_EDU) matchedGeneralSubtype else GeneralEduSubtype.NONE,
+                                subcategory = cleanSubcategory,
                                 semester = semester.trim(),
                                 score = initialCourse?.score,
                                 letterGrade = initialCourse?.letterGrade,
@@ -985,7 +982,8 @@ fun AddEditCourseDialog(
                                     credits = if (idx == 0) credits else 0.0,
                                     category = finalCategory,
                                     requirementType = finalRequirementType,
-                                    generalEduSubtype = if (finalCategory == CourseCategory.GENERAL_EDU) generalEduSubtype else GeneralEduSubtype.NONE,
+                                    generalEduSubtype = if (finalCategory == CourseCategory.GENERAL_EDU) matchedGeneralSubtype else GeneralEduSubtype.NONE,
+                                    subcategory = cleanSubcategory,
                                     semester = semester.trim(),
                                     score = if (idx == 0) initialCourse?.score else null,
                                     letterGrade = if (idx == 0) initialCourse?.letterGrade else null,

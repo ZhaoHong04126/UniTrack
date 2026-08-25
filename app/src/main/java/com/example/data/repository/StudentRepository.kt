@@ -205,7 +205,9 @@ class StudentRepository(
                 put("endTime", c.endTime)
                 put("credits", c.credits)
                 put("category", c.category.name)
+                put("requirementType", c.requirementType.name)
                 put("generalEduSubtype", c.generalEduSubtype.name)
+                put("subcategory", c.subcategory)
                 put("semester", c.semester)
                 put("score", c.score ?: JSONObject.NULL)
                 put("letterGrade", c.letterGrade ?: JSONObject.NULL)
@@ -288,6 +290,7 @@ class StudentRepository(
                             endTime = o.optString("endTime", ""),
                             credits = o.optDouble("credits", 3.0),
                             category = runCatching { CourseCategory.valueOf(o.optString("category", "REQUIRED")) }.getOrDefault(CourseCategory.REQUIRED),
+                            requirementType = runCatching { CourseRequirementType.valueOf(o.optString("requirementType", "REQUIRED")) }.getOrDefault(CourseRequirementType.REQUIRED),
                             generalEduSubtype = runCatching {
                                 when (val s = o.optString("generalEduSubtype", "NONE")) {
                                     "HUMANITIES" -> GeneralEduSubtype.CORE_HUMANITIES
@@ -298,6 +301,7 @@ class StudentRepository(
                                     else -> GeneralEduSubtype.valueOf(s)
                                 }
                             }.getOrDefault(GeneralEduSubtype.NONE),
+                            subcategory = o.optString("subcategory", ""),
                             semester = o.optString("semester", "113-2"),
                             score = if (o.isNull("score")) null else o.optDouble("score"),
                             letterGrade = if (o.isNull("letterGrade")) null else o.optString("letterGrade"),

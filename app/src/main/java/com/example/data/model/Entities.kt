@@ -20,6 +20,7 @@ data class Course(
     val category: CourseCategory = CourseCategory.GENERAL_EDU,
     val requirementType: CourseRequirementType = CourseRequirementType.REQUIRED,
     val generalEduSubtype: GeneralEduSubtype = GeneralEduSubtype.NONE,
+    val subcategory: String = "", // 自訂子分類 / 領域 / 類別 (如：國語文、向度一、AI通識)
     val semester: String = "", // e.g. 113-1, 113-2
     val score: Double? = null, // 0~100 or null if currently taking
     val letterGrade: String? = null, // "A+", "A", "B+", etc.
@@ -68,8 +69,56 @@ data class GraduationPlan(
     val minPassingScore: Double = 60.0,
     val gpaScale: GpaScale = GpaScale.PERCENTAGE,
     val admissionSemester: String = "",
-    val currentSemester: String = ""
-)
+    val currentSemester: String = "",
+    val subcategoriesJson: String = "" // JSON map of Category -> List<SubcategoryName>
+) {
+    fun getSubcategories(category: CourseCategory): List<String> {
+        if (subcategoriesJson.isBlank()) {
+            return if (category == CourseCategory.GENERAL_EDU) {
+                listOf(
+                    "語文：國語文能力",
+                    "語文：英語文能力",
+                    "資訊能力課程",
+                    "跨領域核心：人文藝術領域",
+                    "跨領域核心：社會科學領域",
+                    "跨領域核心：自然科學領域",
+                    "博雅：美學、哲學與文化實踐",
+                    "博雅：公民、社會與全球視野",
+                    "博雅：科技、自然與環境生態",
+                    "博雅：自我、人際與成長調適",
+                    "體適能：運動與健康"
+                )
+            } else emptyList()
+        }
+        return try {
+            val json = org.json.JSONObject(subcategoriesJson)
+            val arr = json.optJSONArray(category.name) ?: return emptyList()
+            val list = mutableListOf<String>()
+            for (i in 0 until arr.length()) {
+                val item = arr.optString(i)
+                if (item.isNotBlank()) list.add(item)
+            }
+            list
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    companion object {
+        fun encodeSubcategories(map: Map<CourseCategory, List<String>>): String {
+            val obj = org.json.JSONObject()
+            map.forEach { (cat, list) ->
+                val cleanList = list.filter { it.isNotBlank() }.distinct()
+                if (cleanList.isNotEmpty()) {
+                    val arr = org.json.JSONArray()
+                    cleanList.forEach { arr.put(it) }
+                    obj.put(cat.name, arr)
+                }
+            }
+            return obj.toString()
+        }
+    }
+}
 
 @Entity(tableName = "graduation_thresholds")
 data class GraduationThreshold(

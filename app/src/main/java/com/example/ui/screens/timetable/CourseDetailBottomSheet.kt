@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
 import com.example.data.model.Course
 import com.example.data.model.CourseNote
+import com.example.data.model.GeneralEduSubtype
 import com.example.ui.theme.EmeraldAccent
 import com.example.ui.theme.RoseAccent
 import com.example.ui.theme.SapphirePrimary
@@ -1184,10 +1185,19 @@ private fun InfoTabView(
             value = "${course.credits} 學分 (${course.semester} 學期)"
         )
 
+        val categoryLabel = buildString {
+            append("${course.category.label}・${course.requirementType.label}")
+            if (course.subcategory.isNotBlank()) {
+                append(" (${course.subcategory})")
+            } else if (course.generalEduSubtype != GeneralEduSubtype.NONE) {
+                append(" (${course.generalEduSubtype.label})")
+            }
+        }
+
         DetailRowItem(
             icon = Icons.Default.Category,
             label = "課程類別",
-            value = "${course.category.label}・${course.requirementType.label}"
+            value = categoryLabel
         )
 
         if (course.code.isNotBlank()) {

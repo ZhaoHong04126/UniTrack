@@ -110,6 +110,7 @@ class FirestoreSyncRepository(
                     "category" to course.category.name,
                     "requirementType" to course.requirementType.name,
                     "generalEduSubtype" to course.generalEduSubtype.name,
+                    "subcategory" to course.subcategory,
                     "semester" to course.semester,
                     "score" to course.score,
                     "letterGrade" to course.letterGrade,
@@ -313,6 +314,7 @@ class FirestoreSyncRepository(
                         generalEduSubtype = runCatching {
                             GeneralEduSubtype.valueOf(doc.getString("generalEduSubtype") ?: GeneralEduSubtype.NONE.name)
                         }.getOrDefault(GeneralEduSubtype.NONE),
+                        subcategory = doc.getString("subcategory") ?: "",
                         semester = doc.getString("semester") ?: DefaultData.getCurrentAcademicSemester(),
                         score = doc.getDouble("score"),
                         letterGrade = doc.getString("letterGrade"),
