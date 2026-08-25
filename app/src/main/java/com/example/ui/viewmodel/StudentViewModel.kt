@@ -568,6 +568,8 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         var inProgressCollegeCore = 0.0
         var earnedCollegeCoreReq = 0.0
         var inProgressCollegeCoreReq = 0.0
+        var earnedCollegeCoreEle = 0.0
+        var inProgressCollegeCoreEle = 0.0
 
         var earnedBasicModule = 0.0
         var inProgressBasicModule = 0.0
@@ -623,10 +625,10 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                 CourseCategory.COLLEGE_CORE -> {
                     if (isPassed) {
                         earnedCollegeCore += c.credits
-                        earnedCollegeCoreReq += c.credits
+                        if (isReq) earnedCollegeCoreReq += c.credits else earnedCollegeCoreEle += c.credits
                     } else if (isInProgress) {
                         inProgressCollegeCore += c.credits
-                        inProgressCollegeCoreReq += c.credits
+                        if (isReq) inProgressCollegeCoreReq += c.credits else inProgressCollegeCoreEle += c.credits
                     }
                 }
                 CourseCategory.BASIC_MODULE -> {
@@ -725,7 +727,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             collegeCoreSummary = CreditCategorySummary(
                 CourseCategory.COLLEGE_CORE, earnedCollegeCore, inProgressCollegeCore, plan.targetCollegeCoreCredits, colPercentage,
                 requiredSummary = subSummary("必修", earnedCollegeCoreReq, inProgressCollegeCoreReq, colReqTarget),
-                electiveSummary = null
+                electiveSummary = subSummary("選修", earnedCollegeCoreEle, inProgressCollegeCoreEle, plan.targetCollegeCoreElectiveCredits)
             ),
             basicModuleSummary = CreditCategorySummary(
                 CourseCategory.BASIC_MODULE, earnedBasicModule, inProgressBasicModule, plan.targetBasicModuleCredits, basPercentage,

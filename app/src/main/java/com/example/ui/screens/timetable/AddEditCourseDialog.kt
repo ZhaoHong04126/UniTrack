@@ -1,5 +1,6 @@
 package com.example.ui.screens.timetable
 
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -26,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -52,6 +54,7 @@ fun AddEditCourseDialog(
     onSave: (Course) -> Unit,
     onSaveMultiple: ((List<Course>) -> Unit)? = null
 ) {
+    val context = LocalContext.current
     var name by remember { mutableStateOf(initialCourse?.name ?: "") }
     var teacher by remember { mutableStateOf(initialCourse?.teacher ?: "") }
     var code by remember { mutableStateOf(initialCourse?.code ?: "") }
@@ -106,8 +109,8 @@ fun AddEditCourseDialog(
     var isPickingStartTime by remember { mutableStateOf(true) }
 
     var creditsText by remember { mutableStateOf(initialCourse?.credits?.toString() ?: "3.0") }
-    var category by remember { mutableStateOf(initialCourse?.category ?: CourseCategory.PROFESSIONAL_MODULE) }
-    var requirementType by remember { mutableStateOf(initialCourse?.requirementType ?: CourseRequirementType.REQUIRED) }
+    var category by remember { mutableStateOf<CourseCategory?>(initialCourse?.category) }
+    var requirementType by remember { mutableStateOf<CourseRequirementType?>(initialCourse?.requirementType) }
     var generalEduSubtype by remember { mutableStateOf(initialCourse?.generalEduSubtype ?: GeneralEduSubtype.NONE) }
     var semester by remember { mutableStateOf(initialCourse?.semester ?: defaultSemester) }
     var colorHex by remember { mutableStateOf(initialCourse?.colorHex ?: "#3B82F6") }
@@ -115,6 +118,7 @@ fun AddEditCourseDialog(
 
     var otherInfoExpanded by remember { mutableStateOf(false) }
     var categoryDropdownExpanded by remember { mutableStateOf(false) }
+    var requirementTypeDropdownExpanded by remember { mutableStateOf(false) }
     var generalSubtypeDropdownExpanded by remember { mutableStateOf(false) }
 
     val weekdays = listOf(
@@ -250,50 +254,54 @@ fun AddEditCourseDialog(
 
     val availableRequirementTypes = remember(category, relevantCourses, plan, initialCourse) {
         val selectedCat = category
-        val (targetReq, targetEle, _) = getCategoryTargets(selectedCat)
-
-        val types = mutableListOf<CourseRequirementType>()
-
-        if (targetReq > 0.0) {
-            val isFull = isRequirementFull(selectedCat, CourseRequirementType.REQUIRED)
-            if (!isFull || (initialCourse != null && initialCourse.category == selectedCat && initialCourse.requirementType == CourseRequirementType.REQUIRED)) {
-                types.add(CourseRequirementType.REQUIRED)
-            }
-        }
-
-        if (targetEle > 0.0 || selectedCat == CourseCategory.FREE_ELECTIVE) {
-            val isFull = isRequirementFull(selectedCat, CourseRequirementType.ELECTIVE)
-            if (!isFull || (initialCourse != null && initialCourse.category == selectedCat && initialCourse.requirementType == CourseRequirementType.ELECTIVE)) {
-                types.add(CourseRequirementType.ELECTIVE)
-            }
-        }
-
-        if (targetReq > 0.0 && targetEle > 0.0) {
-            val isFull = isRequirementFull(selectedCat, CourseRequirementType.REQUIRED_ELECTIVE)
-            if (!isFull || (initialCourse != null && initialCourse.category == selectedCat && initialCourse.requirementType == CourseRequirementType.REQUIRED_ELECTIVE)) {
-                types.add(CourseRequirementType.REQUIRED_ELECTIVE)
-            }
-        }
-
-        if (types.isEmpty()) {
-            if (targetEle > 0.0 || selectedCat == CourseCategory.FREE_ELECTIVE) {
-                listOf(CourseRequirementType.ELECTIVE)
-            } else {
-                listOf(CourseRequirementType.REQUIRED)
-            }
+        if (selectedCat == null) {
+            listOf(CourseRequirementType.REQUIRED, CourseRequirementType.ELECTIVE)
         } else {
-            types
+            val (targetReq, targetEle, _) = getCategoryTargets(selectedCat)
+
+            val types = mutableListOf<CourseRequirementType>()
+
+            if (targetReq > 0.0) {
+                val isFull = isRequirementFull(selectedCat, CourseRequirementType.REQUIRED)
+                if (!isFull || (initialCourse != null && initialCourse.category == selectedCat && initialCourse.requirementType == CourseRequirementType.REQUIRED)) {
+                    types.add(CourseRequirementType.REQUIRED)
+                }
+            }
+
+            if (targetEle > 0.0 || selectedCat == CourseCategory.FREE_ELECTIVE) {
+                val isFull = isRequirementFull(selectedCat, CourseRequirementType.ELECTIVE)
+                if (!isFull || (initialCourse != null && initialCourse.category == selectedCat && initialCourse.requirementType == CourseRequirementType.ELECTIVE)) {
+                    types.add(CourseRequirementType.ELECTIVE)
+                }
+            }
+
+            if (targetReq > 0.0 && targetEle > 0.0) {
+                val isFull = isRequirementFull(selectedCat, CourseRequirementType.REQUIRED_ELECTIVE)
+                if (!isFull || (initialCourse != null && initialCourse.category == selectedCat && initialCourse.requirementType == CourseRequirementType.REQUIRED_ELECTIVE)) {
+                    types.add(CourseRequirementType.REQUIRED_ELECTIVE)
+                }
+            }
+
+            if (types.isEmpty()) {
+                if (targetEle > 0.0 || selectedCat == CourseCategory.FREE_ELECTIVE) {
+                    listOf(CourseRequirementType.ELECTIVE)
+                } else {
+                    listOf(CourseRequirementType.REQUIRED)
+                }
+            } else {
+                types
+            }
         }
     }
 
     LaunchedEffect(availableCategories) {
-        if (category !in availableCategories && availableCategories.isNotEmpty()) {
+        if (category != null && category !in availableCategories && availableCategories.isNotEmpty()) {
             category = availableCategories.first()
         }
     }
 
     LaunchedEffect(availableRequirementTypes) {
-        if (requirementType !in availableRequirementTypes && availableRequirementTypes.isNotEmpty()) {
+        if (requirementType != null && requirementType !in availableRequirementTypes && availableRequirementTypes.isNotEmpty()) {
             requirementType = availableRequirementTypes.first()
         }
     }
@@ -303,8 +311,8 @@ fun AddEditCourseDialog(
         if (teacher.isNotBlank()) items.add(teacher)
         if (code.isNotBlank()) items.add(code)
         if (creditsText.isNotBlank()) items.add("${creditsText}學分")
-        items.add(category.shortLabel)
-        items.add(requirementType.label)
+        category?.let { items.add(it.shortLabel) }
+        requirementType?.let { items.add(it.label) }
         if (items.isNotEmpty()) items.joinToString(" · ") else "教授 · 課程代碼 · 學分"
     }
 
@@ -446,12 +454,20 @@ fun AddEditCourseDialog(
                                     modifier = Modifier.weight(1.3f)
                                 ) {
                                     OutlinedTextField(
-                                        value = category.label,
+                                        value = category?.label ?: "請選擇屬性",
                                         onValueChange = {},
                                         readOnly = true,
                                         label = { Text("學分屬性 *") },
                                         singleLine = true,
                                         shape = RoundedCornerShape(10.dp),
+                                        colors = if (category == null) {
+                                            OutlinedTextFieldDefaults.colors(
+                                                unfocusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                                focusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                            )
+                                        } else {
+                                            OutlinedTextFieldDefaults.colors()
+                                        },
                                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryDropdownExpanded) },
                                         modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
                                     )
@@ -471,15 +487,44 @@ fun AddEditCourseDialog(
                                     }
                                 }
 
-                                OutlinedTextField(
-                                    value = requirementType.label,
-                                    onValueChange = {},
-                                    readOnly = true,
-                                    label = { Text("修別") },
-                                    singleLine = true,
-                                    shape = RoundedCornerShape(10.dp),
+                                ExposedDropdownMenuBox(
+                                    expanded = requirementTypeDropdownExpanded,
+                                    onExpandedChange = { requirementTypeDropdownExpanded = !requirementTypeDropdownExpanded },
                                     modifier = Modifier.weight(1f)
-                                )
+                                ) {
+                                    OutlinedTextField(
+                                        value = requirementType?.label ?: "請選擇修別",
+                                        onValueChange = {},
+                                        readOnly = true,
+                                        label = { Text("修別 *") },
+                                        singleLine = true,
+                                        shape = RoundedCornerShape(10.dp),
+                                        colors = if (requirementType == null) {
+                                            OutlinedTextFieldDefaults.colors(
+                                                unfocusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                                focusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                            )
+                                        } else {
+                                            OutlinedTextFieldDefaults.colors()
+                                        },
+                                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = requirementTypeDropdownExpanded) },
+                                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
+                                    )
+                                    ExposedDropdownMenu(
+                                        expanded = requirementTypeDropdownExpanded,
+                                        onDismissRequest = { requirementTypeDropdownExpanded = false }
+                                    ) {
+                                        availableRequirementTypes.forEach { req ->
+                                            DropdownMenuItem(
+                                                text = { Text(req.label) },
+                                                onClick = {
+                                                    requirementType = req
+                                                    requirementTypeDropdownExpanded = false
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
                             }
 
                             if (category == CourseCategory.GENERAL_EDU) {
@@ -875,68 +920,83 @@ fun AddEditCourseDialog(
 
                 Button(
                     onClick = {
-                        if (name.isNotBlank()) {
-                            val credits = creditsText.toDoubleOrNull() ?: 3.0
-                            if (isTimeTBD) {
-                                val course = (initialCourse ?: Course(name = name)).copy(
+                        val finalCategory = category
+                        val finalRequirementType = requirementType
+
+                        if (name.isBlank()) {
+                            return@Button
+                        }
+                        if (finalCategory == null) {
+                            Toast.makeText(context, "請選擇學分屬性", Toast.LENGTH_SHORT).show()
+                            otherInfoExpanded = true
+                            return@Button
+                        }
+                        if (finalRequirementType == null) {
+                            Toast.makeText(context, "請選擇修別", Toast.LENGTH_SHORT).show()
+                            otherInfoExpanded = true
+                            return@Button
+                        }
+
+                        val credits = creditsText.toDoubleOrNull() ?: 3.0
+                        if (isTimeTBD) {
+                            val course = (initialCourse ?: Course(name = name)).copy(
+                                name = name.trim(),
+                                code = code.trim(),
+                                teacher = teacher.trim(),
+                                location = "",
+                                dayOfWeek = 1,
+                                startPeriod = 1,
+                                endPeriod = 1,
+                                startTime = "",
+                                endTime = "",
+                                credits = credits,
+                                category = finalCategory,
+                                requirementType = finalRequirementType,
+                                generalEduSubtype = if (finalCategory == CourseCategory.GENERAL_EDU) generalEduSubtype else GeneralEduSubtype.NONE,
+                                semester = semester.trim(),
+                                score = initialCourse?.score,
+                                letterGrade = initialCourse?.letterGrade,
+                                isCompleted = initialCourse?.isCompleted ?: false,
+                                colorHex = colorHex,
+                                notes = notes.trim(),
+                                repeatWeeks = "1-18",
+                                repeatMode = "每週"
+                            )
+                            onSave(course)
+                        } else {
+                            val coursesToSave = timeSlots.mapIndexed { idx, slot ->
+                                val sHour = slot.startTimeStr.substringBefore(":").toIntOrNull() ?: 9
+                                val eHour = slot.endTimeStr.substringBefore(":").toIntOrNull() ?: 10
+                                val eMin = slot.endTimeStr.substringAfter(":").toIntOrNull() ?: 30
+                                val startP = (sHour - 7).coerceIn(0, 15)
+                                val endP = (if (eMin > 10) eHour - 7 else eHour - 8).coerceIn(startP, 15)
+                                val repWeeks = if (slot.repeatMode == "每週") "1-18" else slot.selectedWeeks.sorted().joinToString(",")
+
+                                (if (idx == 0 && initialCourse != null) initialCourse else Course(name = name)).copy(
                                     name = name.trim(),
                                     code = code.trim(),
                                     teacher = teacher.trim(),
-                                    location = "",
-                                    dayOfWeek = 1,
-                                    startPeriod = 1,
-                                    endPeriod = 1,
-                                    startTime = "",
-                                    endTime = "",
-                                    credits = credits,
-                                    category = category,
-                                    requirementType = requirementType,
-                                    generalEduSubtype = if (category == CourseCategory.GENERAL_EDU) generalEduSubtype else GeneralEduSubtype.NONE,
+                                    location = slot.location.trim(),
+                                    dayOfWeek = slot.dayOfWeek,
+                                    startPeriod = startP,
+                                    endPeriod = endP,
+                                    startTime = slot.startTimeStr,
+                                    endTime = slot.endTimeStr,
+                                    credits = if (idx == 0) credits else 0.0,
+                                    category = finalCategory,
+                                    requirementType = finalRequirementType,
+                                    generalEduSubtype = if (finalCategory == CourseCategory.GENERAL_EDU) generalEduSubtype else GeneralEduSubtype.NONE,
                                     semester = semester.trim(),
-                                    score = initialCourse?.score,
-                                    letterGrade = initialCourse?.letterGrade,
-                                    isCompleted = initialCourse?.isCompleted ?: false,
+                                    score = if (idx == 0) initialCourse?.score else null,
+                                    letterGrade = if (idx == 0) initialCourse?.letterGrade else null,
+                                    isCompleted = if (idx == 0) (initialCourse?.isCompleted ?: false) else false,
                                     colorHex = colorHex,
                                     notes = notes.trim(),
-                                    repeatWeeks = "1-18",
-                                    repeatMode = "每週"
+                                    repeatWeeks = repWeeks,
+                                    repeatMode = slot.repeatMode
                                 )
-                                onSave(course)
-                            } else {
-                                val coursesToSave = timeSlots.mapIndexed { idx, slot ->
-                                    val sHour = slot.startTimeStr.substringBefore(":").toIntOrNull() ?: 9
-                                    val eHour = slot.endTimeStr.substringBefore(":").toIntOrNull() ?: 10
-                                    val eMin = slot.endTimeStr.substringAfter(":").toIntOrNull() ?: 30
-                                    val startP = (sHour - 7).coerceIn(1, 14)
-                                    val endP = (if (eMin > 0) eHour - 7 else eHour - 8).coerceIn(startP, 14)
-                                    val repWeeks = if (slot.repeatMode == "每週") "1-18" else slot.selectedWeeks.sorted().joinToString(",")
-
-                                    (if (idx == 0 && initialCourse != null) initialCourse else Course(name = name)).copy(
-                                        name = name.trim(),
-                                        code = code.trim(),
-                                        teacher = teacher.trim(),
-                                        location = slot.location.trim(),
-                                        dayOfWeek = slot.dayOfWeek,
-                                        startPeriod = startP,
-                                        endPeriod = endP,
-                                        startTime = slot.startTimeStr,
-                                        endTime = slot.endTimeStr,
-                                        credits = if (idx == 0) credits else 0.0,
-                                        category = category,
-                                        requirementType = requirementType,
-                                        generalEduSubtype = if (category == CourseCategory.GENERAL_EDU) generalEduSubtype else GeneralEduSubtype.NONE,
-                                        semester = semester.trim(),
-                                        score = if (idx == 0) initialCourse?.score else null,
-                                        letterGrade = if (idx == 0) initialCourse?.letterGrade else null,
-                                        isCompleted = if (idx == 0) (initialCourse?.isCompleted ?: false) else false,
-                                        colorHex = colorHex,
-                                        notes = notes.trim(),
-                                        repeatWeeks = repWeeks,
-                                        repeatMode = slot.repeatMode
-                                    )
-                                }
-                                onSaveMultiple?.invoke(coursesToSave) ?: coursesToSave.forEach { onSave(it) }
                             }
+                            onSaveMultiple?.invoke(coursesToSave) ?: coursesToSave.forEach { onSave(it) }
                         }
                     },
                     enabled = name.isNotBlank() && (isTimeTBD || conflictingCourseInfo == null),

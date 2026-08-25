@@ -49,6 +49,7 @@ fun GraduationPlanScreen(
 
     // 院共同
     var colReqTarget by remember(currentPlan) { mutableStateOf(currentPlan.targetCollegeCoreRequiredCredits.toString()) }
+    var colEleTarget by remember(currentPlan) { mutableStateOf(currentPlan.targetCollegeCoreElectiveCredits.toString()) }
 
     // 基礎模組
     var basReqTarget by remember(currentPlan) { mutableStateOf(currentPlan.targetBasicModuleRequiredCredits.toString()) }
@@ -69,7 +70,7 @@ fun GraduationPlanScreen(
         val genReq = genReqTarget.toDoubleOrNull() ?: 0.0
         val genEle = genEleTarget.toDoubleOrNull() ?: 0.0
         val colReq = colReqTarget.toDoubleOrNull() ?: 0.0
-        val colEle = 0.0
+        val colEle = colEleTarget.toDoubleOrNull() ?: 0.0
         val basReq = basReqTarget.toDoubleOrNull() ?: 0.0
         val basEle = basEleTarget.toDoubleOrNull() ?: 0.0
         val corReq = corReqTarget.toDoubleOrNull() ?: 0.0
@@ -83,7 +84,7 @@ fun GraduationPlanScreen(
             targetRequiredCredits = currentPlan.targetRequiredCredits,
             targetElectiveCredits = currentPlan.targetElectiveCredits,
             targetGeneralCredits = genReq + genEle,
-            targetCollegeCoreCredits = colReq,
+            targetCollegeCoreCredits = colReq + colEle,
             targetBasicModuleCredits = basReq + basEle,
             targetCoreModuleCredits = corReq + corEle,
             targetProfessionalModuleCredits = proReq + proEle,
@@ -218,15 +219,14 @@ fun GraduationPlanScreen(
                 onEleChange = { genEleTarget = it }
             )
 
-            // 2. 院共同課程 (只有必修)
+            // 2. 院共同課程
             ModuleThresholdCard(
                 title = "院共同課程",
                 badgeColor = CourseCategory.COLLEGE_CORE.badgeColor,
                 reqValue = colReqTarget,
                 onReqChange = { colReqTarget = it },
-                eleValue = "",
-                onEleChange = {},
-                showRequiredOnly = true
+                eleValue = colEleTarget,
+                onEleChange = { colEleTarget = it }
             )
 
             // 3. 基礎模組
