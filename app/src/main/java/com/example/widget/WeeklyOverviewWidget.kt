@@ -75,19 +75,6 @@ class WeeklyOverviewWidget : AppWidgetProvider() {
         )
         views.setOnClickPendingIntent(R.id.widget_overview_root, mainPendingIntent)
 
-        // 重新整理按鈕
-        val refreshIntent = Intent(context, WeeklyOverviewWidget::class.java).apply {
-            action = ACTION_REFRESH_WEEKLY_OVERVIEW
-            putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, intArrayOf(appWidgetId))
-        }
-        val refreshPendingIntent = PendingIntent.getBroadcast(
-            context,
-            appWidgetId,
-            refreshIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        views.setOnClickPendingIntent(R.id.btn_overview_refresh, refreshPendingIntent)
-
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val db = AppDatabase.getDatabase(context)
@@ -146,24 +133,16 @@ class WeeklyOverviewWidget : AppWidgetProvider() {
                     views.setTextViewText(R.id.tv_overview_today_info, "點擊隨時查看完整週課表")
                 }
 
-                // 繪製下方一週 5/7 日 mini cards
-                if (semesterCourses.isEmpty()) {
-                    views.setViewVisibility(R.id.iv_overview_mini_grid, View.GONE)
-                    views.setViewVisibility(R.id.tv_overview_empty, View.VISIBLE)
-                } else {
-                    views.setViewVisibility(R.id.tv_overview_empty, View.GONE)
-                    views.setViewVisibility(R.id.iv_overview_mini_grid, View.VISIBLE)
-
-                    val overviewBitmap = WeeklyOverviewBitmapRenderer.renderOverviewCards(
-                        courses = semesterCourses,
-                        currentDayOfWeek = dayOfWeekIndex,
-                        currentWeek = currentWeek,
-                        showWeekend = showWeekend,
-                        width = 1000,
-                        height = 600
-                    )
-                    views.setImageViewBitmap(R.id.iv_overview_mini_grid, overviewBitmap)
-                }
+                // 繪製下方一週 5/7 日 mini cards（即使無課程也顯示完整 5 日卡片）
+                val overviewBitmap = WeeklyOverviewBitmapRenderer.renderOverviewCards(
+                    courses = semesterCourses,
+                    currentDayOfWeek = dayOfWeekIndex,
+                    currentWeek = currentWeek,
+                    showWeekend = showWeekend,
+                    width = 1000,
+                    height = 600
+                )
+                views.setImageViewBitmap(R.id.iv_overview_mini_grid, overviewBitmap)
 
                 appWidgetManager.updateAppWidget(appWidgetId, views)
             } catch (_: Exception) {

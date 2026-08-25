@@ -135,4 +135,34 @@ class TodayScheduleWidgetTest {
         assertEquals(500, bitmap.width)
         assertEquals(300, bitmap.height)
     }
+
+    @Test
+    fun testWeeklyGridBitmapRenderer_emptyCourses() {
+        val bitmap = WeeklyGridBitmapRenderer.renderWeeklyGrid(
+            courses = emptyList(),
+            currentDayOfWeek = 2,
+            currentWeek = 1,
+            showWeekend = false,
+            width = 500,
+            height = 600
+        )
+        assertNotNull(bitmap)
+        assertEquals(500, bitmap.width)
+        assertEquals(600, bitmap.height)
+    }
+
+    @Test
+    fun testWeeklyOverviewBitmapRenderer_emptyCourses() {
+        val bitmap = WeeklyOverviewBitmapRenderer.renderOverviewCards(
+            courses = emptyList(),
+            currentDayOfWeek = 2,
+            currentWeek = 1,
+            showWeekend = false,
+            width = 500,
+            height = 300
+        )
+        assertNotNull(bitmap)
+        assertEquals(500, bitmap.width)
+        assertEquals(300, bitmap.height)
+    }
 }

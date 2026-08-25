@@ -5,7 +5,6 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
-import android.view.View
 import android.widget.RemoteViews
 import com.example.MainActivity
 import com.example.R
@@ -75,19 +74,6 @@ class WeeklyGridTimetableWidget : AppWidgetProvider() {
         )
         views.setOnClickPendingIntent(R.id.widget_grid_root, mainPendingIntent)
 
-        // 重新整理按鈕
-        val refreshIntent = Intent(context, WeeklyGridTimetableWidget::class.java).apply {
-            action = ACTION_REFRESH_WEEKLY_GRID
-            putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, intArrayOf(appWidgetId))
-        }
-        val refreshPendingIntent = PendingIntent.getBroadcast(
-            context,
-            appWidgetId,
-            refreshIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        views.setOnClickPendingIntent(R.id.btn_widget_grid_refresh, refreshPendingIntent)
-
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val db = AppDatabase.getDatabase(context)
@@ -110,24 +96,16 @@ class WeeklyGridTimetableWidget : AppWidgetProvider() {
                 val allCourses = db.courseDao().getAllCoursesOnce()
                 val semesterCourses = allCourses.filter { it.semester == currentSemester }
 
-                if (semesterCourses.isEmpty()) {
-                    views.setViewVisibility(R.id.iv_weekly_grid_canvas, View.GONE)
-                    views.setViewVisibility(R.id.layout_grid_empty, View.VISIBLE)
-                } else {
-                    views.setViewVisibility(R.id.layout_grid_empty, View.GONE)
-                    views.setViewVisibility(R.id.iv_weekly_grid_canvas, View.VISIBLE)
-
-                    // 繪製網格 Bitmap
-                    val gridBitmap = WeeklyGridBitmapRenderer.renderWeeklyGrid(
-                        courses = semesterCourses,
-                        currentDayOfWeek = dayOfWeekIndex,
-                        currentWeek = currentWeek,
-                        showWeekend = showWeekend,
-                        width = 1000,
-                        height = 1200
-                    )
-                    views.setImageViewBitmap(R.id.iv_weekly_grid_canvas, gridBitmap)
-                }
+                // 永遠繪製完整課表網格（即使無課程也顯示完整 1~8 節網格）
+                val gridBitmap = WeeklyGridBitmapRenderer.renderWeeklyGrid(
+                    courses = semesterCourses,
+                    currentDayOfWeek = dayOfWeekIndex,
+                    currentWeek = currentWeek,
+                    showWeekend = showWeekend,
+                    width = 1000,
+                    height = 1200
+                )
+                views.setImageViewBitmap(R.id.iv_weekly_grid_canvas, gridBitmap)
 
                 appWidgetManager.updateAppWidget(appWidgetId, views)
             } catch (_: Exception) {

@@ -40,7 +40,6 @@
             android:id="@+id/tv_overview_week_badge"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="6dp"
             android:background="@drawable/widget_badge_bg"
             android:paddingHorizontal="6dp"
             android:paddingVertical="2dp"
@@ -48,17 +47,6 @@
             android:textSize="11sp"
             android:textStyle="bold"
             tools:text="第 2 週" />
-
-        <ImageButton
-            android:id="@+id/btn_overview_refresh"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:padding="4dp"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/widget_refresh_desc"
-            android:scaleType="fitCenter"
-            android:src="@drawable/ic_widget_refresh"
-            tools:ignore="TouchTargetSizeCheck" />
     </LinearLayout>
 
     <!-- Top Focus Card (Today's Next Class or Today's summary) -->
@@ -155,16 +143,6 @@
                 android:contentDescription="@string/widget_weekly_overview_name"
                 android:scaleType="fitXY"
                 android:src="@drawable/widget_weekly_overview_preview" />
-
-            <TextView
-                android:id="@+id/tv_overview_empty"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:gravity="center"
-                tools:text="本學期尚未排課"
-                android:textColor="@color/widget_text_muted"
-                android:textSize="12sp"
-                android:visibility="gone" />
         </FrameLayout>
     </LinearLayout>
 

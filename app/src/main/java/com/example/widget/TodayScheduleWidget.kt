@@ -222,19 +222,6 @@ class TodayScheduleWidget : AppWidgetProvider() {
         )
         views.setOnClickPendingIntent(R.id.widget_root, mainPendingIntent)
 
-        // 綁定重新整理按鈕
-        val refreshIntent = Intent(context, TodayScheduleWidget::class.java).apply {
-            action = ACTION_REFRESH_SCHEDULE
-            putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, intArrayOf(appWidgetId))
-        }
-        val refreshPendingIntent = PendingIntent.getBroadcast(
-            context,
-            appWidgetId,
-            refreshIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        views.setOnClickPendingIntent(R.id.btn_widget_refresh, refreshPendingIntent)
-
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val db = AppDatabase.getDatabase(context)
