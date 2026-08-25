@@ -959,6 +959,36 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         _userMessage.value = "已清空所有記帳記錄"
     }
 
+    fun seedMockExpenses() = viewModelScope.launch {
+        val month = _selectedExpenseMonth.value
+        val mockData = listOf(
+            ExpenseRecord(title = "早餐", amount = 65.0, category = ExpenseCategory.FOOD, type = ExpenseType.EXPENSE, dateString = "$month-01", paymentMethod = PaymentMethod.CASH, note = "蛋餅大冰奶"),
+            ExpenseRecord(title = "午餐", amount = 120.0, category = ExpenseCategory.FOOD, type = ExpenseType.EXPENSE, dateString = "$month-01", paymentMethod = PaymentMethod.MOBILE_PAY, note = "排骨便當"),
+            ExpenseRecord(title = "捷運", amount = 25.0, category = ExpenseCategory.TRANSPORT, type = ExpenseType.EXPENSE, dateString = "$month-02", paymentMethod = PaymentMethod.IC_CARD, note = "搭捷運到學校"),
+            ExpenseRecord(title = "晚餐", amount = 150.0, category = ExpenseCategory.FOOD, type = ExpenseType.EXPENSE, dateString = "$month-03", paymentMethod = PaymentMethod.MOBILE_PAY, note = "牛肉麵"),
+            ExpenseRecord(title = "專業書籍", amount = 450.0, category = ExpenseCategory.BOOKS_STUDY, type = ExpenseType.EXPENSE, dateString = "$month-04", paymentMethod = PaymentMethod.CARD, note = "買原文書筆記本"),
+            ExpenseRecord(title = "飲料", amount = 50.0, category = ExpenseCategory.FOOD, type = ExpenseType.EXPENSE, dateString = "$month-05", paymentMethod = PaymentMethod.CASH, note = "珍珠奶茶半糖微冰"),
+            ExpenseRecord(title = "家教薪水", amount = 12000.0, category = ExpenseCategory.SALARY_JOB, type = ExpenseType.INCOME, dateString = "$month-05", paymentMethod = PaymentMethod.TRANSFER, note = "家教薪水入帳"),
+            ExpenseRecord(title = "電影票", amount = 300.0, category = ExpenseCategory.ENTERTAINMENT, type = ExpenseType.EXPENSE, dateString = "$month-06", paymentMethod = PaymentMethod.CARD, note = "週末威秀影城"),
+            ExpenseRecord(title = "聚餐", amount = 180.0, category = ExpenseCategory.FOOD, type = ExpenseType.EXPENSE, dateString = "$month-07", paymentMethod = PaymentMethod.MOBILE_PAY, note = "三媽臭臭鍋"),
+            ExpenseRecord(title = "生活雜貨", amount = 120.0, category = ExpenseCategory.DAILY, type = ExpenseType.EXPENSE, dateString = "$month-08", paymentMethod = PaymentMethod.MOBILE_PAY, note = "全聯洗衣精與衛生紙"),
+            ExpenseRecord(title = "公車", amount = 50.0, category = ExpenseCategory.TRANSPORT, type = ExpenseType.EXPENSE, dateString = "$month-09", paymentMethod = PaymentMethod.IC_CARD, note = "公車與YouBike"),
+            ExpenseRecord(title = "便當", amount = 90.0, category = ExpenseCategory.FOOD, type = ExpenseType.EXPENSE, dateString = "$month-10", paymentMethod = PaymentMethod.CASH, note = "午餐 燒臘便當"),
+            ExpenseRecord(title = "套房房租水電", amount = 3500.0, category = ExpenseCategory.RENT_UTILITY, type = ExpenseType.EXPENSE, dateString = "$month-10", paymentMethod = PaymentMethod.TRANSFER, note = "學生套房水電"),
+            ExpenseRecord(title = "獎學金", amount = 5000.0, category = ExpenseCategory.SCHOLARSHIP, type = ExpenseType.INCOME, dateString = "$month-12", paymentMethod = PaymentMethod.TRANSFER, note = "校內學業優良獎學金"),
+            ExpenseRecord(title = "拉麵", amount = 110.0, category = ExpenseCategory.FOOD, type = ExpenseType.EXPENSE, dateString = "$month-13", paymentMethod = PaymentMethod.MOBILE_PAY, note = "豚骨拉麵"),
+            ExpenseRecord(title = "遊戲", amount = 200.0, category = ExpenseCategory.ENTERTAINMENT, type = ExpenseType.EXPENSE, dateString = "$month-15", paymentMethod = PaymentMethod.CARD, note = "Steam夏日特賣遊戲"),
+            ExpenseRecord(title = "早午餐", amount = 85.0, category = ExpenseCategory.FOOD, type = ExpenseType.EXPENSE, dateString = "$month-16", paymentMethod = PaymentMethod.CASH, note = "漢堡與薯條"),
+            ExpenseRecord(title = "晚餐小吃", amount = 60.0, category = ExpenseCategory.FOOD, type = ExpenseType.EXPENSE, dateString = "$month-18", paymentMethod = PaymentMethod.CASH, note = "滷肉飯燙青菜"),
+            ExpenseRecord(title = "國道客運", amount = 70.0, category = ExpenseCategory.TRANSPORT, type = ExpenseType.EXPENSE, dateString = "$month-20", paymentMethod = PaymentMethod.IC_CARD, note = "返鄉客運票"),
+            ExpenseRecord(title = "文具耗材", amount = 250.0, category = ExpenseCategory.DAILY, type = ExpenseType.EXPENSE, dateString = "$month-22", paymentMethod = PaymentMethod.MOBILE_PAY, note = "九乘九買文具耗材")
+        )
+        mockData.forEach { record ->
+            repository.insertExpense(record)
+        }
+        _userMessage.value = "已成功為 $month 月匯入 20 筆測試資料！"
+    }
+
     fun setMonthlyBudget(amount: Double) = viewModelScope.launch {
         val month = _selectedExpenseMonth.value
         repository.setBudget(MonthlyBudget(yearMonth = month, budgetAmount = amount))
