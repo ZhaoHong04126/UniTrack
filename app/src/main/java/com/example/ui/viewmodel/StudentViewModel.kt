@@ -965,6 +965,72 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         _userMessage.value = "已更新 $month 月預算為 $${amount.toInt()}"
     }
 
+    private val _customAccounts = MutableStateFlow(loadAccounts())
+    val customAccounts: StateFlow<List<PaymentAccount>> = _customAccounts.asStateFlow()
+
+    private fun loadAccounts(): List<PaymentAccount> {
+        val json = prefs.getString("pref_custom_accounts", null)
+        val defaultList = listOf(
+            PaymentAccount(id = "default_cash", name = "現金", method = PaymentMethod.CASH),
+            PaymentAccount(id = "default_mobile", name = "行動支付 (LinePay/街口)", method = PaymentMethod.MOBILE_PAY),
+            PaymentAccount(id = "default_ic", name = "悠遊卡 / 一卡通", method = PaymentMethod.IC_CARD),
+            PaymentAccount(id = "default_card", name = "信用卡 / 簽帳卡", method = PaymentMethod.CARD),
+            PaymentAccount(id = "default_transfer", name = "銀行轉帳", method = PaymentMethod.TRANSFER)
+        )
+        if (json.isNullOrBlank()) {
+            return defaultList
+        }
+        return try {
+            val array = org.json.JSONArray(json)
+            val list = mutableListOf<PaymentAccount>()
+            for (i in 0 until array.length()) {
+                val obj = array.getJSONObject(i)
+                val mName = obj.optString("method", PaymentMethod.CASH.name)
+                val m = runCatching { PaymentMethod.valueOf(mName) }.getOrDefault(PaymentMethod.CASH)
+                list.add(
+                    PaymentAccount(
+                        id = obj.optString("id", UUID.randomUUID().toString()),
+                        name = obj.optString("name", m.label),
+                        method = m,
+                        initialBalance = obj.optDouble("initialBalance", 0.0),
+                        note = obj.optString("note", "")
+                    )
+                )
+            }
+            if (list.isEmpty()) defaultList else list
+        } catch (_: Throwable) {
+            defaultList
+        }
+    }
+
+    private fun saveAccounts(accounts: List<PaymentAccount>) {
+        _customAccounts.value = accounts
+        val array = org.json.JSONArray()
+        accounts.forEach { acc ->
+            val obj = org.json.JSONObject()
+            obj.put("id", acc.id)
+            obj.put("name", acc.name)
+            obj.put("method", acc.method.name)
+            obj.put("initialBalance", acc.initialBalance)
+            obj.put("note", acc.note)
+            array.put(obj)
+        }
+        prefs.edit { putString("pref_custom_accounts", array.toString()) }
+    }
+
+    fun addAccount(account: PaymentAccount) {
+        val current = _customAccounts.value.toMutableList()
+        current.add(account)
+        saveAccounts(current)
+        _userMessage.value = "已成功新增帳戶：${account.name}"
+    }
+
+    fun deleteAccount(accountId: String) {
+        val current = _customAccounts.value.filterNot { it.id == accountId }
+        saveAccounts(current)
+        _userMessage.value = "已刪除自訂帳戶"
+    }
+
     fun resetToSampleData() = viewModelScope.launch {
         repository.resetToDefaultData()
         _userMessage.value = "已重置並填入範例資料"

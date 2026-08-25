@@ -43,6 +43,7 @@ import com.example.data.model.CustomParentCategory
 import com.example.data.model.GeneralEduSubtype
 import com.example.data.model.GraduationPlan
 import java.util.Locale
+import java.util.UUID
 
 data class CategoryOption(
     val standardCat: CourseCategory? = null,
@@ -69,7 +70,7 @@ fun AddEditCourseDialog(
     var isTimeTBD by remember { mutableStateOf(false) }
 
     data class TimeSlotItem(
-        val id: String = java.util.UUID.randomUUID().toString(),
+        val id: String = UUID.randomUUID().toString(),
         val dayOfWeek: Int = 1,
         val startTimeStr: String = "09:00",
         val endTimeStr: String = "10:30",

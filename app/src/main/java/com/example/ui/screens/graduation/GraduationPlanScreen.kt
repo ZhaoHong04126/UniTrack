@@ -38,16 +38,17 @@ import com.example.ui.components.SectionHeader
 import com.example.ui.theme.SapphireLight
 import com.example.ui.theme.SapphirePrimary
 import com.example.ui.viewmodel.StudentViewModel
+import java.util.UUID
 
 data class SubcategoryRuleUIState(
-    val id: String = java.util.UUID.randomUUID().toString(),
+    val id: String = UUID.randomUUID().toString(),
     val name: String,
     val reqText: String = "0.0",
     val eleText: String = "0.0"
 )
 
 data class CustomCategoryUIState(
-    val id: String = java.util.UUID.randomUUID().toString(),
+    val id: String = UUID.randomUUID().toString(),
     val name: String,
     val colorHex: String = "#8B5CF6",
     val reqText: String = "0.0",
@@ -668,7 +669,7 @@ private fun ModuleThresholdCard(
                         if (newSubcategoryName.isNotBlank()) {
                             onSaveSubcategory(
                                 SubcategoryRuleUIState(
-                                    id = editingRuleId ?: java.util.UUID.randomUUID().toString(),
+                                    id = editingRuleId ?: UUID.randomUUID().toString(),
                                     name = newSubcategoryName.trim(),
                                     reqText = newSubcategoryReq.trim().ifBlank { "0.0" },
                                     eleText = newSubcategoryEle.trim().ifBlank { "0.0" }

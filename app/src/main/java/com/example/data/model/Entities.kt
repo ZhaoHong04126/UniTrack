@@ -2,6 +2,7 @@ package com.example.data.model
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import java.util.UUID
 
 @Entity(tableName = "courses")
 data class Course(
@@ -33,7 +34,7 @@ data class Course(
 )
 
 data class CourseNote(
-    val id: String = java.util.UUID.randomUUID().toString(),
+    val id: String = UUID.randomUUID().toString(),
     val category: String = "一般", // 一般, 作業, 考試, 公告, 重點
     val content: String = "",
     val timestamp: Long = System.currentTimeMillis(),
@@ -120,7 +121,7 @@ data class GraduationPlan(
                     if (name.isNotBlank()) {
                         list.add(
                             SubcategoryRule(
-                                id = item.optString("id", java.util.UUID.randomUUID().toString()),
+                                id = item.optString("id", UUID.randomUUID().toString()),
                                 name = name,
                                 requiredCredits = item.optDouble("requiredCredits", 0.0),
                                 electiveCredits = item.optDouble("electiveCredits", 0.0)
@@ -158,7 +159,7 @@ data class GraduationPlan(
                             if (name.isNotBlank()) {
                                 subs.add(
                                     SubcategoryRule(
-                                        id = item.optString("id", java.util.UUID.randomUUID().toString()),
+                                        id = item.optString("id", UUID.randomUUID().toString()),
                                         name = name,
                                         requiredCredits = item.optDouble("requiredCredits", 0.0),
                                         electiveCredits = item.optDouble("electiveCredits", 0.0)
@@ -172,7 +173,7 @@ data class GraduationPlan(
                 }
                 list.add(
                     CustomParentCategory(
-                        id = obj.optString("id", java.util.UUID.randomUUID().toString()),
+                        id = obj.optString("id", UUID.randomUUID().toString()),
                         name = obj.optString("name", ""),
                         colorHex = obj.optString("colorHex", "#8B5CF6"),
                         requiredCredits = obj.optDouble("requiredCredits", 0.0),
@@ -236,14 +237,14 @@ data class GraduationPlan(
 }
 
 data class SubcategoryRule(
-    val id: String = java.util.UUID.randomUUID().toString(),
+    val id: String = UUID.randomUUID().toString(),
     val name: String,
     val requiredCredits: Double = 0.0,
     val electiveCredits: Double = 0.0
 )
 
 data class CustomParentCategory(
-    val id: String = java.util.UUID.randomUUID().toString(),
+    val id: String = UUID.randomUUID().toString(),
     val name: String,
     val colorHex: String = "#8B5CF6",
     val requiredCredits: Double = 0.0,
@@ -304,4 +305,12 @@ data class NotificationPreferences(
     val graduationAlertEnabled: Boolean = true,
     val systemNoticeEnabled: Boolean = true,
     val vibrationEnabled: Boolean = true
+)
+
+data class PaymentAccount(
+    val id: String = UUID.randomUUID().toString(),
+    val name: String,
+    val method: PaymentMethod,
+    val initialBalance: Double = 0.0,
+    val note: String = ""
 )
