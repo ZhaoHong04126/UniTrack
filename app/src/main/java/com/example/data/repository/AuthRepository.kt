@@ -72,7 +72,8 @@ class AuthRepository(private val context: Context) {
      * Google Sign-In via Android Credential Manager
      */
     @SuppressLint("DiscouragedApi")
-    suspend fun signInWithGoogle(webClientId: String = ""): Result<UserProfile> = withContext(Dispatchers.IO) {
+    suspend fun signInWithGoogle(callerContext: Context? = null, webClientId: String = ""): Result<UserProfile> = withContext(Dispatchers.IO) {
+        val targetContext = callerContext ?: context
         try {
             _authState.value = AuthState.Loading
 
@@ -81,8 +82,8 @@ class AuthRepository(private val context: Context) {
             // Dynamically resolve default_web_client_id generated from google-services.json if not explicitly provided
             val resolvedClientId = webClientId.ifBlank {
                 try {
-                    val resId = context.resources.getIdentifier("default_web_client_id", "string", context.packageName)
-                    if (resId != 0) context.getString(resId) else ""
+                    val resId = targetContext.resources.getIdentifier("default_web_client_id", "string", targetContext.packageName)
+                    if (resId != 0) targetContext.getString(resId) else ""
                 } catch (_: Exception) {
                     ""
                 }
@@ -103,7 +104,7 @@ class AuthRepository(private val context: Context) {
                 return@withContext Result.success(demoUser)
             }
 
-            val credentialManager = CredentialManager.create(context)
+            val credentialManager = CredentialManager.create(targetContext)
             val googleIdOption = GetGoogleIdOption.Builder()
                 .setFilterByAuthorizedAccounts(false)
                 .setServerClientId(resolvedClientId)
@@ -114,7 +115,7 @@ class AuthRepository(private val context: Context) {
                 .addCredentialOption(googleIdOption)
                 .build()
 
-            val result = credentialManager.getCredential(context, request)
+            val result = credentialManager.getCredential(targetContext, request)
             val credential = result.credential
 
             val idToken = when {
@@ -259,7 +260,9 @@ class AuthRepository(private val context: Context) {
     /**
      * 永久刪除 Firebase Auth 帳號 (Permanently delete Firebase Auth Account)
      */
-    suspend fun deleteAccount(): Result<Unit> = withContext(Dispatchers.IO) {
+    @SuppressLint("DiscouragedApi")
+    suspend fun deleteAccount(callerContext: Context? = null): Result<Unit> = withContext(Dispatchers.IO) {
+        val targetContext = callerContext ?: context
         try {
             val auth = firebaseAuth ?: return@withContext Result.failure(IllegalStateException("Firebase 模組未初始化"))
             val currentFirebaseUser = auth.currentUser ?: return@withContext Result.failure(IllegalStateException("目前未登入任何線上帳號"))
@@ -268,7 +271,9 @@ class AuthRepository(private val context: Context) {
                 currentFirebaseUser.delete().await()
             } catch (e: Exception) {
                 val msg = e.message.orEmpty()
-                val isRecentLoginRequired = msg.contains("requires-recent-login", ignoreCase = true) ||
+                val isRecentLoginRequired = e is com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException ||
+                    (e as? com.google.firebase.auth.FirebaseAuthException)?.errorCode == "ERROR_REQUIRES_RECENT_LOGIN" ||
+                    msg.contains("requires-recent-login", ignoreCase = true) ||
                     msg.contains("recent authentication", ignoreCase = true) ||
                     msg.contains("CREDENTIAL_TOO_OLD", ignoreCase = true)
 
@@ -276,12 +281,12 @@ class AuthRepository(private val context: Context) {
                     val isGoogle = currentFirebaseUser.providerData.any { it.providerId == GoogleAuthProvider.PROVIDER_ID }
                     if (isGoogle) {
                         val resolvedClientId = try {
-                            val resId = context.resources.getIdentifier("default_web_client_id", "string", context.packageName)
-                            if (resId != 0) context.getString(resId) else ""
+                            val resId = targetContext.resources.getIdentifier("default_web_client_id", "string", targetContext.packageName)
+                            if (resId != 0) targetContext.getString(resId) else ""
                         } catch (_: Exception) { "" }
 
                         if (resolvedClientId.isNotBlank()) {
-                            val credentialManager = CredentialManager.create(context)
+                            val credentialManager = CredentialManager.create(targetContext)
                             val googleIdOption = GetGoogleIdOption.Builder()
                                 .setFilterByAuthorizedAccounts(false)
                                 .setServerClientId(resolvedClientId)
@@ -290,7 +295,7 @@ class AuthRepository(private val context: Context) {
                             val request = GetCredentialRequest.Builder()
                                 .addCredentialOption(googleIdOption)
                                 .build()
-                            val result = credentialManager.getCredential(context, request)
+                            val result = credentialManager.getCredential(targetContext, request)
                             val credential = result.credential
                             val idToken = when {
                                 credential is CustomCredential && credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL -> {
@@ -313,9 +318,12 @@ class AuthRepository(private val context: Context) {
                 }
             }
 
-            val credentialManager = CredentialManager.create(context)
+            val credentialManager = CredentialManager.create(targetContext)
             runCatching {
                 credentialManager.clearCredentialState(ClearCredentialStateRequest())
+            }
+            runCatching {
+                auth.signOut()
             }
 
             _currentUser.value = null

@@ -1048,9 +1048,9 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     // 帳號與身分認證 (Authentication Actions)
     // ==========================================
 
-    fun signInWithGoogle(webClientId: String = "", onResult: ((Boolean, String?) -> Unit)? = null) {
+    fun signInWithGoogle(context: Context? = null, webClientId: String = "", onResult: ((Boolean, String?) -> Unit)? = null) {
         viewModelScope.launch {
-            val result = authRepository.signInWithGoogle(webClientId)
+            val result = authRepository.signInWithGoogle(context, webClientId)
             result.onSuccess { user ->
                 val nameToSet = user.displayName?.ifBlank { null } ?: user.email?.substringBefore("@")
                 if (!nameToSet.isNullOrBlank()) {
@@ -1143,7 +1143,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     /**
      * 真正刪除帳號：依序清空雲端 Firestore、本機資料庫、並永久刪除 Firebase Auth 帳號
      */
-    fun deleteAccount(onResult: ((Boolean, String?) -> Unit)? = null) {
+    fun deleteAccount(context: Context? = null, onResult: ((Boolean, String?) -> Unit)? = null) {
         viewModelScope.launch {
             val uid = currentUser.value?.uid.orEmpty()
 
@@ -1156,7 +1156,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             repository.clearAllData()
 
             // 3. 永久註銷並刪除 Firebase Auth 帳號與 Google 憑證
-            val authDeleteResult = authRepository.deleteAccount()
+            val authDeleteResult = authRepository.deleteAccount(context)
             authDeleteResult.onSuccess {
                 showToast("帳號已永久刪除，本機與雲端資料已完全清除")
                 onResult?.invoke(true, null)

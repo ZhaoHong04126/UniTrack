@@ -559,7 +559,7 @@ fun SettingsScreen(
                 Button(
                     onClick = {
                         isExecutingDelete = true
-                        viewModel.deleteAccount { success, errorMsg ->
+                        viewModel.deleteAccount(context) { success, errorMsg ->
                             isExecutingDelete = false
                             if (success) {
                                 showFinalExecutionDialog = false

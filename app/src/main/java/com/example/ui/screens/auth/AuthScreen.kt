@@ -32,6 +32,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -934,9 +935,10 @@ private fun LoginPageView(
             }
 
             // Google One-Tap Sign In
+            val context = LocalContext.current
             OutlinedButton(
                 onClick = {
-                    viewModel.signInWithGoogle { success, _ ->
+                    viewModel.signInWithGoogle(context) { success, _ ->
                         if (success) {
                             val plan = viewModel.graduationPlan.value
                             val isDeptUnset = plan.department.isBlank() || plan.department == "尚未設定系所"
@@ -1839,9 +1841,10 @@ private fun RegisterStep2PageView(
         }
 
         // Google One-Tap Sign In
+        val context = LocalContext.current
         OutlinedButton(
             onClick = {
-                viewModel.signInWithGoogle { success, _ ->
+                viewModel.signInWithGoogle(context) { success, _ ->
                     if (success) {
                         val currentPlan = viewModel.graduationPlan.value
                         val currentActiveSemester = com.example.data.local.DefaultData.getCurrentAcademicSemester()
