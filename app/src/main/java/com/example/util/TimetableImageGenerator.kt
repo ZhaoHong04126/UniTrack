@@ -1,5 +1,6 @@
 package com.example.util
 
+import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -34,12 +35,15 @@ object TimetableImageGenerator {
         val shareIntent = Intent(Intent.ACTION_SEND).apply {
             type = "image/png"
             putExtra(Intent.EXTRA_STREAM, imageUri)
-            putExtra(Intent.EXTRA_TEXT, "📅 我的課表 - $semesterLabel (由 UniTrack+ 產生)")
+            clipData = ClipData.newRawUri("Timetable", imageUri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
 
-        val chooser = Intent.createChooser(shareIntent, "分享課表圖片")
-        chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val chooser = Intent.createChooser(shareIntent, null).apply {
+            clipData = ClipData.newRawUri("Timetable", imageUri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
         context.startActivity(chooser)
     }
 
