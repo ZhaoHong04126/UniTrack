@@ -50,17 +50,15 @@
 
 ## 📱 應用介面預覽
 
-<!-- ======================================================== -->
-<!-- 📸 預覽總覽放置區：可將圖片放至 docs/images/ 目錄並取消註解 -->
-<!-- ======================================================== -->
+<!-- 💡 提示：將螢幕截圖放置於 docs/images/ 對應檔名後，取消註解 <img> 標籤即可直接呈現 -->
 
 | 儀表板 (Dashboard) | 智慧週課表 (Timetable) | 考勤與筆記 (Attendance/Notes) |
 | :---: | :---: | :---: |
-| <!-- 📸 照片標記 1: 儀表板 --> <img src="docs/images/dashboard_preview.png" width="240" alt="Dashboard" /> | <!-- 📸 照片標記 2: 週課表 --> <img src="docs/images/timetable_preview.png" width="240" alt="Timetable" /> | <!-- 📸 照片標記 3: 考勤與筆記 --> <img src="docs/images/attendance_preview.png" width="240" alt="Attendance & Notes" /> |
+| 📸 `docs/images/dashboard_preview.png`<br>*(待置入圖片)*<br><!-- <img src="docs/images/dashboard_preview.png" width="240" /> --> | 📸 `docs/images/timetable_preview.png`<br>*(待置入圖片)*<br><!-- <img src="docs/images/timetable_preview.png" width="240" /> --> | 📸 `docs/images/attendance_preview.png`<br>*(待置入圖片)*<br><!-- <img src="docs/images/attendance_preview.png" width="240" /> --> |
 
 | 畢業審查 (Graduation Audit) | 個人記帳 (Expense Tracker) | 帳號與同步 (Settings & Sync) |
 | :---: | :---: | :---: |
-| <!-- 📸 照片標記 4: 畢業審查 --> <img src="docs/images/graduation_preview.png" width="240" alt="Graduation Audit" /> | <!-- 📸 照片標記 5: 記帳與預算 --> <img src="docs/images/expense_preview.png" width="240" alt="Expense Tracker" /> | <!-- 📸 照片標記 6: 設定與同步 --> <img src="docs/images/settings_preview.png" width="240" alt="Settings & Sync" /> |
+| 📸 `docs/images/graduation_preview.png`<br>*(待置入圖片)*<br><!-- <img src="docs/images/graduation_preview.png" width="240" /> --> | 📸 `docs/images/expense_preview.png`<br>*(待置入圖片)*<br><!-- <img src="docs/images/expense_preview.png" width="240" /> --> | 📸 `docs/images/settings_preview.png`<br>*(待置入圖片)*<br><!-- <img src="docs/images/settings_preview.png" width="240" /> --> |
 
 ---
 
@@ -70,21 +68,21 @@ UniTrack+ 遵循 **Modern Android Architecture (MVVM + Clean Architecture)** 開
 
 ```mermaid
 graph TD
-    subgraph UI Layer [UI Layer (Jetpack Compose & Material 3)]
-        View[Screens & Composables]
-        VM[StudentViewModel]
+    subgraph UILayer["UI Layer (Jetpack Compose & Material 3)"]
+        View["Screens & Composables"]
+        VM["StudentViewModel"]
     end
 
-    subgraph Domain & Repository Layer [Repository Layer]
-        AuthRepo[AuthRepository]
-        StudentRepo[StudentRepository]
-        SyncRepo[FirestoreSyncRepository]
+    subgraph RepositoryLayer["Repository Layer"]
+        AuthRepo["AuthRepository"]
+        StudentRepo["StudentRepository"]
+        SyncRepo["FirestoreSyncRepository"]
     end
 
-    subgraph Data Sources [Data Sources]
-        RoomDB[(Room Local DB / SQLite)]
-        FirebaseAuth[(Firebase Auth & Credential Manager)]
-        Firestore[(Cloud Firestore)]
+    subgraph DataSources["Data Sources"]
+        RoomDB[("Room Local DB / SQLite")]
+        FirebaseAuth[("Firebase Auth & Credential Manager")]
+        Firestore[("Cloud Firestore")]
     end
 
     View -->|Observe StateFlow| VM
@@ -279,10 +277,3 @@ UniTrack+/
   ```bash
   ./gradlew recordRoborazziDebug
   ```
-
----
-
-## 📄 授權條款
-
-本專案依據 [MIT License](LICENSE) 授權條款開源發布。
-
