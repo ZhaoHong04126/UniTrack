@@ -35,6 +35,7 @@ import com.example.ui.screens.graduation.GraduationPlanScreen
 import com.example.ui.screens.graduation.GraduationScreen
 import com.example.ui.screens.graduation.GraduationThresholdsScreen
 import com.example.ui.screens.notification.NotificationScreen
+import com.example.ui.screens.settings.NotificationSettingsScreen
 import com.example.ui.screens.settings.SettingsScreen
 import com.example.ui.screens.settings.WidgetSettingsScreen
 import com.example.ui.screens.timetable.GradeEntryScreen
@@ -326,7 +327,17 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onNavigateToWidgetSettings = {
                                     navController.navigate("widget_settings")
+                                },
+                                onNavigateToNotificationSettings = {
+                                    navController.navigate("notification_settings")
                                 }
+                            )
+                        }
+
+                        composable("notification_settings") {
+                            NotificationSettingsScreen(
+                                viewModel = studentViewModel,
+                                onNavigateBack = { navController.popBackStack() }
                             )
                         }
 

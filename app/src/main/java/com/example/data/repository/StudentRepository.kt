@@ -394,4 +394,30 @@ class StudentRepository(
     suspend fun getAllNotificationsOnce(): List<AppNotification> = withContext(Dispatchers.IO) {
         notificationDao.getAllNotificationsOnce()
     }
+
+    fun getNotificationPreferences(): NotificationPreferences {
+        return NotificationPreferences(
+            masterEnabled = prefs.getBoolean("notif_master_enabled", true),
+            courseReminderEnabled = prefs.getBoolean("notif_course_enabled", true),
+            courseReminderMinutesBefore = prefs.getInt("notif_course_minutes", 15),
+            expenseAlertEnabled = prefs.getBoolean("notif_expense_enabled", true),
+            expenseAlertThresholdPercent = prefs.getInt("notif_expense_threshold", 75),
+            graduationAlertEnabled = prefs.getBoolean("notif_graduation_enabled", true),
+            systemNoticeEnabled = prefs.getBoolean("notif_system_enabled", true),
+            vibrationEnabled = prefs.getBoolean("notif_vibration_enabled", true)
+        )
+    }
+
+    fun saveNotificationPreferences(preferences: NotificationPreferences) {
+        prefs.edit {
+            putBoolean("notif_master_enabled", preferences.masterEnabled)
+            putBoolean("notif_course_enabled", preferences.courseReminderEnabled)
+            putInt("notif_course_minutes", preferences.courseReminderMinutesBefore)
+            putBoolean("notif_expense_enabled", preferences.expenseAlertEnabled)
+            putInt("notif_expense_threshold", preferences.expenseAlertThresholdPercent)
+            putBoolean("notif_graduation_enabled", preferences.graduationAlertEnabled)
+            putBoolean("notif_system_enabled", preferences.systemNoticeEnabled)
+            putBoolean("notif_vibration_enabled", preferences.vibrationEnabled)
+        }
+    }
 }

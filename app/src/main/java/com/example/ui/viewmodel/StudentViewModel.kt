@@ -368,6 +368,14 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    private val _notificationPreferences = MutableStateFlow(repository.getNotificationPreferences())
+    val notificationPreferences: StateFlow<NotificationPreferences> = _notificationPreferences.asStateFlow()
+
+    fun updateNotificationPreferences(preferences: NotificationPreferences) {
+        _notificationPreferences.value = preferences
+        repository.saveNotificationPreferences(preferences)
+    }
+
     fun sendNotification(
         title: String,
         message: String,
@@ -375,6 +383,16 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         actionRoute: String? = null,
         sendSystemPush: Boolean = true
     ) {
+        val prefs = _notificationPreferences.value
+        if (!prefs.masterEnabled) return
+        val isTypeEnabled = when (type) {
+            NotificationType.COURSE -> prefs.courseReminderEnabled
+            NotificationType.EXPENSE -> prefs.expenseAlertEnabled
+            NotificationType.GRADUATION -> prefs.graduationAlertEnabled
+            NotificationType.SYSTEM -> prefs.systemNoticeEnabled
+        }
+        if (!isTypeEnabled) return
+
         viewModelScope.launch {
             repository.insertNotification(
                 AppNotification(
@@ -398,9 +416,10 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun sendTestSystemNotification() {
+        val threshold = _notificationPreferences.value.expenseAlertThresholdPercent
         val testSamples = listOf(
             Triple("今日上課提醒", "下午 14:00 有「線性代數」課程，教室：理學院 302。", NotificationType.COURSE),
-            Triple("記帳預算警示", "本月份生活預算已使用達 75%，請留意近期支出。", NotificationType.EXPENSE),
+            Triple("記帳預算警示", "本月份生活預算已使用達 $threshold%，請留意近期支出。", NotificationType.EXPENSE),
             Triple("學業審查進度更新", "恭喜！您已滿足本系基礎模組必修 24 學分門檻。", NotificationType.GRADUATION),
             Triple("UniTrack+ 系統推播測試", "這是一則測試通知，代表手機系統推播功能運作正常！", NotificationType.SYSTEM)
         )

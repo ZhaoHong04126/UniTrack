@@ -1,5 +1,6 @@
 package com.example.ui.screens.notification
 
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -61,6 +62,7 @@ fun NotificationScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             TopAppBar(
                 title = {
@@ -98,12 +100,15 @@ fun NotificationScreen(
                 },
                 actions = {
                     IconButton(
-                        onClick = { viewModel.sendTestSystemNotification() }
+                        onClick = {
+                            viewModel.sendTestSystemNotification()
+                            Toast.makeText(context, "已發送測試推播通知", Toast.LENGTH_SHORT).show()
+                        }
                     ) {
                         Icon(
                             imageVector = Icons.Default.AddAlert,
                             contentDescription = "發送測試推播",
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = SapphirePrimary
                         )
                     }
                     if (unreadCount > 0) {
@@ -128,6 +133,7 @@ fun NotificationScreen(
                         }
                     }
                 },
+                windowInsets = WindowInsets(0.dp),
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )

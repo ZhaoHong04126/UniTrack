@@ -1,13 +1,6 @@
 package com.example.ui.screens.settings
 
-import android.Manifest
-import android.content.Intent
-import android.net.Uri
-import android.os.Build
-import android.provider.Settings
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -49,26 +42,17 @@ fun SettingsScreen(
     viewModel: StudentViewModel,
     modifier: Modifier = Modifier,
     onNavigateToAuth: () -> Unit = {},
-    onNavigateToWidgetSettings: () -> Unit = {}
+    onNavigateToWidgetSettings: () -> Unit = {},
+    onNavigateToNotificationSettings: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
     val plan by viewModel.graduationPlan.collectAsStateWithLifecycle()
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
+    val notificationPrefs by viewModel.notificationPreferences.collectAsStateWithLifecycle()
 
     var isNotificationPermissionGranted by remember {
         mutableStateOf(NotificationHelper.hasNotificationPermission(context))
-    }
-
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        isNotificationPermissionGranted = isGranted
-        if (isGranted) {
-            Toast.makeText(context, "已成功開啟系統推播通知權限", Toast.LENGTH_SHORT).show()
-        } else {
-            Toast.makeText(context, "系統推播通知權限未開啟", Toast.LENGTH_SHORT).show()
-        }
     }
 
     LifecycleResumeEffect(Unit) {
@@ -143,44 +127,14 @@ fun SettingsScreen(
             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
             SettingTileRow(
-                icon = if (isNotificationPermissionGranted) Icons.Default.NotificationsActive else Icons.Default.NotificationsOff,
+                icon = if (isNotificationPermissionGranted && notificationPrefs.masterEnabled) Icons.Default.NotificationsActive else Icons.Default.NotificationsOff,
                 title = "系統推播通知",
-                subtitle = if (isNotificationPermissionGranted) "已允許接收上課提醒、預算警告與學業審查" else "尚未開啟（點擊前往開啟通知）",
-                iconTint = if (isNotificationPermissionGranted) SapphirePrimary else AmberWarning,
-                badgeText = if (isNotificationPermissionGranted) "已開啟" else "未開啟",
-                badgeContainerColor = if (isNotificationPermissionGranted) EmeraldLight else AmberLight,
-                badgeContentColor = if (isNotificationPermissionGranted) EmeraldAccent else AmberAccent,
-                onClick = {
-                    if (!isNotificationPermissionGranted) {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                        } else {
-                            NotificationHelper.openNotificationSettings(context)
-                        }
-                    } else {
-                        NotificationHelper.openNotificationSettings(context)
-                    }
-                }
-            )
-
-            HorizontalDivider(
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
-                thickness = 0.8.dp,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-
-            SettingTileRow(
-                icon = Icons.Default.AppSettingsAlt,
-                title = "應用程式系統權限",
-                subtitle = "查看 Android 系統完整權限與儲存空間設定",
-                iconTint = IndigoAccent,
-                onClick = {
-                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                        data = Uri.fromParts("package", context.packageName, null)
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    }
-                    context.startActivity(intent)
-                }
+                subtitle = if (notificationPrefs.masterEnabled) "自訂課表、記帳與學業即時提醒偏好" else "通知已在 App 內部關閉",
+                iconTint = if (isNotificationPermissionGranted && notificationPrefs.masterEnabled) SapphirePrimary else AmberWarning,
+                badgeText = if (isNotificationPermissionGranted && notificationPrefs.masterEnabled) "已開啟" else "未開啟",
+                badgeContainerColor = if (isNotificationPermissionGranted && notificationPrefs.masterEnabled) EmeraldLight else AmberLight,
+                badgeContentColor = if (isNotificationPermissionGranted && notificationPrefs.masterEnabled) EmeraldAccent else AmberAccent,
+                onClick = onNavigateToNotificationSettings
             )
         }
 
@@ -291,7 +245,6 @@ fun SettingsScreen(
             }
         )
     }
-
 
     // Sign Out Confirm Dialog
     if (showSignOutConfirmDialog) {

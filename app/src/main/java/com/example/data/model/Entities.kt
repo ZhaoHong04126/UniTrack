@@ -188,17 +188,6 @@ data class GraduationPlan(
     }
 
     companion object {
-        fun encodeSubcategories(map: Map<CourseCategory, List<String>>): String {
-            val obj = org.json.JSONObject()
-            map.forEach { (cat, list) ->
-                val cleanList = list.filter { it.isNotBlank() }.distinct()
-                val arr = org.json.JSONArray()
-                cleanList.forEach { arr.put(it) }
-                obj.put(cat.name, arr)
-            }
-            return obj.toString()
-        }
-
         fun encodeSubcategoryRules(map: Map<CourseCategory, List<SubcategoryRule>>): String {
             val obj = org.json.JSONObject()
             map.forEach { (cat, list) ->
@@ -251,9 +240,7 @@ data class SubcategoryRule(
     val name: String,
     val requiredCredits: Double = 0.0,
     val electiveCredits: Double = 0.0
-) {
-    val totalCredits: Double get() = requiredCredits + electiveCredits
-}
+)
 
 data class CustomParentCategory(
     val id: String = java.util.UUID.randomUUID().toString(),
@@ -306,4 +293,15 @@ data class AppNotification(
     val timestamp: Long = System.currentTimeMillis(),
     val isRead: Boolean = false,
     val actionRoute: String? = null
+)
+
+data class NotificationPreferences(
+    val masterEnabled: Boolean = true,
+    val courseReminderEnabled: Boolean = true,
+    val courseReminderMinutesBefore: Int = 15,
+    val expenseAlertEnabled: Boolean = true,
+    val expenseAlertThresholdPercent: Int = 75,
+    val graduationAlertEnabled: Boolean = true,
+    val systemNoticeEnabled: Boolean = true,
+    val vibrationEnabled: Boolean = true
 )
