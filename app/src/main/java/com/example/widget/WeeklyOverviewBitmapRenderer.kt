@@ -151,7 +151,7 @@ object WeeklyOverviewBitmapRenderer {
                     )
 
                     // 節次或時間
-                    val timeStr = c.startTime.ifBlank { "第${c.startPeriod}節" }
+                    val timeStr = c.startTime.ifBlank { "第${TodayScheduleWidget.getPeriodCode(c.startPeriod)}節" }
                     canvas.drawText(timeStr, left + 26f, currentY - 2f, courseTimePaint)
 
                     // 課名 (截斷)

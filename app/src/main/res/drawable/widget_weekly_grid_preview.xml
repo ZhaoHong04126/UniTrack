@@ -1,54 +1,54 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="400dp"
-    android:height="300dp"
+    android:height="480dp"
     android:viewportWidth="400"
-    android:viewportHeight="300">
+    android:viewportHeight="480">
 
     <!-- Background -->
     <path
         android:fillColor="#F8FAFC"
-        android:pathData="M0,0h400v300h-400z" />
+        android:pathData="M0,0h400v480h-400z" />
 
     <!-- Today Highlight Column (Tue) -->
     <path
         android:fillColor="#1E2563EB"
-        android:pathData="M95,30h60v260h-60z" />
+        android:pathData="M95,20h60v450h-60z" />
 
-    <!-- Grid Horizontal Lines -->
+    <!-- Grid Horizontal Lines (14 periods) -->
     <path
         android:strokeColor="#E2E8F0"
         android:strokeWidth="1"
-        android:pathData="M35,30h355 M35,75h355 M35,120h355 M35,165h355 M35,210h355 M35,255h355 M35,290h355" />
+        android:pathData="M35,20h355 M35,52h355 M35,84h355 M35,116h355 M35,148h355 M35,180h355 M35,212h355 M35,244h355 M35,276h355 M35,308h355 M35,340h355 M35,372h355 M35,404h355 M35,436h355 M35,468h355" />
 
     <!-- Grid Vertical Lines -->
     <path
         android:strokeColor="#E2E8F0"
         android:strokeWidth="1"
-        android:pathData="M35,30v260 M95,30v260 M155,30v260 M215,30v260 M275,30v260 M335,30v260 M390,30v260" />
+        android:pathData="M35,20v448 M95,20v448 M155,20v448 M215,20v448 M275,20v448 M335,20v448 M390,20v448" />
 
     <!-- Sample Course Card 1 (Mon 1-2) -->
     <path
         android:fillColor="#2563EB"
-        android:pathData="M38,34h54a4,4 0 0,1 4,4v78a4,4 0 0,1 -4,4h-54a4,4 0 0,1 -4,-4v-78a4,4 0 0,1 4,-4z" />
+        android:pathData="M38,23h54a4,4 0 0,1 4,4v58a4,4 0 0,1 -4,4h-54a4,4 0 0,1 -4,-4v-58a4,4 0 0,1 4,-4z" />
 
     <!-- Sample Course Card 2 (Tue 3-4) -->
     <path
         android:fillColor="#0D9488"
-        android:pathData="M98,124h54a4,4 0 0,1 4,4v78a4,4 0 0,1 -4,4h-54a4,4 0 0,1 -4,-4v-78a4,4 0 0,1 4,-4z" />
+        android:pathData="M98,87h54a4,4 0 0,1 4,4v58a4,4 0 0,1 -4,4h-54a4,4 0 0,1 -4,-4v-58a4,4 0 0,1 4,-4z" />
 
-    <!-- Sample Course Card 3 (Wed 2-3) -->
+    <!-- Sample Course Card 3 (Wed 5-6) -->
     <path
         android:fillColor="#7C3AED"
-        android:pathData="M158,79h54a4,4 0 0,1 4,4v78a4,4 0 0,1 -4,4h-54a4,4 0 0,1 -4,-4v-78a4,4 0 0,1 4,-4z" />
+        android:pathData="M158,151h54a4,4 0 0,1 4,4v58a4,4 0 0,1 -4,4h-54a4,4 0 0,1 -4,-4v-58a4,4 0 0,1 4,-4z" />
 
-    <!-- Sample Course Card 4 (Thu 5-6) -->
+    <!-- Sample Course Card 4 (Thu 7-8) -->
     <path
         android:fillColor="#EA580C"
-        android:pathData="M218,214h54a4,4 0 0,1 4,4v70a4,4 0 0,1 -4,4h-54a4,4 0 0,1 -4,-4v-70a4,4 0 0,1 4,-4z" />
+        android:pathData="M218,215h54a4,4 0 0,1 4,4v58a4,4 0 0,1 -4,4h-54a4,4 0 0,1 -4,-4v-58a4,4 0 0,1 4,-4z" />
 
     <!-- Sample Course Card 5 (Fri 1-2) -->
     <path
         android:fillColor="#0284C7"
-        android:pathData="M278,34h54a4,4 0 0,1 4,4v78a4,4 0 0,1 -4,4h-54a4,4 0 0,1 -4,-4v-78a4,4 0 0,1 4,-4z" />
+        android:pathData="M278,23h54a4,4 0 0,1 4,4v58a4,4 0 0,1 -4,4h-54a4,4 0 0,1 -4,-4v-58a4,4 0 0,1 4,-4z" />
 </vector>

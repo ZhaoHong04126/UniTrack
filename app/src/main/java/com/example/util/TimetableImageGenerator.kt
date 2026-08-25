@@ -68,9 +68,21 @@ object TimetableImageGenerator {
             listOf("一", "二", "三", "四", "五")
         }
 
-        val maxPeriod = maxOf(8, courses.maxOfOrNull { it.endPeriod } ?: 8)
-        val minPeriod = 8
-        val totalPeriods = (maxPeriod - minPeriod + 1).coerceAtLeast(8)
+        val minPeriod = 0
+        val defaultMaxPeriod = 10 // A 節 (17:10~18:00)
+        val maxPeriod = maxOf(defaultMaxPeriod, courses.maxOfOrNull { it.endPeriod } ?: defaultMaxPeriod)
+        val totalPeriods = maxPeriod - minPeriod + 1
+
+        fun getPeriodCode(p: Int): String = when (p) {
+            0 -> "0"
+            10 -> "A"
+            11 -> "B"
+            12 -> "C"
+            13 -> "D"
+            14 -> "E"
+            15 -> "F"
+            else -> "$p"
+        }
 
         // Paints
         val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -152,7 +164,7 @@ object TimetableImageGenerator {
             val y = contentTop + p * rowHeight
 
             // Period number on left
-            canvas.drawText("$currentPeriod", paddingLeft + periodColWidth / 2, y + rowHeight / 2 + 10f, periodPaint)
+            canvas.drawText(getPeriodCode(currentPeriod), paddingLeft + periodColWidth / 2, y + rowHeight / 2 + 10f, periodPaint)
 
             // Grid Line
             if (p > 0) {

@@ -96,14 +96,14 @@ class WeeklyGridTimetableWidget : AppWidgetProvider() {
                 val allCourses = db.courseDao().getAllCoursesOnce()
                 val semesterCourses = allCourses.filter { it.semester == currentSemester }
 
-                // 永遠繪製完整課表網格（即使無課程也顯示完整 1~8 節網格）
+                // 永遠繪製完整課表網格（直接完整展開全部 1~14 節）
                 val gridBitmap = WeeklyGridBitmapRenderer.renderWeeklyGrid(
                     courses = semesterCourses,
                     currentDayOfWeek = dayOfWeekIndex,
                     currentWeek = currentWeek,
                     showWeekend = showWeekend,
                     width = 1000,
-                    height = 1200
+                    height = 1400
                 )
                 views.setImageViewBitmap(R.id.iv_weekly_grid_canvas, gridBitmap)
 

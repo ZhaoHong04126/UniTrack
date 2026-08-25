@@ -38,10 +38,10 @@ object WeeklyGridBitmapRenderer {
             listOf("一", "二", "三", "四", "五")
         }
 
-        // 過濾當前週次課程
+        // 過濾當前週次課程，預設完整展開全部 1~14 節
         val weekCourses = courses.filter { TodayScheduleWidget.isCourseInWeek(it, currentWeek) }
-        val maxPeriod = maxOf(8, weekCourses.maxOfOrNull { it.endPeriod } ?: 8)
-        val totalPeriods = maxPeriod.coerceIn(8, 14)
+        val maxCoursePeriod = weekCourses.maxOfOrNull { it.endPeriod } ?: 14
+        val totalPeriods = maxOf(14, maxCoursePeriod)
 
         val leftMargin = 70f
         val topMargin = 60f
@@ -119,7 +119,18 @@ object WeeklyGridBitmapRenderer {
             val yBottom = yTop + rowHeight
             val cy = yTop + rowHeight / 2 + 8f
 
-            canvas.drawText(p.toString(), leftMargin / 2, cy, periodTextPaint)
+            val periodLabel = when (p) {
+                0 -> "0"
+                10 -> "A"
+                11 -> "B"
+                12 -> "C"
+                13 -> "D"
+                14 -> "E"
+                15 -> "F"
+                else -> p.toString()
+            }
+
+            canvas.drawText(periodLabel, leftMargin / 2, cy, periodTextPaint)
             canvas.drawLine(leftMargin, yTop, leftMargin + gridWidth, yTop, gridLinePaint)
 
             if (p == totalPeriods) {

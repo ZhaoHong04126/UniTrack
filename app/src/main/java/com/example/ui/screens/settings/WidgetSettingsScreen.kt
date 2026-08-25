@@ -76,7 +76,7 @@ fun WidgetSettingsScreen(
             currentWeek = currentWeek,
             showWeekend = showWeekend,
             width = 1000,
-            height = 1200
+            height = 1400
         )
     }
 

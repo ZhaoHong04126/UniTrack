@@ -50,6 +50,17 @@ class TodayScheduleWidgetTest {
     }
 
     @Test
+    fun testGetPeriodCode() {
+        assertEquals("1", TodayScheduleWidget.getPeriodCode(1))
+        assertEquals("9", TodayScheduleWidget.getPeriodCode(9))
+        assertEquals("A", TodayScheduleWidget.getPeriodCode(10))
+        assertEquals("B", TodayScheduleWidget.getPeriodCode(11))
+        assertEquals("C", TodayScheduleWidget.getPeriodCode(12))
+        assertEquals("D", TodayScheduleWidget.getPeriodCode(13))
+        assertEquals("E", TodayScheduleWidget.getPeriodCode(14))
+    }
+
+    @Test
     fun testGetPeriodTimeRange() {
         val period1to2 = TodayScheduleWidget.getPeriodTimeRange(1, 2)
         assertEquals("08:10 - 10:00", period1to2)

@@ -193,10 +193,22 @@ fun CourseDetailBottomSheet(
                 // Subtitle Info
                 val teacherText = course.teacher.ifBlank { "授課教師未定" }
                 val locationText = course.location.ifBlank { "教室未定" }
+                val formatPeriodCode = { p: Int ->
+                    when (p) {
+                        0 -> "0"
+                        10 -> "A"
+                        11 -> "B"
+                        12 -> "C"
+                        13 -> "D"
+                        14 -> "E"
+                        15 -> "F"
+                        else -> "$p"
+                    }
+                }
                 val timeStr = if (course.startTime.isNotBlank() && course.endTime.isNotBlank()) {
                     "${course.startTime} - ${course.endTime}"
                 } else {
-                    "第 ${course.startPeriod} ~ ${course.endPeriod} 節"
+                    "第 ${formatPeriodCode(course.startPeriod)} ~ ${formatPeriodCode(course.endPeriod)} 節"
                 }
 
                 Text(
@@ -1130,10 +1142,23 @@ private fun InfoTabView(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
+        val formatPeriodCode = { p: Int ->
+            when (p) {
+                0 -> "0"
+                10 -> "A"
+                11 -> "B"
+                12 -> "C"
+                13 -> "D"
+                14 -> "E"
+                15 -> "F"
+                else -> "$p"
+            }
+        }
+
         DetailRowItem(
             icon = Icons.Default.AccessTime,
             label = "上課時間",
-            value = "$dayName 第 ${course.startPeriod} ~ ${course.endPeriod} 節" +
+            value = "$dayName 第 ${formatPeriodCode(course.startPeriod)} ~ ${formatPeriodCode(course.endPeriod)} 節" +
                     if (course.startTime.isNotBlank()) " (${course.startTime}~${course.endTime})" else ""
         )
 

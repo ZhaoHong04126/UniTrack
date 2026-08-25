@@ -668,14 +668,26 @@ private fun WeeklyTimetableGrid(
     dates: List<String>? = null
 ) {
     val scrollState = rememberScrollState()
-    val startHour = 8
-    val maxEndPeriod = courses.maxOfOrNull { it.endPeriod } ?: maxPeriod
-    val maxHour = remember(maxEndPeriod) {
-        maxOf(18, 7 + maxEndPeriod + 1)
+    val minPeriod = 0
+    val defaultMaxPeriod = 10 // A 節 (17:10~18:00)
+    val maxEndPeriod = courses.maxOfOrNull { it.endPeriod } ?: defaultMaxPeriod
+    val maxPeriodToDisplay = remember(maxEndPeriod) {
+        maxOf(defaultMaxPeriod, maxEndPeriod)
     }
-    val totalHours = maxHour - startHour
-    val hourHeight = 64.dp
+    val totalPeriods = maxPeriodToDisplay - minPeriod + 1
+    val hourHeight = 60.dp
     val timeColumnWidth = 36.dp
+
+    fun getPeriodCode(period: Int): String = when (period) {
+        0 -> "0"
+        10 -> "A"
+        11 -> "B"
+        12 -> "C"
+        13 -> "D"
+        14 -> "E"
+        15 -> "F"
+        else -> "$period"
+    }
 
     Column(
         modifier = modifier
@@ -753,23 +765,23 @@ private fun WeeklyTimetableGrid(
                 .fillMaxWidth()
                 .verticalScroll(scrollState)
         ) {
-            // Timeline Hour Numbers Column (8, 9, 10, 11, 12, ...)
+            // Timeline Period Numbers Column (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, A, ...)
             Box(
                 modifier = Modifier
                     .width(timeColumnWidth)
-                    .height(hourHeight * totalHours)
+                    .height(hourHeight * totalPeriods)
             ) {
-                for (h in startHour until maxHour) {
-                    val hourIndex = h - startHour
+                for (p in minPeriod..maxPeriodToDisplay) {
+                    val periodIndex = p - minPeriod
                     Box(
                         modifier = Modifier
-                            .offset(y = hourHeight * hourIndex)
+                            .offset(y = hourHeight * periodIndex)
                             .width(timeColumnWidth)
                             .height(hourHeight),
                         contentAlignment = Alignment.TopCenter
                     ) {
                         Text(
-                            text = "$h",
+                            text = getPeriodCode(p),
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold
@@ -786,11 +798,11 @@ private fun WeeklyTimetableGrid(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(hourHeight * totalHours)
+                        .height(hourHeight * totalPeriods)
                 ) {
-                    // Background horizontal grid lines for each hour
+                    // Background horizontal grid lines for each period
                     Column {
-                        repeat(totalHours) {
+                        repeat(totalPeriods) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -806,7 +818,7 @@ private fun WeeklyTimetableGrid(
                     // Courses for this day
                     val dayCourses = courses.filter { it.dayOfWeek == day }
                     dayCourses.forEach { course ->
-                        val startPeriodOffset = (course.startPeriod - 1).coerceAtLeast(0)
+                        val startPeriodOffset = (course.startPeriod - minPeriod).coerceAtLeast(0)
                         val duration = (course.endPeriod - course.startPeriod + 1).coerceAtLeast(1)
                         val courseColor = runCatching { Color(course.colorHex.toColorInt()) }
                             .getOrDefault(SapphirePrimary)
@@ -884,11 +896,13 @@ private fun CourseListItemCard(
 
     val formatPeriod = { p: Int ->
         when (p) {
+            0 -> "0"
             10 -> "A"
             11 -> "B"
             12 -> "C"
             13 -> "D"
             14 -> "E"
+            15 -> "F"
             else -> "$p"
         }
     }

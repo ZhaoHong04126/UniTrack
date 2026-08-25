@@ -80,6 +80,17 @@ class TodayScheduleWidget : AppWidgetProvider() {
             return week in weeks
         }
 
+        fun getPeriodCode(period: Int): String = when (period) {
+            0 -> "0"
+            10 -> "A"
+            11 -> "B"
+            12 -> "C"
+            13 -> "D"
+            14 -> "E"
+            15 -> "F"
+            else -> "$period"
+        }
+
         fun getPeriodTimeRange(startPeriod: Int, endPeriod: Int): String {
             val periodTimes = mapOf(
                 1 to ("08:10" to "09:00"),
@@ -97,10 +108,10 @@ class TodayScheduleWidget : AppWidgetProvider() {
                 13 to ("21:05" to "21:55"),
                 14 to ("22:00" to "22:50")
             )
-            val start = periodTimes[startPeriod]?.first ?: "第${startPeriod}節"
-            val end = periodTimes[endPeriod]?.second ?: "第${endPeriod}節"
+            val start = periodTimes[startPeriod]?.first ?: "第${getPeriodCode(startPeriod)}節"
+            val end = periodTimes[endPeriod]?.second ?: "第${getPeriodCode(endPeriod)}節"
             return if (start.contains("節") || end.contains("節")) {
-                "第${startPeriod}-${endPeriod}節"
+                "第${getPeriodCode(startPeriod)}-${getPeriodCode(endPeriod)}節"
             } else {
                 "$start - $end"
             }
