@@ -11,6 +11,7 @@ import com.example.data.model.*
 import com.example.data.repository.AuthRepository
 import com.example.data.repository.FirestoreSyncRepository
 import com.example.data.repository.StudentRepository
+import com.example.util.NotificationHelper
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -241,7 +242,13 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
     init {
         val db = AppDatabase.getDatabase(application)
-        repository = StudentRepository(application.applicationContext, db.courseDao(), db.graduationDao(), db.expenseDao())
+        repository = StudentRepository(
+            application.applicationContext,
+            db.courseDao(),
+            db.graduationDao(),
+            db.expenseDao(),
+            db.notificationDao()
+        )
         firestoreSyncRepository = FirestoreSyncRepository(
             application.applicationContext,
             db.courseDao(),
@@ -250,6 +257,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         )
         viewModelScope.launch {
             repository.seedInitialDataIfEmpty()
+            checkAndGenerateSmartNotifications()
         }
         viewModelScope.launch {
             currentUser.collect { profile ->
@@ -326,6 +334,119 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
     val allBudgets: StateFlow<List<MonthlyBudget>> = repository.allBudgets
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // Notifications flows
+    val allNotifications: StateFlow<List<AppNotification>> = repository.allNotifications
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val unreadNotificationCount: StateFlow<Int> = repository.unreadNotificationCount
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    fun markNotificationAsRead(id: Long) {
+        viewModelScope.launch {
+            repository.markNotificationAsRead(id)
+        }
+    }
+
+    fun markAllNotificationsAsRead() {
+        viewModelScope.launch {
+            repository.markAllNotificationsAsRead()
+        }
+    }
+
+    fun deleteNotification(id: Long) {
+        viewModelScope.launch {
+            repository.deleteNotification(id)
+        }
+    }
+
+    fun clearAllNotifications() {
+        viewModelScope.launch {
+            repository.clearAllNotifications()
+        }
+    }
+
+    fun sendNotification(
+        title: String,
+        message: String,
+        type: NotificationType = NotificationType.SYSTEM,
+        actionRoute: String? = null,
+        sendSystemPush: Boolean = true
+    ) {
+        viewModelScope.launch {
+            repository.insertNotification(
+                AppNotification(
+                    title = title,
+                    message = message,
+                    type = type,
+                    timestamp = System.currentTimeMillis(),
+                    actionRoute = actionRoute
+                )
+            )
+            if (sendSystemPush) {
+                NotificationHelper.sendSystemNotification(
+                    context = getApplication(),
+                    title = title,
+                    message = message,
+                    type = type,
+                    actionRoute = actionRoute
+                )
+            }
+        }
+    }
+
+    fun sendTestSystemNotification() {
+        val testSamples = listOf(
+            Triple("今日上課提醒", "下午 14:00 有「線性代數」課程，教室：理學院 302。", NotificationType.COURSE),
+            Triple("記帳預算警示", "本月份生活預算已使用達 75%，請留意近期支出。", NotificationType.EXPENSE),
+            Triple("學業審查進度更新", "恭喜！您已滿足本系基礎模組必修 24 學分門檻。", NotificationType.GRADUATION),
+            Triple("UniTrack+ 系統推播測試", "這是一則測試通知，代表手機系統推播功能運作正常！", NotificationType.SYSTEM)
+        )
+        val sample = testSamples.random()
+        sendNotification(
+            title = sample.first,
+            message = sample.second,
+            type = sample.third,
+            actionRoute = when (sample.third) {
+                NotificationType.COURSE -> "timetable"
+                NotificationType.EXPENSE -> "expense"
+                NotificationType.GRADUATION -> "graduation"
+                NotificationType.SYSTEM -> "notifications"
+            },
+            sendSystemPush = true
+        )
+    }
+
+    fun checkAndGenerateSmartNotifications() {
+        viewModelScope.launch {
+            val currentList = repository.getAllNotificationsOnce()
+            if (currentList.isEmpty()) {
+                val initialNotifications = listOf(
+                    AppNotification(
+                        title = "歡迎使用 UniTrack+",
+                        message = "UniTrack+ 智慧學業助理已準備就緒，隨時為您管理課表、畢業審查與記帳！",
+                        type = NotificationType.SYSTEM,
+                        timestamp = System.currentTimeMillis() - 1000 * 60 * 120
+                    ),
+                    AppNotification(
+                        title = "學期課表提醒",
+                        message = "新的學期開始了！記得在課表頁面確認本學期的排課與時間。",
+                        type = NotificationType.COURSE,
+                        timestamp = System.currentTimeMillis() - 1000 * 60 * 60,
+                        actionRoute = "timetable"
+                    ),
+                    AppNotification(
+                        title = "每月記帳與預算管理",
+                        message = "本月份預算已設定，每筆消費都能即時記錄分析收支狀態。",
+                        type = NotificationType.EXPENSE,
+                        timestamp = System.currentTimeMillis() - 1000 * 60 * 30,
+                        actionRoute = "expense"
+                    )
+                )
+                repository.insertNotifications(initialNotifications)
+            }
+        }
+    }
 
     // Filtered courses for currently selected semester
     val currentSemesterCourses: StateFlow<List<Course>> = combine(allCourses, _selectedSemester) { courses, sem ->

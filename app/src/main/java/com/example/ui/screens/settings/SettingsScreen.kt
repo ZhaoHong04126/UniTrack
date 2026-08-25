@@ -1,6 +1,13 @@
 package com.example.ui.screens.settings
 
+import android.Manifest
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -25,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.AuthProvider
 import com.example.data.model.GraduationPlan
@@ -32,6 +40,7 @@ import com.example.data.model.UserProfile
 import com.example.ui.components.SectionHeader
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.StudentViewModel
+import com.example.util.NotificationHelper
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,10 +54,28 @@ fun SettingsScreen(
 
     val plan by viewModel.graduationPlan.collectAsStateWithLifecycle()
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
-    val showWeekend by viewModel.showWeekend.collectAsStateWithLifecycle()
+
+    var isNotificationPermissionGranted by remember {
+        mutableStateOf(NotificationHelper.hasNotificationPermission(context))
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        isNotificationPermissionGranted = isGranted
+        if (isGranted) {
+            Toast.makeText(context, "已成功開啟系統推播通知權限", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(context, "系統推播通知權限未開啟", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    LifecycleResumeEffect(Unit) {
+        isNotificationPermissionGranted = NotificationHelper.hasNotificationPermission(context)
+        onPauseOrDispose { }
+    }
 
     var showEditProfileDialog by remember { mutableStateOf(false) }
-    var showDaysOptionDialog by remember { mutableStateOf(false) }
     var showSignOutConfirmDialog by remember { mutableStateOf(false) }
     var showDeleteAccountConfirmDialog by remember { mutableStateOf(false) }
     var showFinalExecutionDialog by remember { mutableStateOf(false) }
@@ -105,8 +132,9 @@ fun SettingsScreen(
         }
 
 
-        // Section 2: Timetable Display Settings
-        SectionHeader(title = "課表與顯示偏好")
+
+        // Section 3: Permissions (系統權限)
+        SectionHeader(title = "系統權限")
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(18.dp),
@@ -114,11 +142,44 @@ fun SettingsScreen(
             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
             SettingTileRow(
-                icon = Icons.Default.CalendarViewWeek,
-                title = "每週顯示天數",
-                subtitle = if (showWeekend) "一週 (七天・含週末)" else "平日 (五天・週一至週五)",
-                iconTint = TealSecondary,
-                onClick = { showDaysOptionDialog = true }
+                icon = if (isNotificationPermissionGranted) Icons.Default.NotificationsActive else Icons.Default.NotificationsOff,
+                title = "系統推播通知",
+                subtitle = if (isNotificationPermissionGranted) "已允許接收上課提醒、預算警告與學業審查" else "尚未開啟（點擊前往開啟通知）",
+                iconTint = if (isNotificationPermissionGranted) SapphirePrimary else AmberWarning,
+                badgeText = if (isNotificationPermissionGranted) "已開啟" else "未開啟",
+                badgeContainerColor = if (isNotificationPermissionGranted) EmeraldLight else AmberLight,
+                badgeContentColor = if (isNotificationPermissionGranted) EmeraldAccent else AmberAccent,
+                onClick = {
+                    if (!isNotificationPermissionGranted) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        } else {
+                            NotificationHelper.openNotificationSettings(context)
+                        }
+                    } else {
+                        NotificationHelper.openNotificationSettings(context)
+                    }
+                }
+            )
+
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                thickness = 0.8.dp,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+
+            SettingTileRow(
+                icon = Icons.Default.AppSettingsAlt,
+                title = "應用程式系統權限",
+                subtitle = "查看 Android 系統完整權限與儲存空間設定",
+                iconTint = IndigoAccent,
+                onClick = {
+                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = Uri.fromParts("package", context.packageName, null)
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    context.startActivity(intent)
+                }
             )
         }
 
@@ -213,106 +274,6 @@ fun SettingsScreen(
         )
     }
 
-    // Timetable Days Option Dialog (5 days vs 7 days)
-    if (showDaysOptionDialog) {
-        AlertDialog(
-            onDismissRequest = { showDaysOptionDialog = false },
-            title = {
-                Text(
-                    text = "設定課表每週顯示天數",
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    // Option 1: 平日 (五天)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(
-                                if (!showWeekend) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
-                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
-                            )
-                            .clickable {
-                                viewModel.setShowWeekend(false)
-                                showDaysOptionDialog = false
-                                Toast.makeText(context, "已切換為：平日 (週一至週五)", Toast.LENGTH_SHORT).show()
-                            }
-                            .padding(horizontal = 14.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column {
-                            Text(
-                                text = "平日 (五天)",
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                            Text(
-                                text = "顯示週一至週五（版面更寬敞）",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        if (!showWeekend) {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
-                    }
-
-                    // Option 2: 一週 (七天)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(
-                                if (showWeekend) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
-                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
-                            )
-                            .clickable {
-                                viewModel.setShowWeekend(true)
-                                showDaysOptionDialog = false
-                                Toast.makeText(context, "已切換為：一週 (週一至週日)", Toast.LENGTH_SHORT).show()
-                            }
-                            .padding(horizontal = 14.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column {
-                            Text(
-                                text = "一週 (七天)",
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                            Text(
-                                text = "顯示週一至週日（含週末排課）",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        if (showWeekend) {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showDaysOptionDialog = false }) {
-                    Text("取消")
-                }
-            }
-        )
-    }
 
     // Sign Out Confirm Dialog
     if (showSignOutConfirmDialog) {
@@ -851,6 +812,8 @@ private fun SettingTileRow(
     iconTint: Color = SapphirePrimary,
     titleColor: Color = MaterialTheme.colorScheme.onSurface,
     badgeText: String? = null,
+    badgeContainerColor: Color = EmeraldLight,
+    badgeContentColor: Color = EmeraldAccent,
     onClick: () -> Unit
 ) {
     Row(
@@ -901,12 +864,12 @@ private fun SettingTileRow(
             if (badgeText != null) {
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = EmeraldLight
+                    color = badgeContainerColor
                 ) {
                     Text(
                         text = badgeText,
                         style = MaterialTheme.typography.labelSmall,
-                        color = EmeraldAccent,
+                        color = badgeContentColor,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )

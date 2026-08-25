@@ -6,6 +6,7 @@ import com.example.data.local.CourseDao
 import com.example.data.local.DefaultData
 import com.example.data.local.ExpenseDao
 import com.example.data.local.GraduationDao
+import com.example.data.local.NotificationDao
 import com.example.data.model.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -18,7 +19,8 @@ class StudentRepository(
     private val context: Context,
     private val courseDao: CourseDao,
     private val graduationDao: GraduationDao,
-    private val expenseDao: ExpenseDao
+    private val expenseDao: ExpenseDao,
+    private val notificationDao: NotificationDao
 ) {
     private val prefs by lazy {
         context.getSharedPreferences("unitrack_profile_prefs", Context.MODE_PRIVATE)
@@ -355,5 +357,37 @@ class StudentRepository(
             e.printStackTrace()
             false
         }
+    }
+
+    // Notifications
+    val allNotifications: Flow<List<AppNotification>> = notificationDao.getAllNotifications()
+    val unreadNotificationCount: Flow<Int> = notificationDao.getUnreadCount()
+
+    suspend fun insertNotification(notification: AppNotification): Long = withContext(Dispatchers.IO) {
+        notificationDao.insertNotification(notification)
+    }
+
+    suspend fun insertNotifications(notifications: List<AppNotification>) = withContext(Dispatchers.IO) {
+        notificationDao.insertNotifications(notifications)
+    }
+
+    suspend fun markNotificationAsRead(id: Long) = withContext(Dispatchers.IO) {
+        notificationDao.markAsRead(id)
+    }
+
+    suspend fun markAllNotificationsAsRead() = withContext(Dispatchers.IO) {
+        notificationDao.markAllAsRead()
+    }
+
+    suspend fun deleteNotification(id: Long) = withContext(Dispatchers.IO) {
+        notificationDao.deleteNotification(id)
+    }
+
+    suspend fun clearAllNotifications() = withContext(Dispatchers.IO) {
+        notificationDao.clearAll()
+    }
+
+    suspend fun getAllNotificationsOnce(): List<AppNotification> = withContext(Dispatchers.IO) {
+        notificationDao.getAllNotificationsOnce()
     }
 }

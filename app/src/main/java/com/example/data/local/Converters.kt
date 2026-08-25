@@ -69,6 +69,13 @@ class Converters {
     fun toGpaScale(value: String?): GpaScale? =
         value?.let { enumValueOfOrDefault(it, GpaScale.SCALE_4_3) }
 
+    @TypeConverter
+    fun fromNotificationType(value: com.example.data.model.NotificationType?): String? = value?.name
+
+    @TypeConverter
+    fun toNotificationType(value: String?): com.example.data.model.NotificationType? =
+        value?.let { enumValueOfOrDefault(it, com.example.data.model.NotificationType.SYSTEM) }
+
     private inline fun <reified T : Enum<T>> enumValueOfOrDefault(name: String, defaultValue: T): T =
         runCatching { enumValueOf<T>(name) }.getOrDefault(defaultValue)
 }

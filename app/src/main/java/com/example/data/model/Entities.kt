@@ -102,3 +102,15 @@ data class MonthlyBudget(
     val yearMonth: String, // e.g. "2026-08"
     val budgetAmount: Double = 12000.0
 )
+
+@Entity(tableName = "notifications")
+data class AppNotification(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val title: String,
+    val message: String,
+    val type: NotificationType = NotificationType.SYSTEM,
+    val timestamp: Long = System.currentTimeMillis(),
+    val isRead: Boolean = false,
+    val actionRoute: String? = null
+)

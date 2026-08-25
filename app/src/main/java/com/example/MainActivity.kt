@@ -1,9 +1,14 @@
 package com.example
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -14,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
@@ -27,11 +33,13 @@ import com.example.ui.screens.graduation.CourseAuditListScreen
 import com.example.ui.screens.graduation.GraduationPlanScreen
 import com.example.ui.screens.graduation.GraduationScreen
 import com.example.ui.screens.graduation.GraduationThresholdsScreen
+import com.example.ui.screens.notification.NotificationScreen
 import com.example.ui.screens.settings.SettingsScreen
 import com.example.ui.screens.timetable.GradeEntryScreen
 import com.example.ui.screens.timetable.TimetableScreen
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.viewmodel.StudentViewModel
+import com.example.util.NotificationHelper
 
 sealed class AppDestination(
     val route: String,
@@ -82,10 +90,37 @@ sealed class AppDestination(
 }
 
 class MainActivity : ComponentActivity() {
+
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        // Notification permission state updated
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+    }
+
     @Suppress("SpellCheckingInspection")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Create notification channels for Android 8.0+
+        NotificationHelper.createNotificationChannels(this)
+
+        // Request POST_NOTIFICATIONS permission for Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+
         setContent {
             MyApplicationTheme {
                 val studentViewModel: StudentViewModel = viewModel()
@@ -100,6 +135,22 @@ class MainActivity : ComponentActivity() {
                 }
 
                 val navController = rememberNavController()
+
+                // Navigate if launched/opened from system notification
+                val currentIntent = intent
+                LaunchedEffect(currentIntent) {
+                    val targetRoute = currentIntent?.getStringExtra(NotificationHelper.EXTRA_NAV_ROUTE)
+                    if (!targetRoute.isNullOrBlank()) {
+                        navController.navigate(targetRoute) {
+                            popUpTo(AppDestination.Dashboard.route) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                }
+
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
 
@@ -171,6 +222,25 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onNavigateToExpense = {
                                     navController.navigate(AppDestination.Expense.route)
+                                },
+                                onNavigateToNotifications = {
+                                    navController.navigate("notifications")
+                                }
+                            )
+                        }
+
+                        composable("notifications") {
+                            NotificationScreen(
+                                viewModel = studentViewModel,
+                                onNavigateBack = { navController.popBackStack() },
+                                onNavigateToRoute = { route ->
+                                    navController.navigate(route) {
+                                        popUpTo(AppDestination.Dashboard.route) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
                                 }
                             )
                         }

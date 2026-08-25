@@ -1,5 +1,6 @@
 package com.example.ui.screens.timetable
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -32,6 +33,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.Course
 import com.example.ui.theme.SapphirePrimary
 import com.example.ui.viewmodel.StudentViewModel
+import com.example.util.TimetableImageGenerator
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
@@ -44,6 +46,7 @@ fun TimetableScreen(
     modifier: Modifier = Modifier,
     onNavigateToGrades: () -> Unit = {}
 ) {
+    val context = LocalContext.current
     val selectedSemester by viewModel.selectedSemester.collectAsStateWithLifecycle()
     val allSemesters by viewModel.allSemesters.collectAsStateWithLifecycle()
     val courses by viewModel.currentSemesterCourses.collectAsStateWithLifecycle()
@@ -189,17 +192,44 @@ fun TimetableScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Time / Semester settings button (Clock icon)
+                // Toggle 5-day / 7-day week display button
                 FilledTonalIconButton(
-                    onClick = { showTimeSettingsSheet = true },
-                    shape = RoundedCornerShape(12.dp)
+                    onClick = {
+                        viewModel.setShowWeekend(!showWeekend)
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = if (showWeekend) SapphirePrimary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = if (showWeekend) SapphirePrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 ) {
                     Icon(
-                        imageVector = Icons.Default.AccessTime,
-                        contentDescription = "時間設定",
+                        imageVector = Icons.Default.CalendarViewWeek,
+                        contentDescription = if (showWeekend) "切換為平日 (五天)" else "切換為一週 (七天)",
                         modifier = Modifier.size(22.dp)
                     )
                 }
+
+                // Share Timetable Image Button (Direct image share)
+                FilledTonalIconButton(
+                    onClick = {
+                        val semesterLabel = formatSemesterHeaderLabel(selectedSemester)
+                        TimetableImageGenerator.shareTimetableImage(
+                            context = context,
+                            semesterLabel = semesterLabel,
+                            courses = courses,
+                            showWeekend = showWeekend
+                        )
+                    },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Share,
+                        contentDescription = "分享課表圖片",
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
 
                 // Grade Entry Button (Calculator icon)
                 FilledTonalIconButton(

@@ -71,3 +71,10 @@ enum class GpaScale(val label: String, @Suppress("unused") val maxGpa: Double) {
     SCALE_4_0("4.0 制 (A=4.0, B=3.0...)", 4.0),
     PERCENTAGE("百分制 (100分制)", 100.0)
 }
+
+enum class NotificationType(val label: String) {
+    COURSE("課表通知"),
+    EXPENSE("記帳與預算"),
+    GRADUATION("學業與畢業"),
+    SYSTEM("系統公告")
+}

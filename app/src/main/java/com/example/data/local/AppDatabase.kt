@@ -13,9 +13,10 @@ import com.example.data.model.*
         GraduationPlan::class,
         GraduationThreshold::class,
         ExpenseRecord::class,
-        MonthlyBudget::class
+        MonthlyBudget::class,
+        AppNotification::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -23,6 +24,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun courseDao(): CourseDao
     abstract fun graduationDao(): GraduationDao
     abstract fun expenseDao(): ExpenseDao
+    abstract fun notificationDao(): NotificationDao
 
     companion object {
         @Volatile
