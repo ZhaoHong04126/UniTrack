@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:description="@string/widget_weekly_grid_desc"
+    android:initialKeyguardLayout="@layout/widget_weekly_grid"
+    android:initialLayout="@layout/widget_weekly_grid"
+    android:minWidth="260dp"
+    android:minHeight="220dp"
+    android:minResizeWidth="180dp"
+    android:minResizeHeight="160dp"
+    android:previewImage="@mipmap/ic_launcher"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellWidth="4"
+    android:targetCellHeight="4"
+    android:updatePeriodMillis="1800000"
+    android:widgetCategory="home_screen"
+    tools:targetApi="31" />

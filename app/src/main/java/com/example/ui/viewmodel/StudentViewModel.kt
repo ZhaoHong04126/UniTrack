@@ -12,6 +12,7 @@ import com.example.data.repository.AuthRepository
 import com.example.data.repository.FirestoreSyncRepository
 import com.example.data.repository.StudentRepository
 import com.example.util.NotificationHelper
+import com.example.widget.WidgetUpdateHelper
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -140,6 +141,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             putInt("semester_total_weeks_$semester", totalWeeks.coerceIn(4, 18))
         }
         _semesterTimeConfigVersion.value += 1
+        WidgetUpdateHelper.updateAllWidgets(getApplication())
     }
 
     fun getCourseAttendance(courseId: Long): Map<Int, String> {
@@ -847,6 +849,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         if (user != null) {
             firestoreSyncRepository.uploadAllToCloud(user.uid)
         }
+        WidgetUpdateHelper.updateAllWidgets(getApplication())
         _userMessage.value = "已成功新增課程：${course.name}"
     }
 
@@ -856,6 +859,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         if (user != null) {
             firestoreSyncRepository.uploadAllToCloud(user.uid)
         }
+        WidgetUpdateHelper.updateAllWidgets(getApplication())
         _userMessage.value = "已更新課程：${course.name}"
     }
 
@@ -865,6 +869,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         if (user != null) {
             firestoreSyncRepository.uploadAllToCloud(user.uid)
         }
+        WidgetUpdateHelper.updateAllWidgets(getApplication())
         _userMessage.value = "已刪除課程：${course.name}"
     }
 
@@ -874,6 +879,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         if (user != null) {
             firestoreSyncRepository.uploadAllToCloud(user.uid)
         }
+        WidgetUpdateHelper.updateAllWidgets(getApplication())
         onComplete?.invoke()
     }
 
@@ -885,6 +891,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         if (user != null) {
             firestoreSyncRepository.uploadAllToCloud(user.uid)
         }
+        WidgetUpdateHelper.updateAllWidgets(getApplication())
         _userMessage.value = "已將 $semester 設定為主要學期"
     }
 

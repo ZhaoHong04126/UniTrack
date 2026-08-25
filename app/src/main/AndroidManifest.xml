@@ -34,6 +34,45 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+        <!-- UniTrack+ Today Schedule AppWidget -->
+        <receiver
+            android:name="com.example.widget.TodayScheduleWidget"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.example.widget.ACTION_REFRESH_SCHEDULE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_today_schedule_info" />
+        </receiver>
+
+        <!-- UniTrack+ Full Week Grid Timetable AppWidget -->
+        <receiver
+            android:name="com.example.widget.WeeklyGridTimetableWidget"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.example.widget.ACTION_REFRESH_WEEKLY_GRID" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_weekly_grid_info" />
+        </receiver>
+
+        <!-- UniTrack+ Today Focus & Weekly Overview AppWidget -->
+        <receiver
+            android:name="com.example.widget.WeeklyOverviewWidget"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.example.widget.ACTION_REFRESH_WEEKLY_OVERVIEW" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_weekly_overview_info" />
+        </receiver>
     </application>
 
 </manifest>

@@ -35,6 +35,7 @@ import com.example.ui.screens.graduation.GraduationScreen
 import com.example.ui.screens.graduation.GraduationThresholdsScreen
 import com.example.ui.screens.notification.NotificationScreen
 import com.example.ui.screens.settings.SettingsScreen
+import com.example.ui.screens.settings.WidgetSettingsScreen
 import com.example.ui.screens.timetable.GradeEntryScreen
 import com.example.ui.screens.timetable.TimetableScreen
 import com.example.ui.theme.MyApplicationTheme
@@ -310,6 +311,19 @@ class MainActivity : ComponentActivity() {
                                 viewModel = studentViewModel,
                                 onNavigateToAuth = {
                                     navController.navigate("auth")
+                                },
+                                onNavigateToWidgetSettings = {
+                                    navController.navigate("widget_settings")
+                                }
+                            )
+                        }
+
+                        composable("widget_settings") {
+                            WidgetSettingsScreen(
+                                viewModel = studentViewModel,
+                                onNavigateBack = { navController.popBackStack() },
+                                onNavigateToTimetable = {
+                                    navController.navigate(AppDestination.Timetable.route)
                                 }
                             )
                         }

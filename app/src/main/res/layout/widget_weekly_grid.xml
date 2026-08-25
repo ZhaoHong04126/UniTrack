@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/widget_grid_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:fitsSystemWindows="true"
+    android:orientation="vertical"
+    android:padding="8dp"
+    tools:ignore="SmallSp,HardcodedText,ContentDescription,TouchTargetSizeCheck">
+
+    <!-- Top Header -->
+    <LinearLayout
+        android:id="@+id/widget_grid_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="4dp"
+        android:paddingBottom="4dp">
+
+        <ImageView
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_marginEnd="6dp"
+            android:contentDescription="@string/app_name"
+            android:src="@drawable/ic_widget_calendar" />
+
+        <TextView
+            android:id="@+id/tv_widget_grid_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="@color/widget_text_primary"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            tools:text="114-1 週課表" />
+
+        <TextView
+            android:id="@+id/tv_widget_grid_week_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="6dp"
+            android:background="@drawable/widget_badge_bg"
+            android:paddingHorizontal="6dp"
+            android:paddingVertical="2dp"
+            android:textColor="@color/widget_badge_text"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            tools:text="第 2 週" />
+
+        <ImageButton
+            android:id="@+id/btn_widget_grid_refresh"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:padding="4dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/widget_refresh_desc"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_widget_refresh"
+            tools:ignore="TouchTargetSizeCheck" />
+    </LinearLayout>
+
+    <!-- Canvas Grid Area -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <ImageView
+            android:id="@+id/iv_weekly_grid_canvas"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@string/widget_weekly_grid_name"
+            android:scaleType="fitXY" />
+
+        <!-- Empty State -->
+        <LinearLayout
+            android:id="@+id/layout_grid_empty"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                tools:text="📅 本學期尚未建立課程"
+                android:textColor="@color/widget_text_secondary"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                tools:text="點擊開啟 App 開始排課"
+                android:textColor="@color/widget_primary"
+                android:textSize="11sp" />
+        </LinearLayout>
+    </FrameLayout>
+
+</LinearLayout>

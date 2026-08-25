@@ -1,3 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">UniTrack+</string>
+    <string name="widget_today_schedule_name">UniTrack+ 今日課表</string>
+    <string name="widget_today_schedule_desc">在桌面即時查看今日課堂、節次、教室與下一堂課提醒。</string>
+    <string name="widget_weekly_grid_name">UniTrack+ 一週網格課表</string>
+    <string name="widget_weekly_grid_desc">全螢幕一週便籤網格課表，在桌面完整掌握週一至週五排課。</string>
+    <string name="widget_weekly_overview_name">UniTrack+ 今日焦點與週概覽</string>
+    <string name="widget_weekly_overview_desc">上方呈現今日焦點課表，下方展開一週每日課程摘要。</string>
+    <string name="widget_refresh_desc">重新整理</string>
 </resources>

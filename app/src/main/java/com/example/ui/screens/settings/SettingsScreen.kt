@@ -48,7 +48,8 @@ import com.example.util.NotificationHelper
 fun SettingsScreen(
     viewModel: StudentViewModel,
     modifier: Modifier = Modifier,
-    onNavigateToAuth: () -> Unit = {}
+    onNavigateToAuth: () -> Unit = {},
+    onNavigateToWidgetSettings: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -180,6 +181,23 @@ fun SettingsScreen(
                     }
                     context.startActivity(intent)
                 }
+            )
+        }
+
+        // Section: Desktop Widgets (桌面小工具)
+        SectionHeader(title = "桌面小工具")
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        ) {
+            SettingTileRow(
+                icon = Icons.Default.Widgets,
+                title = "桌面小工具管理",
+                subtitle = "即時預覽課表小工具、強制推播同步與安裝指南",
+                iconTint = SapphirePrimary,
+                onClick = onNavigateToWidgetSettings
             )
         }
 

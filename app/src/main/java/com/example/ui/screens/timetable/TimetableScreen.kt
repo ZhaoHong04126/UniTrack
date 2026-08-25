@@ -980,9 +980,9 @@ private fun formatSemesterHeaderLabel(sem: String, admissionSemester: String): S
 }
 
 private fun isCourseInWeek(course: Course, week: Int): Boolean {
-    if (course.repeatMode == "每週" || course.repeatWeeks == "1-18" || course.repeatWeeks.isBlank()) return true
     if (course.repeatMode == "單週") return week % 2 != 0
     if (course.repeatMode == "雙週") return week % 2 == 0
+    if (course.repeatMode == "每週" || course.repeatWeeks == "1-18" || course.repeatWeeks.isBlank()) return true
     val weeks = course.repeatWeeks.split(",").mapNotNull { it.trim().toIntOrNull() }
     return week in weeks
 }
