@@ -29,6 +29,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.ui.screens.auth.AuthScreen
 import com.example.ui.screens.dashboard.DashboardScreen
 import com.example.ui.screens.expense.ExpenseScreen
+import com.example.ui.screens.graduation.AcademicMenuScreen
 import com.example.ui.screens.graduation.CourseAuditListScreen
 import com.example.ui.screens.graduation.GraduationPlanScreen
 import com.example.ui.screens.graduation.GraduationScreen
@@ -250,8 +251,19 @@ class MainActivity : ComponentActivity() {
                             TimetableScreen(
                                 viewModel = studentViewModel,
                                 onNavigateToGrades = {
-                                    navController.navigate("grade_entry")
+                                    navController.navigate("academic_menu")
                                 }
+                            )
+                        }
+
+                        composable("academic_menu") {
+                            AcademicMenuScreen(
+                                onNavigateBack = { navController.popBackStack() },
+                                onNavigateToGradeEntry = { navController.navigate("grade_entry") },
+                                onNavigateToGraduation = { navController.navigate(AppDestination.Graduation.route) },
+                                onNavigateToPlanSetting = { navController.navigate("graduation_plan_setting") },
+                                onNavigateToThresholds = { navController.navigate("graduation_thresholds") },
+                                onNavigateToCourseAudit = { navController.navigate("course_audit_list") }
                             )
                         }
 
