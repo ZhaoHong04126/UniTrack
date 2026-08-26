@@ -32,7 +32,6 @@
   - [6. 通知設定、帳號與雲端安全同步 (Auth, Notification & Sync)](#6-通知設定帳號與雲端安全同步-auth-notification--sync)
 - [🧪 測試與品質保證](#-測試與品質保證)
 - [🗺️ 未來展望 (Phase 2 Roadmap)](#️-未來展望-phase-2-roadmap)
-- [📄 授權條款](#-授權條款)
 
 ---
 
