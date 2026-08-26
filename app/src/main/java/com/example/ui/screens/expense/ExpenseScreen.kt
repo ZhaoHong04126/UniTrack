@@ -30,6 +30,7 @@ import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -96,6 +97,16 @@ fun ExpenseScreen(
 
     val locale = LocalConfiguration.current.locales[0]
     val monthFormat = remember(locale) { SimpleDateFormat("yyyy-MM", locale) }
+    val todayDateString = remember(locale) {
+        SimpleDateFormat("yyyy-MM-dd", locale).format(Date())
+    }
+
+    var isCalendarView by rememberSaveable { mutableStateOf(false) }
+    var selectedCalendarDate by rememberSaveable(selectedMonth) {
+        mutableStateOf(
+            if (todayDateString.startsWith(selectedMonth)) todayDateString else "$selectedMonth-01"
+        )
+    }
 
     fun calTime(format: SimpleDateFormat, dateStr: String, offset: Int): String? {
         return runCatching {
@@ -150,7 +161,7 @@ fun ExpenseScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(top = 12.dp, bottom = 16.dp)
         ) {
-            // Month Selector Header
+            // Month Selector Header with View Toggle (List vs Calendar)
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -185,16 +196,30 @@ fun ExpenseScreen(
                         }
                     }
 
-                    if (allExpenses.isNotEmpty()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // 列表 / 月曆 視圖切換鈕
                         IconButton(
-                            onClick = { showClearConfirmDialog = true },
-                            modifier = Modifier.testTag("clear_expenses_button")
+                            onClick = { isCalendarView = !isCalendarView },
+                            modifier = Modifier.testTag("toggle_expense_view_button")
                         ) {
                             Icon(
-                                imageVector = Icons.Default.DeleteOutline,
-                                contentDescription = "清空所有記帳記錄",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                imageVector = if (isCalendarView) Icons.AutoMirrored.Filled.FormatListBulleted else Icons.Default.CalendarMonth,
+                                contentDescription = if (isCalendarView) "切換至列表視圖" else "切換至月曆視圖",
+                                tint = SapphirePrimary
                             )
+                        }
+
+                        if (allExpenses.isNotEmpty()) {
+                            IconButton(
+                                onClick = { showClearConfirmDialog = true },
+                                modifier = Modifier.testTag("clear_expenses_button")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.DeleteOutline,
+                                    contentDescription = "清空所有記帳記錄",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 }
@@ -423,63 +448,180 @@ fun ExpenseScreen(
                 }
             }
 
-            // Tab 0: Expense List Items
+            // Tab 0: Expense List Items (List View vs Calendar View)
             when (currentTab) {
                 0 -> {
-                    if (monthExpenses.isEmpty()) {
+                    if (isCalendarView) {
+                        // Monthly Calendar Card
                         item {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                            ExpenseMonthlyCalendarCard(
+                                selectedMonth = selectedMonth,
+                                selectedDate = selectedCalendarDate,
+                                expenses = allMonthExpensesNoFilter,
+                                onSelectDate = { selectedCalendarDate = it }
+                            )
+                        }
+
+                        // Selected Date Header
+                        val selectedDayRecords = allExpenses.filter { it.dateString == selectedCalendarDate }
+                        val dayTotalExp = selectedDayRecords.filter { it.type == ExpenseType.EXPENSE }.sumOf { it.amount }
+                        val dayTotalInc = selectedDayRecords.filter { it.type == ExpenseType.INCOME }.sumOf { it.amount }
+
+                        item {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp, bottom = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(24.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.ReceiptLong,
+                                        imageVector = Icons.Default.CalendarToday,
                                         contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.outline,
-                                        modifier = Modifier.size(36.dp)
+                                        tint = SapphirePrimary,
+                                        modifier = Modifier.size(18.dp)
                                     )
                                     Text(
-                                        text = "這個月尚無記帳收支明細",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        text = "$selectedCalendarDate 收支明細",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
                                     )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    FilledTonalButton(
-                                        onClick = { viewModel.seedMockExpenses() },
-                                        shape = RoundedCornerShape(12.dp),
-                                        colors = ButtonDefaults.filledTonalButtonColors(
-                                            containerColor = SapphirePrimary.copy(alpha = 0.12f),
-                                            contentColor = SapphirePrimary
+                                }
+
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    if (dayTotalExp > 0) {
+                                        Text(
+                                            text = "支出 -$${dayTotalExp.toInt()}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = RoseAccent
                                         )
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.AutoFixHigh,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(16.dp)
+                                    }
+                                    if (dayTotalInc > 0) {
+                                        Text(
+                                            text = "收入 +$${dayTotalInc.toInt()}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = EmeraldAccent
                                         )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text("一鍵產生 20 筆測試資料", fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
                         }
-                    } else {
-                        items(monthExpenses) { record ->
-                            ExpenseRecordItemCard(
-                                record = record,
-                                onClick = {
-                                    editingExpense = record
-                                    showAddDialog = true
+
+                        if (selectedDayRecords.isEmpty()) {
+                            item {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(14.dp),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                                ) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(20.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text(
+                                            text = "當日尚無記帳收支記錄",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        FilledTonalButton(
+                                            onClick = {
+                                                editingExpense = null
+                                                showAddDialog = true
+                                            },
+                                            shape = RoundedCornerShape(10.dp),
+                                            colors = ButtonDefaults.filledTonalButtonColors(
+                                                containerColor = SapphirePrimary.copy(alpha = 0.12f),
+                                                contentColor = SapphirePrimary
+                                            )
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Add,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text("補記此日收支", fontWeight = FontWeight.Bold)
+                                        }
+                                    }
                                 }
-                            )
+                            }
+                        } else {
+                            items(selectedDayRecords, key = { it.id }) { record ->
+                                ExpenseRecordItemCard(
+                                    record = record,
+                                    onClick = {
+                                        editingExpense = record
+                                        showAddDialog = true
+                                    }
+                                )
+                            }
+                        }
+                    } else {
+                        // Original List View
+                        if (monthExpenses.isEmpty()) {
+                            item {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                                ) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(24.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.ReceiptLong,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.outline,
+                                            modifier = Modifier.size(36.dp)
+                                        )
+                                        Text(
+                                            text = "這個月尚無記帳收支明細",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        FilledTonalButton(
+                                            onClick = { viewModel.seedMockExpenses() },
+                                            shape = RoundedCornerShape(12.dp),
+                                            colors = ButtonDefaults.filledTonalButtonColors(
+                                                containerColor = SapphirePrimary.copy(alpha = 0.12f),
+                                                contentColor = SapphirePrimary
+                                            )
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.AutoFixHigh,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text("一鍵產生 20 筆測試資料", fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            items(monthExpenses, key = { it.id }) { record ->
+                                ExpenseRecordItemCard(
+                                    record = record,
+                                    onClick = {
+                                        editingExpense = record
+                                        showAddDialog = true
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -793,6 +935,7 @@ fun ExpenseScreen(
     if (showAddDialog) {
         AddEditExpenseDialog(
             initialExpense = editingExpense,
+            initialDateString = if (editingExpense == null && isCalendarView) selectedCalendarDate else null,
             accounts = customAccounts,
             onDismiss = { showAddDialog = false },
             onSave = { expense ->
@@ -2564,5 +2707,222 @@ private fun getCategoryColor(category: ExpenseCategory): Color {
         ExpenseCategory.SALARY_JOB -> Color(0xFF10B981)
         ExpenseCategory.SCHOLARSHIP -> Color(0xFF5C6BC0)
         ExpenseCategory.OTHER -> Color(0xFF78909C)
+    }
+}
+
+private data class CalendarGridCell(
+    val dayNumber: Int?,
+    val dateString: String?,
+    val isToday: Boolean,
+    val isSelected: Boolean,
+    val totalExpense: Double,
+    val totalIncome: Double
+)
+
+@Composable
+private fun ExpenseMonthlyCalendarCard(
+    selectedMonth: String,
+    selectedDate: String,
+    expenses: List<ExpenseRecord>,
+    onSelectDate: (String) -> Unit
+) {
+    val locale = LocalConfiguration.current.locales[0]
+    val todayString = remember(locale) {
+        SimpleDateFormat("yyyy-MM-dd", locale).format(Date())
+    }
+
+    val gridCells = remember(selectedMonth, selectedDate, expenses, todayString) {
+        val parts = selectedMonth.split("-")
+        val year = parts.getOrNull(0)?.toIntOrNull() ?: 2026
+        val month = parts.getOrNull(1)?.toIntOrNull() ?: 8
+
+        val cal = Calendar.getInstance().apply {
+            set(Calendar.YEAR, year)
+            set(Calendar.MONTH, month - 1)
+            set(Calendar.DAY_OF_MONTH, 1)
+        }
+        val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+        val firstDayOfWeek = cal.get(Calendar.DAY_OF_WEEK)
+        // Mon=0, Tue=1, Wed=2, Thu=3, Fri=4, Sat=5, Sun=6
+        val leadingEmpty = (firstDayOfWeek - Calendar.MONDAY + 7) % 7
+
+        val dailyMap = expenses.groupBy { it.dateString }
+        val cells = mutableListOf<CalendarGridCell>()
+
+        // Leading empty slots
+        for (i in 0 until leadingEmpty) {
+            cells.add(CalendarGridCell(null, null, isToday = false, isSelected = false, totalExpense = 0.0, totalIncome = 0.0))
+        }
+
+        // Days in month
+        for (d in 1..daysInMonth) {
+            val dateStr = String.format(Locale.US, "%04d-%02d-%02d", year, month, d)
+            val dayRecords = dailyMap[dateStr].orEmpty()
+            val exp = dayRecords.filter { it.type == ExpenseType.EXPENSE }.sumOf { it.amount }
+            val inc = dayRecords.filter { it.type == ExpenseType.INCOME }.sumOf { it.amount }
+            cells.add(
+                CalendarGridCell(
+                    dayNumber = d,
+                    dateString = dateStr,
+                    isToday = dateStr == todayString,
+                    isSelected = dateStr == selectedDate,
+                    totalExpense = exp,
+                    totalIncome = inc
+                )
+            )
+        }
+
+        // Trailing empty slots to complete rows of 7
+        val trailingEmpty = (7 - (cells.size % 7)) % 7
+        for (i in 0 until trailingEmpty) {
+            cells.add(CalendarGridCell(null, null, isToday = false, isSelected = false, totalExpense = 0.0, totalIncome = 0.0))
+        }
+
+        cells
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Weekday Headers: 一 二 三 四 五 六 日
+            val weekDays = listOf("一", "二", "三", "四", "五", "六", "日")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceAround
+            ) {
+                weekDays.forEachIndexed { idx, day ->
+                    val isWeekend = idx >= 5
+                    Text(
+                        text = day,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isWeekend) RoseAccent.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+
+            // Calendar Rows
+            val rows = gridCells.chunked(7)
+            rows.forEach { rowCells ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    rowCells.forEach { cell ->
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(54.dp)
+                        ) {
+                            if (cell.dayNumber != null && cell.dateString != null) {
+                                val isSelected = cell.isSelected
+                                val isToday = cell.isToday
+                                val hasExpense = cell.totalExpense > 0
+                                val hasIncome = cell.totalIncome > 0
+
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(
+                                            when {
+                                                isSelected -> SapphirePrimary.copy(alpha = 0.18f)
+                                                else -> Color.Transparent
+                                            }
+                                        )
+                                        .then(
+                                            when {
+                                                isSelected -> Modifier.border(
+                                                    1.5.dp,
+                                                    SapphirePrimary,
+                                                    RoundedCornerShape(10.dp)
+                                                )
+                                                isToday -> Modifier.border(
+                                                    1.dp,
+                                                    SapphirePrimary.copy(alpha = 0.55f),
+                                                    RoundedCornerShape(10.dp)
+                                                )
+                                                else -> Modifier
+                                            }
+                                        )
+                                        .clickable { onSelectDate(cell.dateString) }
+                                        .padding(vertical = 2.dp, horizontal = 1.dp),
+                                    contentAlignment = Alignment.TopCenter
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.SpaceBetween,
+                                        modifier = Modifier.fillMaxSize()
+                                    ) {
+                                        // Day Number with Today Dot Indicator
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Text(
+                                                text = "${cell.dayNumber}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                fontWeight = if (isSelected || isToday) FontWeight.ExtraBold else FontWeight.Medium,
+                                                color = when {
+                                                    isSelected -> SapphirePrimary
+                                                    isToday -> SapphirePrimary
+                                                    else -> MaterialTheme.colorScheme.onSurface
+                                                }
+                                            )
+                                            if (isToday) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .padding(start = 2.dp)
+                                                        .size(4.dp)
+                                                        .clip(CircleShape)
+                                                        .background(SapphirePrimary)
+                                                )
+                                            }
+                                        }
+
+                                        // Amount Tag
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            modifier = Modifier.padding(bottom = 2.dp)
+                                        ) {
+                                            if (hasExpense) {
+                                                Text(
+                                                    text = "-$${cell.totalExpense.toInt()}",
+                                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = RoseAccent,
+                                                    maxLines = 1
+                                                )
+                                            } else if (hasIncome) {
+                                                Text(
+                                                    text = "+$${cell.totalIncome.toInt()}",
+                                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = EmeraldAccent,
+                                                    maxLines = 1
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

@@ -43,6 +43,7 @@ import java.util.*
 @Composable
 fun AddEditExpenseDialog(
     initialExpense: ExpenseRecord? = null,
+    initialDateString: String? = null,
     accounts: List<PaymentAccount> = emptyList(),
     onDismiss: () -> Unit,
     onSave: (ExpenseRecord) -> Unit,
@@ -61,7 +62,7 @@ fun AddEditExpenseDialog(
             initialExpense?.paymentMethod ?: accounts.firstOrNull()?.method ?: PaymentMethod.CASH
         )
     }
-    var dateString by remember { mutableStateOf(initialExpense?.dateString ?: dateFormat.format(Date())) }
+    var dateString by remember { mutableStateOf(initialExpense?.dateString ?: initialDateString ?: dateFormat.format(Date())) }
     var note by remember { mutableStateOf(initialExpense?.note ?: "") }
 
     var showCategorySheet by remember { mutableStateOf(false) }
