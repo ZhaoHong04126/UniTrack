@@ -153,7 +153,6 @@ class StudentRepository(
         if (existingPlan == null) {
             graduationDao.insertOrUpdatePlan(DefaultData.getDefaultGraduationPlan())
             graduationDao.insertThresholds(DefaultData.getDefaultThresholds())
-            expenseDao.insertExpenses(DefaultData.getDefaultExpenses())
             expenseDao.setBudget(DefaultData.getDefaultBudget())
         }
     }

@@ -360,18 +360,22 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             currentUser.collect { profile ->
                 if (profile != null) {
+                    // 1. 優先從雲端下載最新檔案（防止本機空資料覆蓋雲端）
+                    firestoreSyncRepository.downloadAllFromCloud(profile.uid)
+
+                    // 2. 下載完成後，檢查使用者名稱是否需要填入
                     val nameToSet = profile.displayName?.ifBlank { null }
                         ?: profile.email?.substringBefore("@")
                     if (!nameToSet.isNullOrBlank()) {
                         val currentPlan = repository.getGraduationPlanOnce() ?: repository.getCachedGraduationPlan()
                         if (currentPlan.studentName == "同學" || currentPlan.studentName == "王大明" || currentPlan.studentName == "大學生" || currentPlan.studentName.isBlank()) {
-                            updateGraduationPlan(currentPlan.copy(studentName = nameToSet))
+                            val updatedPlan = currentPlan.copy(studentName = nameToSet)
+                            repository.updateGraduationPlan(updatedPlan)
+                            if (updatedPlan.department.isNotBlank() && updatedPlan.department != "尚未設定系所") {
+                                firestoreSyncRepository.uploadAllToCloud(profile.uid)
+                            }
                         }
                     }
-                }
-                // Automatic background cloud sync on authenticated user login
-                if (profile != null) {
-                    syncWithCloud(silent = true)
                 }
             }
         }
@@ -1169,6 +1173,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
     fun addThreshold(threshold: GraduationThreshold) = viewModelScope.launch {
         repository.insertThreshold(threshold)
+        currentUser.value?.let { firestoreSyncRepository.uploadAllToCloud(it.uid) }
         _userMessage.value = "已新增畢業門檻項目"
     }
 
@@ -1178,20 +1183,24 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             completedDate = if (!threshold.isCompleted) dateFormat.format(Date()) else ""
         )
         repository.updateThreshold(updated)
+        currentUser.value?.let { firestoreSyncRepository.uploadAllToCloud(it.uid) }
     }
 
     fun updateThreshold(threshold: GraduationThreshold) = viewModelScope.launch {
         repository.updateThreshold(threshold)
+        currentUser.value?.let { firestoreSyncRepository.uploadAllToCloud(it.uid) }
         _userMessage.value = "已更新門檻：${threshold.title}"
     }
 
     fun deleteThreshold(threshold: GraduationThreshold) = viewModelScope.launch {
         repository.deleteThreshold(threshold)
+        currentUser.value?.let { firestoreSyncRepository.uploadAllToCloud(it.uid) }
         _userMessage.value = "已刪除門檻項目"
     }
 
     fun addExpense(expense: ExpenseRecord) = viewModelScope.launch {
         repository.insertExpense(expense)
+        currentUser.value?.let { firestoreSyncRepository.uploadAllToCloud(it.uid) }
         _userMessage.value = "已記錄${expense.type.label}：$${expense.amount.toInt()}"
 
         // 記帳後發送推播通知至通知列
@@ -1214,6 +1223,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
     fun updateExpense(expense: ExpenseRecord) = viewModelScope.launch {
         repository.updateExpense(expense)
+        currentUser.value?.let { firestoreSyncRepository.uploadAllToCloud(it.uid) }
         _userMessage.value = "已更新記錄"
 
         val isExpense = expense.type == ExpenseType.EXPENSE
@@ -1255,11 +1265,13 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
     fun deleteExpense(expense: ExpenseRecord) = viewModelScope.launch {
         repository.deleteExpense(expense)
+        currentUser.value?.let { firestoreSyncRepository.uploadAllToCloud(it.uid) }
         _userMessage.value = "已刪除記錄"
     }
 
     fun clearAllExpenses() = viewModelScope.launch {
         repository.deleteAllExpenses()
+        currentUser.value?.let { firestoreSyncRepository.uploadAllToCloud(it.uid) }
         _userMessage.value = "已清空所有記帳記錄"
     }
 
@@ -1291,12 +1303,14 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             repository.insertExpense(record)
         }
         checkExpenseBudgetAlert(month)
+        currentUser.value?.let { firestoreSyncRepository.uploadAllToCloud(it.uid) }
         _userMessage.value = "已成功為 $month 月匯入 20 筆測試資料！"
     }
 
     fun setMonthlyBudget(amount: Double) = viewModelScope.launch {
         val month = _selectedExpenseMonth.value
         repository.setBudget(MonthlyBudget(yearMonth = month, budgetAmount = amount))
+        currentUser.value?.let { firestoreSyncRepository.uploadAllToCloud(it.uid) }
         _userMessage.value = "已更新 $month 月預算為 $${amount.toInt()}"
         checkExpenseBudgetAlert(month)
     }
@@ -1484,11 +1498,19 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val result = authRepository.signInWithGoogle(context, webClientId)
             result.onSuccess { user ->
+                // 1. 先下載並同步雲端最新學業與系所檔案
+                firestoreSyncRepository.downloadAllFromCloud(user.uid)
+
+                // 2. 檢查使用者姓名是否需要寫入本機
                 val nameToSet = user.displayName?.ifBlank { null } ?: user.email?.substringBefore("@")
+                val currentPlan = repository.getGraduationPlanOnce() ?: DefaultData.getDefaultGraduationPlan()
                 if (!nameToSet.isNullOrBlank()) {
-                    val currentPlan = repository.getGraduationPlanOnce() ?: DefaultData.getDefaultGraduationPlan()
                     if (currentPlan.studentName == "同學" || currentPlan.studentName == "王大明" || currentPlan.studentName == "大學生" || currentPlan.studentName.isBlank()) {
-                        updateGraduationPlan(currentPlan.copy(studentName = nameToSet))
+                        val updated = currentPlan.copy(studentName = nameToSet)
+                        repository.updateGraduationPlan(updated)
+                        if (updated.department.isNotBlank() && updated.department != "尚未設定系所") {
+                            firestoreSyncRepository.uploadAllToCloud(user.uid)
+                        }
                     }
                 }
                 showToast("歡迎，${user.displayName ?: nameToSet ?: "同學"}！")
@@ -1504,11 +1526,19 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val result = authRepository.signInWithEmail(email, pass)
             result.onSuccess { user ->
+                // 1. 先下載並同步雲端最新學業與系所檔案
+                firestoreSyncRepository.downloadAllFromCloud(user.uid)
+
+                // 2. 檢查使用者姓名是否需要寫入本機
                 val nameToSet = user.displayName?.ifBlank { null } ?: email.substringBefore("@")
+                val currentPlan = repository.getGraduationPlanOnce() ?: DefaultData.getDefaultGraduationPlan()
                 if (nameToSet.isNotBlank()) {
-                    val currentPlan = repository.getGraduationPlanOnce() ?: DefaultData.getDefaultGraduationPlan()
                     if (currentPlan.studentName == "同學" || currentPlan.studentName == "王大明" || currentPlan.studentName == "大學生" || currentPlan.studentName.isBlank()) {
-                        updateGraduationPlan(currentPlan.copy(studentName = nameToSet))
+                        val updated = currentPlan.copy(studentName = nameToSet)
+                        repository.updateGraduationPlan(updated)
+                        if (updated.department.isNotBlank() && updated.department != "尚未設定系所") {
+                            firestoreSyncRepository.uploadAllToCloud(user.uid)
+                        }
                     }
                 }
                 showToast("歡迎回來，${user.displayName ?: nameToSet}！")
@@ -1655,10 +1685,10 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun downloadFromCloud(onResult: ((Boolean, String?) -> Unit)? = null) {
+    fun downloadFromCloud(silent: Boolean = false, onResult: ((Boolean, String?) -> Unit)? = null) {
         val user = currentUser.value
         if (user == null) {
-            showToast("請先登入帳號以還原資料")
+            if (!silent) showToast("請先登入帳號以還原資料")
             onResult?.invoke(false, "未登入")
             return
         }
@@ -1669,10 +1699,10 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             _isSyncing.value = false
             result.onSuccess {
                 _lastSyncTime.value = System.currentTimeMillis()
-                showToast("已從 Firebase 雲端成功還原資料！")
+                if (!silent) showToast("已從 Firebase 雲端成功還原資料！")
                 onResult?.invoke(true, null)
             }.onFailure { e ->
-                showToast("雲端還原失敗：${e.message}")
+                if (!silent) showToast("雲端還原失敗：${e.message}")
                 onResult?.invoke(false, e.message)
             }
         }

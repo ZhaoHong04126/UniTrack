@@ -57,39 +57,54 @@ class FirestoreSyncRepository(
             // 1. 上傳 Graduation Plan
             val plan = graduationDao.getGraduationPlanOnce()
             if (plan != null) {
-                val planMap = hashMapOf(
-                    "department" to plan.department,
-                    "studentName" to plan.studentName,
-                    "targetTotalCredits" to plan.targetTotalCredits,
-                    "targetRequiredCredits" to plan.targetRequiredCredits,
-                    "targetElectiveCredits" to plan.targetElectiveCredits,
-                    "targetGeneralCredits" to plan.targetGeneralCredits,
-                    "targetCollegeCoreCredits" to plan.targetCollegeCoreCredits,
-                    "targetBasicModuleCredits" to plan.targetBasicModuleCredits,
-                    "targetCoreModuleCredits" to plan.targetCoreModuleCredits,
-                    "targetProfessionalModuleCredits" to plan.targetProfessionalModuleCredits,
-                    "targetFreeCredits" to plan.targetFreeCredits,
-                    "targetGeneralRequiredCredits" to plan.targetGeneralRequiredCredits,
-                    "targetGeneralElectiveCredits" to plan.targetGeneralElectiveCredits,
-                    "targetCollegeCoreRequiredCredits" to plan.targetCollegeCoreRequiredCredits,
-                    "targetCollegeCoreElectiveCredits" to plan.targetCollegeCoreElectiveCredits,
-                    "targetBasicModuleRequiredCredits" to plan.targetBasicModuleRequiredCredits,
-                    "targetBasicModuleElectiveCredits" to plan.targetBasicModuleElectiveCredits,
-                    "targetCoreModuleRequiredCredits" to plan.targetCoreModuleRequiredCredits,
-                    "targetCoreModuleElectiveCredits" to plan.targetCoreModuleElectiveCredits,
-                    "targetProfessionalModuleRequiredCredits" to plan.targetProfessionalModuleRequiredCredits,
-                    "targetProfessionalModuleElectiveCredits" to plan.targetProfessionalModuleElectiveCredits,
-                    "targetFreeElectiveCredits" to plan.targetFreeElectiveCredits,
-                    "minPassingScore" to plan.minPassingScore,
-                    "gpaScale" to plan.gpaScale.name,
-                    "admissionSemester" to plan.admissionSemester,
-                    "currentSemester" to plan.currentSemester,
-                    "subcategoriesJson" to plan.subcategoriesJson,
-                    "customCategoriesJson" to plan.customCategoriesJson,
-                    "lastUpdated" to System.currentTimeMillis()
-                )
-                userDocRef.collection("profile").document("graduation_plan")
-                    .set(planMap, SetOptions.merge()).await()
+                val planDocRef = userDocRef.collection("profile").document("graduation_plan")
+                val isLocalDeptUnset = plan.department.isBlank() || plan.department == "尚未設定系所"
+                
+                var shouldSkipPlanUpload = false
+                if (isLocalDeptUnset) {
+                    val remoteDoc = planDocRef.get().await()
+                    val remoteDept = remoteDoc.getString("department")?.trim()
+                    if (!remoteDept.isNullOrBlank() && remoteDept != "尚未設定系所") {
+                        // 雲端已有設定好的系所檔案，本機未設定時絕不可覆蓋雲端系所
+                        Log.w(tag, "Local plan department is unset, but remote has '$remoteDept'. Skipping plan upload to preserve cloud data.")
+                        shouldSkipPlanUpload = true
+                    }
+                }
+
+                if (!shouldSkipPlanUpload) {
+                    val planMap = hashMapOf(
+                        "department" to plan.department,
+                        "studentName" to plan.studentName,
+                        "targetTotalCredits" to plan.targetTotalCredits,
+                        "targetRequiredCredits" to plan.targetRequiredCredits,
+                        "targetElectiveCredits" to plan.targetElectiveCredits,
+                        "targetGeneralCredits" to plan.targetGeneralCredits,
+                        "targetCollegeCoreCredits" to plan.targetCollegeCoreCredits,
+                        "targetBasicModuleCredits" to plan.targetBasicModuleCredits,
+                        "targetCoreModuleCredits" to plan.targetCoreModuleCredits,
+                        "targetProfessionalModuleCredits" to plan.targetProfessionalModuleCredits,
+                        "targetFreeCredits" to plan.targetFreeCredits,
+                        "targetGeneralRequiredCredits" to plan.targetGeneralRequiredCredits,
+                        "targetGeneralElectiveCredits" to plan.targetGeneralElectiveCredits,
+                        "targetCollegeCoreRequiredCredits" to plan.targetCollegeCoreRequiredCredits,
+                        "targetCollegeCoreElectiveCredits" to plan.targetCollegeCoreElectiveCredits,
+                        "targetBasicModuleRequiredCredits" to plan.targetBasicModuleRequiredCredits,
+                        "targetBasicModuleElectiveCredits" to plan.targetBasicModuleElectiveCredits,
+                        "targetCoreModuleRequiredCredits" to plan.targetCoreModuleRequiredCredits,
+                        "targetCoreModuleElectiveCredits" to plan.targetCoreModuleElectiveCredits,
+                        "targetProfessionalModuleRequiredCredits" to plan.targetProfessionalModuleRequiredCredits,
+                        "targetProfessionalModuleElectiveCredits" to plan.targetProfessionalModuleElectiveCredits,
+                        "targetFreeElectiveCredits" to plan.targetFreeElectiveCredits,
+                        "minPassingScore" to plan.minPassingScore,
+                        "gpaScale" to plan.gpaScale.name,
+                        "admissionSemester" to plan.admissionSemester,
+                        "currentSemester" to plan.currentSemester,
+                        "subcategoriesJson" to plan.subcategoriesJson,
+                        "customCategoriesJson" to plan.customCategoriesJson,
+                        "lastUpdated" to System.currentTimeMillis()
+                    )
+                    planDocRef.set(planMap, SetOptions.merge()).await()
+                }
             }
 
             // 2. 上傳 Courses
@@ -155,6 +170,13 @@ class FirestoreSyncRepository(
             // 4. 上傳 Expenses
             val expenses = expenseDao.getAllExpensesOnce()
             val expensesCol = userDocRef.collection("expenses")
+            val remoteExpenses = expensesCol.get().await()
+            val localExpenseIds = expenses.map { it.id.toString() }.toSet()
+            for (doc in remoteExpenses.documents) {
+                if (doc.id !in localExpenseIds) {
+                    doc.reference.delete().await()
+                }
+            }
             for (exp in expenses) {
                 val expMap = hashMapOf(
                     "id" to exp.id,
@@ -173,6 +195,13 @@ class FirestoreSyncRepository(
             // 5. 上傳 Budgets
             val budgets = expenseDao.getAllBudgetsOnce()
             val budgetsCol = userDocRef.collection("budgets")
+            val remoteBudgets = budgetsCol.get().await()
+            val localBudgetIds = budgets.map { it.yearMonth }.toSet()
+            for (doc in remoteBudgets.documents) {
+                if (doc.id !in localBudgetIds) {
+                    doc.reference.delete().await()
+                }
+            }
             for (b in budgets) {
                 val bMap = hashMapOf(
                     "yearMonth" to b.yearMonth,

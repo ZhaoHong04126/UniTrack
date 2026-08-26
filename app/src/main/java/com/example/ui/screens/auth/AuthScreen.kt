@@ -91,11 +91,11 @@ fun AuthScreen(
 
     // Auto-navigate on auth success or redirect to RegisterStep1 if profile incomplete
     val user = currentUser
-    LaunchedEffect(user, graduationPlan.department) {
-        if (user != null) {
+    LaunchedEffect(user, graduationPlan.department, currentPage) {
+        if (user != null && currentPage != AuthPage.SPLASH) {
             val isDeptUnset = graduationPlan.department.isBlank() || graduationPlan.department == "尚未設定系所"
             if (isDeptUnset) {
-                if (currentPage == AuthPage.SPLASH || currentPage == AuthPage.LOGIN || currentPage == AuthPage.WELCOME) {
+                if (currentPage == AuthPage.LOGIN || currentPage == AuthPage.WELCOME) {
                     val defaultName = user.displayName?.ifBlank { null } ?: user.email?.substringBefore("@") ?: ""
                     if (name.isBlank() && defaultName.isNotBlank()) name = defaultName
                     if (!user.email.isNullOrBlank() && email.isBlank()) email = user.email
@@ -480,6 +480,9 @@ private fun AuthSplashLoadingView(
         delay(200.milliseconds)
         progress = 0.35f
         statusText = "檢查登入狀態與學生檔案..."
+        if (currentUser != null) {
+            viewModel.downloadFromCloud(silent = true)
+        }
         delay(350.milliseconds)
         progress = 0.70f
         statusText = "載入課表與學業資料..."
