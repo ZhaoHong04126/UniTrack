@@ -409,26 +409,62 @@ class StudentRepository(
     fun getNotificationPreferences(): NotificationPreferences {
         return NotificationPreferences(
             masterEnabled = prefs.getBoolean("notif_master_enabled", true),
+            // 1. 課表與課程提醒
             courseReminderEnabled = prefs.getBoolean("notif_course_enabled", true),
             courseReminderMinutesBefore = prefs.getInt("notif_course_minutes", 15),
+            courseDailySummaryEnabled = prefs.getBoolean("notif_course_daily_summary", true),
+            courseDailySummaryTime = prefs.getString("notif_course_daily_summary_time", "07:30") ?: "07:30",
+            courseChangeNoticeEnabled = prefs.getBoolean("notif_course_change_notice", true),
+            courseOnlyInSession = prefs.getBoolean("notif_course_only_in_session", true),
+            // 2. 記帳與預算警示
             expenseAlertEnabled = prefs.getBoolean("notif_expense_enabled", true),
             expenseAlertThresholdPercent = prefs.getInt("notif_expense_threshold", 75),
+            expenseDailyReminderEnabled = prefs.getBoolean("notif_expense_daily_reminder", false),
+            expenseDailyReminderTime = prefs.getString("notif_expense_daily_reminder_time", "21:30") ?: "21:30",
+            expenseMonthlyReportEnabled = prefs.getBoolean("notif_expense_monthly_report", true),
+            // 3. 學業與畢業審查
             graduationAlertEnabled = prefs.getBoolean("notif_graduation_enabled", true),
+            graduationCreditThresholdNotice = prefs.getBoolean("notif_graduation_credit_threshold", true),
+            graduationGpaSettlementNotice = prefs.getBoolean("notif_graduation_gpa_settlement", true),
+            graduationAuditAlertNotice = prefs.getBoolean("notif_graduation_audit_alert", true),
+            // 4. 系統與備份
             systemNoticeEnabled = prefs.getBoolean("notif_system_enabled", true),
-            vibrationEnabled = prefs.getBoolean("notif_vibration_enabled", true)
+            systemCloudBackupNotice = prefs.getBoolean("notif_system_cloud_backup", true),
+            systemUpdateNotice = prefs.getBoolean("notif_system_update", true),
+            // 5. 提醒方式
+            vibrationEnabled = prefs.getBoolean("notif_vibration_enabled", true),
+            badgeEnabled = prefs.getBoolean("notif_badge_enabled", true)
         )
     }
 
     fun saveNotificationPreferences(preferences: NotificationPreferences) {
         prefs.edit {
             putBoolean("notif_master_enabled", preferences.masterEnabled)
+            // 1. 課表與課程提醒
             putBoolean("notif_course_enabled", preferences.courseReminderEnabled)
             putInt("notif_course_minutes", preferences.courseReminderMinutesBefore)
+            putBoolean("notif_course_daily_summary", preferences.courseDailySummaryEnabled)
+            putString("notif_course_daily_summary_time", preferences.courseDailySummaryTime)
+            putBoolean("notif_course_change_notice", preferences.courseChangeNoticeEnabled)
+            putBoolean("notif_course_only_in_session", preferences.courseOnlyInSession)
+            // 2. 記帳與預算警示
             putBoolean("notif_expense_enabled", preferences.expenseAlertEnabled)
             putInt("notif_expense_threshold", preferences.expenseAlertThresholdPercent)
+            putBoolean("notif_expense_daily_reminder", preferences.expenseDailyReminderEnabled)
+            putString("notif_expense_daily_reminder_time", preferences.expenseDailyReminderTime)
+            putBoolean("notif_expense_monthly_report", preferences.expenseMonthlyReportEnabled)
+            // 3. 學業與畢業審查
             putBoolean("notif_graduation_enabled", preferences.graduationAlertEnabled)
+            putBoolean("notif_graduation_credit_threshold", preferences.graduationCreditThresholdNotice)
+            putBoolean("notif_graduation_gpa_settlement", preferences.graduationGpaSettlementNotice)
+            putBoolean("notif_graduation_audit_alert", preferences.graduationAuditAlertNotice)
+            // 4. 系統與備份
             putBoolean("notif_system_enabled", preferences.systemNoticeEnabled)
+            putBoolean("notif_system_cloud_backup", preferences.systemCloudBackupNotice)
+            putBoolean("notif_system_update", preferences.systemUpdateNotice)
+            // 5. 提醒方式
             putBoolean("notif_vibration_enabled", preferences.vibrationEnabled)
+            putBoolean("notif_badge_enabled", preferences.badgeEnabled)
         }
     }
 }

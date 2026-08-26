@@ -298,13 +298,31 @@ data class AppNotification(
 
 data class NotificationPreferences(
     val masterEnabled: Boolean = true,
+    // 1. 課表與課程提醒
     val courseReminderEnabled: Boolean = true,
     val courseReminderMinutesBefore: Int = 15,
+    val courseDailySummaryEnabled: Boolean = true,
+    val courseDailySummaryTime: String = "07:30",
+    val courseChangeNoticeEnabled: Boolean = true,
+    val courseOnlyInSession: Boolean = true,
+    // 2. 記帳與預算警示
     val expenseAlertEnabled: Boolean = true,
     val expenseAlertThresholdPercent: Int = 75,
+    val expenseDailyReminderEnabled: Boolean = false,
+    val expenseDailyReminderTime: String = "21:30",
+    val expenseMonthlyReportEnabled: Boolean = true,
+    // 3. 學業與畢業審查
     val graduationAlertEnabled: Boolean = true,
+    val graduationCreditThresholdNotice: Boolean = true,
+    val graduationGpaSettlementNotice: Boolean = true,
+    val graduationAuditAlertNotice: Boolean = true,
+    // 4. 系統與備份
     val systemNoticeEnabled: Boolean = true,
-    val vibrationEnabled: Boolean = true
+    val systemCloudBackupNotice: Boolean = true,
+    val systemUpdateNotice: Boolean = true,
+    // 5. 提醒方式
+    val vibrationEnabled: Boolean = true,
+    val badgeEnabled: Boolean = true
 )
 
 data class PaymentAccount(

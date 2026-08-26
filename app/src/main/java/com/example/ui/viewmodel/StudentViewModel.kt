@@ -93,7 +93,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     private val prefs = application.getSharedPreferences("unitrack_prefs", Context.MODE_PRIVATE)
 
     // Timetable display setting (true: 7 days / 一週, false: 5 days / 平日)
-    private val _showWeekend = MutableStateFlow(prefs.getBoolean("pref_show_weekend", true))
+    private val _showWeekend = MutableStateFlow(prefs.getBoolean("pref_show_weekend", false))
     val showWeekend: StateFlow<Boolean> = _showWeekend.asStateFlow()
 
     fun setShowWeekend(show: Boolean) {
