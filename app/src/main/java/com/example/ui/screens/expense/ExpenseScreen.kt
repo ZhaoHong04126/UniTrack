@@ -592,23 +592,6 @@ fun ExpenseScreen(
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        FilledTonalButton(
-                                            onClick = { viewModel.seedMockExpenses() },
-                                            shape = RoundedCornerShape(12.dp),
-                                            colors = ButtonDefaults.filledTonalButtonColors(
-                                                containerColor = SapphirePrimary.copy(alpha = 0.12f),
-                                                contentColor = SapphirePrimary
-                                            )
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.AutoFixHigh,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Text("一鍵產生 20 筆測試資料", fontWeight = FontWeight.Bold)
-                                        }
                                     }
                                 }
                             }
@@ -893,22 +876,6 @@ fun ExpenseScreen(
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
-                                    FilledTonalButton(
-                                        onClick = { viewModel.seedMockExpenses() },
-                                        shape = RoundedCornerShape(12.dp),
-                                        colors = ButtonDefaults.filledTonalButtonColors(
-                                            containerColor = SapphirePrimary.copy(alpha = 0.12f),
-                                            contentColor = SapphirePrimary
-                                        )
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.AutoFixHigh,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text("一鍵產生 20 筆測試資料", fontWeight = FontWeight.Bold)
-                                    }
                                 }
                             } else {
                                 if (chartType == 0) {
@@ -2750,7 +2717,7 @@ private fun ExpenseMonthlyCalendarCard(
         val cells = mutableListOf<CalendarGridCell>()
 
         // Leading empty slots
-        for (i in 0 until leadingEmpty) {
+        repeat(leadingEmpty) {
             cells.add(CalendarGridCell(null, null, isToday = false, isSelected = false, totalExpense = 0.0, totalIncome = 0.0))
         }
 
@@ -2774,7 +2741,7 @@ private fun ExpenseMonthlyCalendarCard(
 
         // Trailing empty slots to complete rows of 7
         val trailingEmpty = (7 - (cells.size % 7)) % 7
-        for (i in 0 until trailingEmpty) {
+        repeat(trailingEmpty) {
             cells.add(CalendarGridCell(null, null, isToday = false, isSelected = false, totalExpense = 0.0, totalIncome = 0.0))
         }
 
