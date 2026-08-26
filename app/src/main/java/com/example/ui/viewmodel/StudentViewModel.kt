@@ -131,6 +131,22 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    fun getSemesterEndDate(semester: String): String {
+        val key = "semester_end_date_$semester"
+        val saved = prefs.getString(key, null)
+        if (!saved.isNullOrBlank()) return saved
+        val startDateStr = getSemesterStartDate(semester)
+        val totalWeeks = getSemesterTotalWeeks(semester)
+        return try {
+            val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd")
+            val startDate = java.time.LocalDate.parse(startDateStr, formatter)
+            val endDate = startDate.plusWeeks(totalWeeks.toLong()).minusDays(1)
+            endDate.format(formatter)
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
     fun getSemesterTotalWeeks(semester: String): Int {
         return prefs.getInt("semester_total_weeks_$semester", 18)
     }
@@ -206,9 +222,19 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun saveSemesterTimeConfig(semester: String, startDate: String, totalWeeks: Int) {
+        val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd")
+        val endDate = try {
+            val s = java.time.LocalDate.parse(startDate, formatter)
+            s.plusWeeks(totalWeeks.toLong()).minusDays(1).format(formatter)
+        } catch (_: Exception) { "" }
+        saveSemesterTimeConfig(semester, startDate, endDate, totalWeeks)
+    }
+
+    fun saveSemesterTimeConfig(semester: String, startDate: String, endDate: String, totalWeeks: Int) {
         prefs.edit {
             putString("semester_start_date_$semester", startDate)
-            putInt("semester_total_weeks_$semester", totalWeeks.coerceIn(4, 18))
+            putString("semester_end_date_$semester", endDate)
+            putInt("semester_total_weeks_$semester", totalWeeks.coerceIn(1, 30))
         }
         _semesterTimeConfigVersion.value += 1
         WidgetUpdateHelper.updateAllWidgets(getApplication())

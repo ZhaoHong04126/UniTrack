@@ -429,13 +429,17 @@ fun TimetableScreen(
         )
     }
 
+    val currentEndDateStr = remember(selectedSemester, semesterTimeConfigVersion) {
+        viewModel.getSemesterEndDate(selectedSemester)
+    }
+
     if (showTimeSettingsSheet) {
         SemesterTimeSettingsBottomSheet(
             initialStartDate = currentStartDateStr,
-            initialTotalWeeks = currentTotalWeeks,
+            initialEndDate = currentEndDateStr,
             onDismiss = { showTimeSettingsSheet = false },
-            onSave = { startDate, totalWeeks ->
-                viewModel.saveSemesterTimeConfig(selectedSemester, startDate, totalWeeks)
+            onSave = { startDate, endDate, totalWeeks ->
+                viewModel.saveSemesterTimeConfig(selectedSemester, startDate, endDate, totalWeeks)
                 showTimeSettingsSheet = false
             }
         )
@@ -446,13 +450,40 @@ fun TimetableScreen(
 @Composable
 private fun SemesterTimeSettingsBottomSheet(
     initialStartDate: String,
-    initialTotalWeeks: Int,
+    initialEndDate: String,
     onDismiss: () -> Unit,
-    onSave: (startDate: String, totalWeeks: Int) -> Unit
+    onSave: (startDate: String, endDate: String, totalWeeks: Int) -> Unit
 ) {
     val context = LocalContext.current
     var tempStartDate by remember(initialStartDate) { mutableStateOf(initialStartDate) }
-    var tempTotalWeeks by remember(initialTotalWeeks) { mutableIntStateOf(initialTotalWeeks) }
+    var tempEndDate by remember(initialEndDate, initialStartDate) {
+        mutableStateOf(
+            initialEndDate.ifBlank {
+                try {
+                    val formatter = DateTimeFormatter.ofPattern("yyyy.MM.dd")
+                    val s = LocalDate.parse(initialStartDate, formatter)
+                    s.plusWeeks(18).minusDays(1).format(formatter)
+                } catch (_: Exception) { "" }
+            }
+        )
+    }
+
+    val calculatedDuration = remember(tempStartDate, tempEndDate) {
+        try {
+            val formatter = DateTimeFormatter.ofPattern("yyyy.MM.dd")
+            val start = LocalDate.parse(tempStartDate, formatter)
+            val end = LocalDate.parse(tempEndDate, formatter)
+            val totalDays = ChronoUnit.DAYS.between(start, end) + 1
+            if (totalDays > 0) {
+                val weeks = maxOf(1, ((totalDays + 6) / 7).toInt())
+                Triple(totalDays, weeks, null)
+            } else {
+                Triple(0L, 1, "結束日不可早於開學日")
+            }
+        } catch (_: Exception) {
+            Triple(0L, 18, null)
+        }
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -474,163 +505,132 @@ private fun SemesterTimeSettingsBottomSheet(
             )
 
             // Section 1: 開學日
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "開學日",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .clickable {
-                                val curYear = tempStartDate.substringBefore(".").toIntOrNull() ?: 2026
-                                val curMonth = tempStartDate.split(".").getOrNull(1)?.toIntOrNull()?.minus(1) ?: 8
-                                val curDay = tempStartDate.substringAfterLast(".").toIntOrNull() ?: 7
-                                android.app.DatePickerDialog(
-                                    context,
-                                    { _, y, m, d ->
-                                        tempStartDate = String.format(Locale.US, "%04d.%02d.%02d", y, m + 1, d)
-                                    },
-                                    curYear,
-                                    curMonth,
-                                    curDay
-                                ).show()
-                            }
-                    ) {
-                        Text(
-                            text = tempStartDate,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
-                        )
-                    }
-                }
-
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
-                    text = "學校預設 18 週，個人最多可設 18 週",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = "開學日",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-            }
 
-            // Section 2: 總週數
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable {
+                            val curYear = tempStartDate.substringBefore(".").toIntOrNull() ?: 2026
+                            val curMonth = tempStartDate.split(".").getOrNull(1)?.toIntOrNull()?.minus(1) ?: 8
+                            val curDay = tempStartDate.substringAfterLast(".").toIntOrNull() ?: 7
+                            android.app.DatePickerDialog(
+                                context,
+                                { _, y, m, d ->
+                                    tempStartDate = String.format(Locale.US, "%04d.%02d.%02d", y, m + 1, d)
+                                },
+                                curYear,
+                                curMonth,
+                                curDay
+                            ).show()
+                        }
                 ) {
                     Text(
-                        text = "總週數",
-                        style = MaterialTheme.typography.bodyLarge,
+                        text = tempStartDate,
+                        style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        // Minus button
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
-                                .clickable(enabled = tempTotalWeeks > 4) {
-                                    if (tempTotalWeeks > 4) tempTotalWeeks--
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Remove,
-                                contentDescription = "減少週數",
-                                tint = if (tempTotalWeeks > 4) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline
-                            )
-                        }
-
-                        Text(
-                            text = "$tempTotalWeeks 週",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.width(52.dp),
-                            textAlign = TextAlign.Center
-                        )
-
-                        // Plus button
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
-                                .clickable(enabled = tempTotalWeeks < 18) {
-                                    if (tempTotalWeeks < 18) tempTotalWeeks++
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = "增加週數",
-                                tint = if (tempTotalWeeks < 18) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline
-                            )
-                        }
-                    }
-                }
-
-                // Preset chips: 16 週 / 18 週
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf(16, 18).forEach { weeks ->
-                            val isSelected = tempTotalWeeks == weeks
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable { tempTotalWeeks = weeks }
-                            ) {
-                                Text(
-                                    text = "$weeks 週",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
-                                )
-                            }
-                        }
-                    }
-
-                    Text(
-                        text = "可自訂 4~18 週",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            // Section 2: 結束日
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "結束日",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable {
+                            val curYear = tempEndDate.substringBefore(".").toIntOrNull() ?: 2027
+                            val curMonth = tempEndDate.split(".").getOrNull(1)?.toIntOrNull()?.minus(1) ?: 0
+                            val curDay = tempEndDate.substringAfterLast(".").toIntOrNull() ?: 15
+                            android.app.DatePickerDialog(
+                                context,
+                                { _, y, m, d ->
+                                    tempEndDate = String.format(Locale.US, "%04d.%02d.%02d", y, m + 1, d)
+                                },
+                                curYear,
+                                curMonth,
+                                curDay
+                            ).show()
+                        }
+                ) {
+                    Text(
+                        text = tempEndDate.ifBlank { "選擇日期" },
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                    )
+                }
+            }
+
+            // Duration Summary or Error Banner
+            if (calculatedDuration.third != null) {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = calculatedDuration.third!!,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                    )
+                }
+            } else {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "學期總長度：共 ${calculatedDuration.first} 天 (約 ${calculatedDuration.second} 週)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
 
             // Save Button
             Button(
                 onClick = {
-                    onSave(tempStartDate, tempTotalWeeks)
+                    if (calculatedDuration.third == null) {
+                        onSave(tempStartDate, tempEndDate, calculatedDuration.second)
+                    }
                 },
+                enabled = calculatedDuration.third == null,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
