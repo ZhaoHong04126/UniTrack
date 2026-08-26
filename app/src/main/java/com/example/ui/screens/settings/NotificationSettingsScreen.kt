@@ -104,6 +104,17 @@ fun NotificationSettingsScreen(
                 actions = {
                     IconButton(
                         onClick = {
+                            NotificationHelper.openNotificationSettings(context)
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "手機系統通知權限設定",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(
+                        onClick = {
                             if (!isSystemPermissionGranted) {
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                                     permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)

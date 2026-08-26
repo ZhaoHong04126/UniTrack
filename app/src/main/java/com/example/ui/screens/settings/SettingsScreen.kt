@@ -1,7 +1,13 @@
 package com.example.ui.screens.settings
 
+import android.graphics.BitmapFactory
+import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,6 +25,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -60,6 +68,18 @@ fun SettingsScreen(
         onPauseOrDispose { }
     }
 
+    val avatarUpdateTrigger by viewModel.avatarUpdateTrigger.collectAsStateWithLifecycle()
+    val avatarFile = remember(avatarUpdateTrigger) { viewModel.getAvatarFile() }
+    val currentAvatarBitmap = remember(avatarUpdateTrigger, avatarFile) {
+        if (avatarFile.exists()) {
+            try {
+                BitmapFactory.decodeFile(avatarFile.absolutePath)?.asImageBitmap()
+            } catch (_: Exception) {
+                null
+            }
+        } else null
+    }
+
     var showEditProfileDialog by remember { mutableStateOf(false) }
     var showSignOutConfirmDialog by remember { mutableStateOf(false) }
     var showDeleteAccountConfirmDialog by remember { mutableStateOf(false) }
@@ -96,6 +116,7 @@ fun SettingsScreen(
         StudentIdCard(
             plan = plan,
             currentUser = currentUser,
+            avatarBitmap = currentAvatarBitmap,
             onEditClick = { showEditProfileDialog = true }
         )
 
@@ -225,6 +246,7 @@ fun SettingsScreen(
     // Edit Profile Dialog (帳號個人資料編輯頁面)
     if (showEditProfileDialog) {
         EditProfileDialog(
+            viewModel = viewModel,
             currentName = plan.studentName,
             currentDepartment = plan.department,
             currentAdmissionSemester = plan.admissionSemester,
@@ -577,6 +599,7 @@ fun SettingsScreen(
 private fun StudentIdCard(
     plan: GraduationPlan,
     currentUser: UserProfile?,
+    avatarBitmap: androidx.compose.ui.graphics.ImageBitmap? = null,
     onEditClick: () -> Unit = {}
 ) {
     val isLoggedIn = currentUser != null
@@ -658,7 +681,7 @@ private fun StudentIdCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Avatar Container (純展示頭像)
+                    // Avatar Container (頭像照片或姓名縮寫)
                     Box(
                         modifier = Modifier
                             .size(64.dp)
@@ -666,12 +689,28 @@ private fun StudentIdCard(
                             .background(Color.White.copy(alpha = 0.18f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = if (isLoggedIn) Icons.Default.AccountCircle else Icons.Default.Person,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(38.dp)
-                        )
+                        if (avatarBitmap != null) {
+                            Image(
+                                bitmap = avatarBitmap,
+                                contentDescription = "個人頭像",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else if (plan.studentName.isNotBlank()) {
+                            Text(
+                                text = plan.studentName.trim().take(1),
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        } else {
+                            Icon(
+                                imageVector = if (isLoggedIn) Icons.Default.AccountCircle else Icons.Default.Person,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(38.dp)
+                            )
+                        }
                     }
 
                     // Student Information
@@ -862,6 +901,7 @@ private fun SettingTileRow(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EditProfileDialog(
+    viewModel: StudentViewModel,
     currentName: String,
     currentDepartment: String,
     currentAdmissionSemester: String,
@@ -877,6 +917,40 @@ private fun EditProfileDialog(
     var semester by remember { mutableStateOf(currentSemester) }
 
     var showDeptDialog by remember { mutableStateOf(false) }
+    var showAvatarSheet by remember { mutableStateOf(false) }
+    var selectedAvatarUri by remember { mutableStateOf<Uri?>(null) }
+
+    val avatarUpdateTrigger by viewModel.avatarUpdateTrigger.collectAsStateWithLifecycle()
+    val avatarFile = remember(avatarUpdateTrigger) { viewModel.getAvatarFile() }
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            viewModel.saveAvatarFromUri(uri)
+            selectedAvatarUri = uri
+            showAvatarSheet = false
+            Toast.makeText(context, "已成功更換個人頭像照片", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val avatarBitmap = remember(selectedAvatarUri, avatarUpdateTrigger) {
+        if (selectedAvatarUri != null) {
+            try {
+                context.contentResolver.openInputStream(selectedAvatarUri!!)?.use { stream ->
+                    BitmapFactory.decodeStream(stream)?.asImageBitmap()
+                }
+            } catch (_: Exception) {
+                null
+            }
+        } else if (avatarFile.exists()) {
+            try {
+                BitmapFactory.decodeFile(avatarFile.absolutePath)?.asImageBitmap()
+            } catch (_: Exception) {
+                null
+            }
+        } else null
+    }
 
     if (showDeptDialog) {
         DepartmentSelectDialog(
@@ -884,6 +958,131 @@ private fun EditProfileDialog(
             onSelect = { department = it },
             onDismiss = { showDeptDialog = false }
         )
+    }
+
+    if (showAvatarSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showAvatarSheet = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+            dragHandle = { BottomSheetDefaults.DragHandle() }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 8.dp)
+                    .navigationBarsPadding(),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Text(
+                    text = "設定個人頭像",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "自訂您的 UniTrack+ 學生數位檔案外觀",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                // Option 1: Photo Picker (本機相簿)
+                Card(
+                    onClick = {
+                        photoPickerLauncher.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = SapphirePrimary.copy(alpha = 0.15f),
+                            modifier = Modifier.size(44.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Image,
+                                    contentDescription = null,
+                                    tint = SapphirePrimary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "從相簿選取照片",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "選取手機相簿內的相片自訂個人頭像",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                // Option 2: Initials Avatar (姓名縮寫)
+                Card(
+                    onClick = {
+                        viewModel.clearAvatar()
+                        selectedAvatarUri = null
+                        showAvatarSheet = false
+                        Toast.makeText(context, "已套用學生字首頭像", Toast.LENGTH_SHORT).show()
+                    },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = EmeraldAccent.copy(alpha = 0.15f),
+                            modifier = Modifier.size(44.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.School,
+                                    contentDescription = null,
+                                    tint = EmeraldAccent,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "使用學生字首頭像",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = if (name.isNotBlank()) "以姓名「${name.trim().take(1)}」作為個人識別字首" else "以姓名首字作為個人識別字首",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+        }
     }
 
     Dialog(
@@ -957,19 +1156,30 @@ private fun EditProfileDialog(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                // Avatar with Camera Badge
+                // Avatar with interactive edit click
                 Box(
-                    contentAlignment = Alignment.BottomEnd,
-                    modifier = Modifier.padding(top = 8.dp)
+                    modifier = Modifier
+                        .padding(top = 8.dp)
+                        .size(108.dp)
+                        .clip(CircleShape)
+                        .clickable { showAvatarSheet = true },
+                    contentAlignment = Alignment.Center
                 ) {
                     Surface(
-                        modifier = Modifier.size(104.dp),
+                        modifier = Modifier.fillMaxSize(),
                         shape = CircleShape,
                         color = MaterialTheme.colorScheme.surfaceVariant,
-                        border = BorderStroke(2.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                        border = BorderStroke(2.dp, SapphirePrimary.copy(alpha = 0.5f))
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            if (name.isNotBlank()) {
+                            if (avatarBitmap != null) {
+                                Image(
+                                    bitmap = avatarBitmap,
+                                    contentDescription = "個人頭像",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else if (name.isNotBlank()) {
                                 Text(
                                     text = name.trim().take(1),
                                     style = MaterialTheme.typography.headlineLarge,
@@ -987,21 +1197,30 @@ private fun EditProfileDialog(
                         }
                     }
 
-                    Surface(
-                        onClick = {
-                            Toast.makeText(context, "已使用個人預設頭像", Toast.LENGTH_SHORT).show()
-                        },
-                        modifier = Modifier.size(34.dp),
-                        shape = CircleShape,
-                        color = SapphirePrimary,
-                        border = BorderStroke(2.dp, MaterialTheme.colorScheme.background)
+                    // 底部半透明編輯指示橫條
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(28.dp)
+                            .align(Alignment.BottomCenter)
+                            .background(Color.Black.copy(alpha = 0.5f)),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.PhotoCamera,
                                 contentDescription = "更換頭像",
                                 tint = Color.White,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Text(
+                                text = "編輯",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White,
+                                fontWeight = FontWeight.Medium
                             )
                         }
                     }

@@ -1559,4 +1559,33 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             }
         }
     }
+
+    private val _avatarUpdateTrigger = MutableStateFlow(System.currentTimeMillis())
+    val avatarUpdateTrigger: StateFlow<Long> = _avatarUpdateTrigger.asStateFlow()
+
+    fun getAvatarFile(): java.io.File {
+        return java.io.File(getApplication<Application>().filesDir, "user_avatar.jpg")
+    }
+
+    fun saveAvatarFromUri(uri: android.net.Uri): Boolean {
+        return try {
+            val context = getApplication<Application>()
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                getAvatarFile().outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+            _avatarUpdateTrigger.value = System.currentTimeMillis()
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun clearAvatar(): Boolean {
+        val file = getAvatarFile()
+        val deleted = if (file.exists()) file.delete() else true
+        _avatarUpdateTrigger.value = System.currentTimeMillis()
+        return deleted
+    }
 }
