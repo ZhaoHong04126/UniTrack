@@ -7,14 +7,18 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -39,7 +43,9 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import kotlin.math.roundToInt
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -81,6 +87,11 @@ fun ExpenseScreen(
     var chartType by remember { mutableIntStateOf(0) } // 0: 圓餅圖, 1: 折線圖
     var chartExpenseType by remember { mutableStateOf<ExpenseType?>(ExpenseType.EXPENSE) }
     var viewingAccount by remember { mutableStateOf<PaymentAccount?>(null) }
+    var draggingAccountIndex by remember { mutableStateOf<Int?>(null) }
+    var dragOffsetY by remember { mutableFloatStateOf(0f) }
+    val currentAccountsSnapshot by rememberUpdatedState(customAccounts)
+    val density = LocalDensity.current
+    var cardHeightWithSpacingPx by remember { mutableFloatStateOf(0f) }
 
     val locale = LocalConfiguration.current.locales[0]
     val monthFormat = remember(locale) { SimpleDateFormat("yyyy-MM", locale) }
@@ -115,22 +126,17 @@ fun ExpenseScreen(
         modifier = modifier.fillMaxSize(),
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         floatingActionButton = {
-            if (currentTab != 2) {
+            if (currentTab == 0) {
                 ExtendedFloatingActionButton(
                     onClick = {
-                        if (currentTab == 1) {
-                            showAddAccountDialog = true
-                        } else {
-                            editingExpense = null
-                            showAddDialog = true
-                        }
+                        editingExpense = null
+                        showAddDialog = true
                     },
                     icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                    text = { Text(if (currentTab == 1) "新增帳戶" else "記一筆") },
+                    text = { Text("記一筆") },
                     containerColor = TealSecondary,
                     contentColor = Color.White,
-                    modifier = Modifier
-                        .testTag("add_expense_fab")
+                    modifier = Modifier.testTag("add_expense_fab")
                 )
             }
         }
@@ -213,20 +219,33 @@ fun ExpenseScreen(
                             Column {
                                 Text(
                                     text = "本月總支出",
-                                    style = MaterialTheme.typography.bodySmall,
+                                    style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
                                     text = "$${summary.totalExpense.toInt()}",
-                                    style = MaterialTheme.typography.headlineMedium,
+                                    style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.ExtraBold,
                                     color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "本月總餘額",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = if (summary.netBalance >= 0) "+$${summary.netBalance.toInt()}" else "-$${kotlin.math.abs(summary.netBalance).toInt()}",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = if (summary.netBalance >= 0) EmeraldAccent else RoseAccent
                                 )
                             }
                             Column(horizontalAlignment = Alignment.End) {
                                 Text(
                                     text = "本月總收入",
-                                    style = MaterialTheme.typography.bodySmall,
+                                    style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
@@ -398,32 +417,6 @@ fun ExpenseScreen(
                                 )
                             )
                         }
-                        1 -> {
-                            FilterChip(
-                                selected = false,
-                                onClick = { showDeleteAccountsBottomSheet = true },
-                                label = {
-                                    Text(
-                                        text = "刪除帳戶",
-                                        color = MaterialTheme.colorScheme.error,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Default.DeleteOutline,
-                                        contentDescription = "刪除帳戶",
-                                        tint = MaterialTheme.colorScheme.error,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                },
-                                shape = RoundedCornerShape(20.dp),
-                                colors = FilterChipDefaults.filterChipColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                                    labelColor = MaterialTheme.colorScheme.error
-                                )
-                            )
-                        }
                         else -> Unit
                     }
                 }
@@ -490,12 +483,13 @@ fun ExpenseScreen(
                     }
                 }
                 1 -> {
-                    // Tab 1: Account Management (Payment Accounts)
-                    items(customAccounts) { account ->
+                    // Tab 1: Account Management (Payment Accounts) with Continuous Long-Press Drag Reordering
+                    itemsIndexed(customAccounts, key = { _, acc -> acc.id }) { index, account ->
                         val methodExpenses = allMonthExpensesNoFilter.filter { it.paymentMethod == account.method }
                         val totalExp = methodExpenses.filter { it.type == ExpenseType.EXPENSE }.sumOf { it.amount }
                         val totalInc = methodExpenses.filter { it.type == ExpenseType.INCOME }.sumOf { it.amount }
                         val net = totalInc - totalExp
+                        val isDragging = draggingAccountIndex == index
 
                         PaymentAccountCard(
                             account = account,
@@ -503,8 +497,91 @@ fun ExpenseScreen(
                             incomeAmount = totalInc,
                             netAmount = net,
                             recordCount = methodExpenses.size,
-                            onClick = { viewingAccount = account }
+                            isDragging = isDragging,
+                            translationY = if (isDragging) dragOffsetY else 0f,
+                            onClick = {
+                                if (draggingAccountIndex == null) {
+                                    viewingAccount = account
+                                }
+                            },
+                            modifier = Modifier
+                                .zIndex(if (isDragging) 10f else 1f)
+                                .onGloballyPositioned { coordinates ->
+                                    if (coordinates.size.height > 0) {
+                                        cardHeightWithSpacingPx = coordinates.size.height.toFloat() + with(density) { 12.dp.toPx() }
+                                    }
+                                }
+                                .pointerInput(account.id) {
+                                    detectDragGesturesAfterLongPress(
+                                        onDragStart = {
+                                            val currentIdx = currentAccountsSnapshot.indexOfFirst { it.id == account.id }
+                                            draggingAccountIndex = if (currentIdx != -1) currentIdx else index
+                                            dragOffsetY = 0f
+                                        },
+                                        onDrag = { change, dragAmount ->
+                                            change.consume()
+                                            dragOffsetY += dragAmount.y
+                                            val defaultStep = with(density) { 88.dp.toPx() + 12.dp.toPx() }
+                                            val step = if (cardHeightWithSpacingPx > 0f) cardHeightWithSpacingPx else defaultStep
+                                            val threshold = step / 2f
+                                            val listSize = currentAccountsSnapshot.size
+                                            while (dragOffsetY > threshold && draggingAccountIndex != null && draggingAccountIndex!! < listSize - 1) {
+                                                val from = draggingAccountIndex!!
+                                                val to = from + 1
+                                                viewModel.moveAccount(from, to)
+                                                draggingAccountIndex = to
+                                                dragOffsetY -= step
+                                            }
+                                            while (dragOffsetY < -threshold && draggingAccountIndex != null && draggingAccountIndex!! > 0) {
+                                                val from = draggingAccountIndex!!
+                                                val to = from - 1
+                                                viewModel.moveAccount(from, to)
+                                                draggingAccountIndex = to
+                                                dragOffsetY += step
+                                            }
+                                        },
+                                        onDragEnd = {
+                                            draggingAccountIndex = null
+                                            dragOffsetY = 0f
+                                        },
+                                        onDragCancel = {
+                                            draggingAccountIndex = null
+                                            dragOffsetY = 0f
+                                        }
+                                    )
+                                }
                         )
+                    }
+
+                    // Add Account Button at the bottom of the list
+                    item {
+                        Button(
+                            onClick = { showAddAccountDialog = true },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp, bottom = 12.dp)
+                                .height(50.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                                contentColor = SapphirePrimary
+                            ),
+                            border = BorderStroke(1.dp, SapphirePrimary.copy(alpha = 0.35f))
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                                tint = SapphirePrimary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "＋ 新增自訂帳戶",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = SapphirePrimary
+                            )
+                        }
                     }
                 }
                 else -> {
@@ -712,6 +789,7 @@ fun ExpenseScreen(
     if (showAddDialog) {
         AddEditExpenseDialog(
             initialExpense = editingExpense,
+            accounts = customAccounts,
             onDismiss = { showAddDialog = false },
             onSave = { expense ->
                 if (editingExpense == null) {
@@ -739,8 +817,9 @@ fun ExpenseScreen(
     }
 
     viewingAccount?.let { account ->
+        val currentAccount = customAccounts.find { it.id == account.id } ?: account
         AccountDetailBottomSheet(
-            account = account,
+            account = currentAccount,
             expenses = allMonthExpensesNoFilter,
             onDismiss = { viewingAccount = null },
             onEditExpense = { record ->
@@ -748,19 +827,28 @@ fun ExpenseScreen(
                 viewingAccount = null
                 showAddDialog = true
             },
+            onUpdateAccount = { updatedAccount ->
+                viewModel.updateAccount(updatedAccount)
+                viewingAccount = updatedAccount
+            },
             onDeleteAccount = if (!account.id.startsWith("default_")) {
                 {
-                    viewModel.deleteAccount(account.id)
-                    viewingAccount = null
+                    accountToDelete = currentAccount
                 }
             } else null
         )
     }
 
     if (showDeleteAccountsBottomSheet) {
-        DeleteAccountsBottomSheet(
+        ManageAccountsBottomSheet(
             accounts = customAccounts,
             onDismiss = { showDeleteAccountsBottomSheet = false },
+            onAddNewAccount = {
+                showDeleteAccountsBottomSheet = false
+                showAddAccountDialog = true
+            },
+            onMoveUp = { viewModel.moveAccountUp(it) },
+            onMoveDown = { viewModel.moveAccountDown(it) },
             onDeleteRequest = { account ->
                 accountToDelete = account
             }
@@ -1049,15 +1137,26 @@ private fun PaymentAccountCard(
     incomeAmount: Double,
     netAmount: Double,
     recordCount: Int,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    isDragging: Boolean = false,
+    translationY: Float = 0f
 ) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
+            .graphicsLayer {
+                this.translationY = translationY
+                this.scaleX = if (isDragging) 1.03f else 1f
+                this.scaleY = if (isDragging) 1.03f else 1f
+            }
             .clickable { onClick() },
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = if (isDragging) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface
+        ),
+        border = if (isDragging) BorderStroke(1.5.dp, SapphirePrimary) else null,
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isDragging) 8.dp else 1.5.dp)
     ) {
         Row(
             modifier = Modifier
@@ -1129,15 +1228,16 @@ private fun PaymentAccountCard(
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Text(
-                    text = "結算",
+                    text = "當前餘額",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                val currentBalance = account.initialBalance + netAmount
                 Text(
-                    text = "${if (netAmount >= 0) "+" else ""}$${netAmount.toInt()}",
+                    text = if (currentBalance >= 0) "$${currentBalance.toInt()}" else "-$${kotlin.math.abs(currentBalance).toInt()}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = if (netAmount >= 0) EmeraldAccent else RoseAccent
+                    color = if (currentBalance >= 0) EmeraldAccent else RoseAccent
                 )
             }
 
@@ -1158,6 +1258,7 @@ private fun AccountDetailBottomSheet(
     expenses: List<ExpenseRecord>,
     onDismiss: () -> Unit,
     onEditExpense: (ExpenseRecord) -> Unit,
+    onUpdateAccount: (PaymentAccount) -> Unit,
     onDeleteAccount: (() -> Unit)? = null
 ) {
     val methodExpenses = remember(expenses, account) {
@@ -1166,6 +1267,9 @@ private fun AccountDetailBottomSheet(
     val totalExpense = methodExpenses.filter { it.type == ExpenseType.EXPENSE }.sumOf { it.amount }
     val totalIncome = methodExpenses.filter { it.type == ExpenseType.INCOME }.sumOf { it.amount }
     val net = totalIncome - totalExpense
+    val currentBalance = account.initialBalance + net
+
+    var showEditInitialBalanceDialog by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -1181,6 +1285,7 @@ private fun AccountDetailBottomSheet(
                 .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Header: Account Title, Type & Delete Button
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1188,12 +1293,13 @@ private fun AccountDetailBottomSheet(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.weight(1f)
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(36.dp)
-                            .clip(RoundedCornerShape(10.dp))
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(12.dp))
                             .background(SapphirePrimary.copy(alpha = 0.12f)),
                         contentAlignment = Alignment.Center
                     ) {
@@ -1201,7 +1307,7 @@ private fun AccountDetailBottomSheet(
                             imageVector = getPaymentMethodIcon(account.method),
                             contentDescription = null,
                             tint = SapphirePrimary,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(22.dp)
                         )
                     }
                     Column {
@@ -1218,28 +1324,99 @@ private fun AccountDetailBottomSheet(
                     }
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Column(horizontalAlignment = Alignment.End) {
+                if (onDeleteAccount != null) {
+                    IconButton(
+                        onClick = onDeleteAccount,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.DeleteOutline,
+                            contentDescription = "刪除此帳戶",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+
+            // Summary Card (Initial Balance with Edit, Net Income/Expense, Current Balance)
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Initial Balance with Edit Button
+                    Column(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { showEditInitialBalanceDialog = true }
+                            .padding(vertical = 2.dp, horizontal = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = "起始餘額",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "設定初始餘額",
+                                tint = SapphirePrimary,
+                                modifier = Modifier.size(13.dp)
+                            )
+                        }
                         Text(
-                            text = "本月淨收支",
+                            text = "$${account.initialBalance.toInt()}",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = SapphirePrimary
+                        )
+                    }
+
+                    // Month Net
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(
+                            text = "本月收支",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
                             text = "${if (net >= 0) "+" else ""}$${net.toInt()}",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.ExtraBold,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
                             color = if (net >= 0) EmeraldAccent else RoseAccent
                         )
                     }
-                    if (onDeleteAccount != null) {
-                        IconButton(onClick = onDeleteAccount) {
-                            Icon(
-                                imageVector = Icons.Default.DeleteOutline,
-                                contentDescription = "刪除自訂帳戶",
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                        }
+
+                    // Current Balance
+                    Column(
+                        horizontalAlignment = Alignment.End,
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(
+                            text = "當前餘額",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "${if (currentBalance >= 0) "+" else ""}$${currentBalance.toInt()}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = if (currentBalance >= 0) EmeraldAccent else RoseAccent
+                        )
                     }
                 }
             }
@@ -1263,7 +1440,7 @@ private fun AccountDetailBottomSheet(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 420.dp),
+                        .heightIn(max = 380.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(methodExpenses) { record ->
@@ -1274,9 +1451,79 @@ private fun AccountDetailBottomSheet(
                             }
                         )
                     }
+
+                    if (onDeleteAccount != null) {
+                        item {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            OutlinedButton(
+                                onClick = onDeleteAccount,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.DeleteOutline,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("刪除此自訂帳戶", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
                 }
             }
         }
+    }
+
+    if (showEditInitialBalanceDialog) {
+        var newBalanceText by remember { mutableStateOf(if (account.initialBalance > 0) account.initialBalance.toInt().toString() else "") }
+        AlertDialog(
+            onDismissRequest = { showEditInitialBalanceDialog = false },
+            title = { Text("設定「${account.name}」起始餘額", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "設定此帳戶的起始基礎餘額，APP 將自動結合收支計算出即時當前餘額：",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    OutlinedTextField(
+                        value = newBalanceText,
+                        onValueChange = { input ->
+                            if (input.isEmpty() || input.all { it.isDigit() }) {
+                                newBalanceText = input
+                            }
+                        },
+                        label = { Text("起始餘額 ($)") },
+                        placeholder = { Text("0") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val amount = newBalanceText.toDoubleOrNull() ?: 0.0
+                        onUpdateAccount(account.copy(initialBalance = amount))
+                        showEditInitialBalanceDialog = false
+                    }
+                ) {
+                    Text("儲存")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditInitialBalanceDialog = false }) {
+                    Text("取消")
+                }
+            }
+        )
     }
 }
 
@@ -1509,9 +1756,12 @@ private fun getPaymentMethodIcon(method: PaymentMethod): ImageVector {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DeleteAccountsBottomSheet(
+private fun ManageAccountsBottomSheet(
     accounts: List<PaymentAccount>,
     onDismiss: () -> Unit,
+    onAddNewAccount: () -> Unit,
+    onMoveUp: (Int) -> Unit,
+    onMoveDown: (Int) -> Unit,
     onDeleteRequest: (PaymentAccount) -> Unit
 ) {
     ModalBottomSheet(
@@ -1526,10 +1776,10 @@ private fun DeleteAccountsBottomSheet(
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Text(
-                text = "刪除支付帳戶",
+                text = "管理與排序支付帳戶",
                 style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.fillMaxWidth(),
@@ -1537,12 +1787,27 @@ private fun DeleteAccountsBottomSheet(
             )
 
             Text(
-                text = "請選擇欲刪除的支付帳戶，點擊垃圾桶將彈出確認提醒",
+                text = "可使用上下箭頭調整帳戶順序，或刪除自訂帳戶",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center
             )
+
+            Button(
+                onClick = onAddNewAccount,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = SapphirePrimary)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("＋ 新增自訂支付帳戶", fontWeight = FontWeight.Bold)
+            }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
@@ -1563,10 +1828,10 @@ private fun DeleteAccountsBottomSheet(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 400.dp),
+                        .heightIn(max = 420.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(accounts) { account ->
+                    itemsIndexed(accounts) { index, account ->
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
@@ -1575,13 +1840,13 @@ private fun DeleteAccountsBottomSheet(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Box(
@@ -1613,14 +1878,49 @@ private fun DeleteAccountsBottomSheet(
                                     }
                                 }
 
-                                IconButton(
-                                    onClick = { onDeleteRequest(account) }
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(2.dp)
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.DeleteOutline,
-                                        contentDescription = "刪除 ${account.name}",
-                                        tint = MaterialTheme.colorScheme.error
-                                    )
+                                    IconButton(
+                                        onClick = { onMoveUp(index) },
+                                        enabled = index > 0,
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.KeyboardArrowUp,
+                                            contentDescription = "上移",
+                                            tint = if (index > 0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+
+                                    IconButton(
+                                        onClick = { onMoveDown(index) },
+                                        enabled = index < accounts.size - 1,
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.KeyboardArrowDown,
+                                            contentDescription = "下移",
+                                            tint = if (index < accounts.size - 1) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+
+                                    if (!account.id.startsWith("default_")) {
+                                        IconButton(
+                                            onClick = { onDeleteRequest(account) },
+                                            modifier = Modifier.size(32.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.DeleteOutline,
+                                                contentDescription = "刪除 ${account.name}",
+                                                tint = MaterialTheme.colorScheme.error,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }

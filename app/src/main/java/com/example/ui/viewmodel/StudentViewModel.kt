@@ -903,12 +903,66 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         )
     )
 
+    private fun loadAccounts(): List<PaymentAccount> {
+        val json = prefs.getString("pref_custom_accounts", null)
+        val defaultList = listOf(
+            PaymentAccount(id = "default_cash", name = "現金", method = PaymentMethod.CASH),
+            PaymentAccount(id = "default_mobile", name = "行動支付 (LinePay/街口)", method = PaymentMethod.MOBILE_PAY),
+            PaymentAccount(id = "default_ic", name = "悠遊卡 / 一卡通", method = PaymentMethod.IC_CARD),
+            PaymentAccount(id = "default_card", name = "信用卡 / 簽帳卡", method = PaymentMethod.CARD),
+            PaymentAccount(id = "default_transfer", name = "銀行轉帳", method = PaymentMethod.TRANSFER)
+        )
+        if (json.isNullOrBlank()) {
+            return defaultList
+        }
+        return try {
+            val array = org.json.JSONArray(json)
+            val list = mutableListOf<PaymentAccount>()
+            for (i in 0 until array.length()) {
+                val obj = array.getJSONObject(i)
+                val mName = obj.optString("method", PaymentMethod.CASH.name)
+                val m = runCatching { PaymentMethod.valueOf(mName) }.getOrDefault(PaymentMethod.CASH)
+                list.add(
+                    PaymentAccount(
+                        id = obj.optString("id", UUID.randomUUID().toString()),
+                        name = obj.optString("name", m.label),
+                        method = m,
+                        initialBalance = obj.optDouble("initialBalance", 0.0),
+                        note = obj.optString("note", "")
+                    )
+                )
+            }
+            if (list.isEmpty()) defaultList else list
+        } catch (_: Throwable) {
+            defaultList
+        }
+    }
+
+    private val _customAccounts = MutableStateFlow(loadAccounts())
+    val customAccounts: StateFlow<List<PaymentAccount>> = _customAccounts.asStateFlow()
+
+    private fun saveAccounts(accounts: List<PaymentAccount>) {
+        _customAccounts.value = accounts
+        val array = org.json.JSONArray()
+        accounts.forEach { acc ->
+            val obj = org.json.JSONObject()
+            obj.put("id", acc.id)
+            obj.put("name", acc.name)
+            obj.put("method", acc.method.name)
+            obj.put("initialBalance", acc.initialBalance)
+            obj.put("note", acc.note)
+            array.put(obj)
+        }
+        prefs.edit { putString("pref_custom_accounts", array.toString()) }
+    }
+
     // Expense Monthly Summary
     val monthlyExpenseSummary: StateFlow<ExpenseMonthlySummary> = combine(
         allExpenses,
         _selectedExpenseMonth,
-        allBudgets
-    ) { expenses, month, budgets ->
+        allBudgets,
+        _customAccounts
+    ) { expenses, month, budgets, accounts ->
         val monthExpenses = expenses.filter { it.dateString.startsWith(month) }
         var totalExp = 0.0
         var totalInc = 0.0
@@ -923,6 +977,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             }
         }
 
+        val totalInitialBalance = accounts.sumOf { it.initialBalance }
         val budget = budgets.firstOrNull { it.yearMonth == month }?.budgetAmount ?: 10000.0
         val remaining = budget - totalExp
         val usagePercentage = if (budget > 0) ((totalExp / budget) * 100.0).coerceIn(0.0, 100.0).toFloat() else 0f
@@ -931,7 +986,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             yearMonth = month,
             totalExpense = totalExp,
             totalIncome = totalInc,
-            netBalance = totalInc - totalExp,
+            netBalance = totalInitialBalance + (totalInc - totalExp),
             budgetAmount = budget,
             remainingBudget = remaining,
             budgetUsagePercentage = round(usagePercentage * 10f) / 10f,
@@ -1103,6 +1158,20 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     fun addExpense(expense: ExpenseRecord) = viewModelScope.launch {
         repository.insertExpense(expense)
         _userMessage.value = "已記錄${expense.type.label}：$${expense.amount.toInt()}"
+
+        // 記帳後發送推播通知至通知列
+        val isExpense = expense.type == ExpenseType.EXPENSE
+        val titleText = if (isExpense) "💸 支出記錄成功" else "💰 收入記錄成功"
+        val itemTitle = expense.title.ifBlank { expense.category.label }
+        val noteInfo = if (expense.note.isNotBlank()) " (${expense.note})" else ""
+        sendNotification(
+            title = "$titleText：$itemTitle",
+            message = "${expense.category.label} ${if (isExpense) "-$" else "+$"}${expense.amount.toInt()} (${expense.paymentMethod.label}) ｜ 日期：${expense.dateString}$noteInfo",
+            type = NotificationType.EXPENSE,
+            actionRoute = "expense",
+            sendSystemPush = true
+        )
+
         if (expense.type == ExpenseType.EXPENSE) {
             checkExpenseBudgetAlert(expense.dateString)
         }
@@ -1111,6 +1180,18 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     fun updateExpense(expense: ExpenseRecord) = viewModelScope.launch {
         repository.updateExpense(expense)
         _userMessage.value = "已更新記錄"
+
+        val isExpense = expense.type == ExpenseType.EXPENSE
+        val itemTitle = expense.title.ifBlank { expense.category.label }
+        val noteInfo = if (expense.note.isNotBlank()) " (${expense.note})" else ""
+        sendNotification(
+            title = "✏️ 記帳記錄已更新：$itemTitle",
+            message = "${expense.category.label} ${if (isExpense) "-$" else "+$"}${expense.amount.toInt()} (${expense.paymentMethod.label}) ｜ 日期：${expense.dateString}$noteInfo",
+            type = NotificationType.EXPENSE,
+            actionRoute = "expense",
+            sendSystemPush = true
+        )
+
         if (expense.type == ExpenseType.EXPENSE) {
             checkExpenseBudgetAlert(expense.dateString)
         }
@@ -1185,64 +1266,48 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         checkExpenseBudgetAlert(month)
     }
 
-    private val _customAccounts = MutableStateFlow(loadAccounts())
-    val customAccounts: StateFlow<List<PaymentAccount>> = _customAccounts.asStateFlow()
 
-    private fun loadAccounts(): List<PaymentAccount> {
-        val json = prefs.getString("pref_custom_accounts", null)
-        val defaultList = listOf(
-            PaymentAccount(id = "default_cash", name = "現金", method = PaymentMethod.CASH),
-            PaymentAccount(id = "default_mobile", name = "行動支付 (LinePay/街口)", method = PaymentMethod.MOBILE_PAY),
-            PaymentAccount(id = "default_ic", name = "悠遊卡 / 一卡通", method = PaymentMethod.IC_CARD),
-            PaymentAccount(id = "default_card", name = "信用卡 / 簽帳卡", method = PaymentMethod.CARD),
-            PaymentAccount(id = "default_transfer", name = "銀行轉帳", method = PaymentMethod.TRANSFER)
-        )
-        if (json.isNullOrBlank()) {
-            return defaultList
-        }
-        return try {
-            val array = org.json.JSONArray(json)
-            val list = mutableListOf<PaymentAccount>()
-            for (i in 0 until array.length()) {
-                val obj = array.getJSONObject(i)
-                val mName = obj.optString("method", PaymentMethod.CASH.name)
-                val m = runCatching { PaymentMethod.valueOf(mName) }.getOrDefault(PaymentMethod.CASH)
-                list.add(
-                    PaymentAccount(
-                        id = obj.optString("id", UUID.randomUUID().toString()),
-                        name = obj.optString("name", m.label),
-                        method = m,
-                        initialBalance = obj.optDouble("initialBalance", 0.0),
-                        note = obj.optString("note", "")
-                    )
-                )
-            }
-            if (list.isEmpty()) defaultList else list
-        } catch (_: Throwable) {
-            defaultList
-        }
-    }
-
-    private fun saveAccounts(accounts: List<PaymentAccount>) {
-        _customAccounts.value = accounts
-        val array = org.json.JSONArray()
-        accounts.forEach { acc ->
-            val obj = org.json.JSONObject()
-            obj.put("id", acc.id)
-            obj.put("name", acc.name)
-            obj.put("method", acc.method.name)
-            obj.put("initialBalance", acc.initialBalance)
-            obj.put("note", acc.note)
-            array.put(obj)
-        }
-        prefs.edit { putString("pref_custom_accounts", array.toString()) }
-    }
 
     fun addAccount(account: PaymentAccount) {
         val current = _customAccounts.value.toMutableList()
         current.add(account)
         saveAccounts(current)
         _userMessage.value = "已成功新增帳戶：${account.name}"
+    }
+
+    fun updateAccount(account: PaymentAccount) {
+        val list = _customAccounts.value.map {
+            if (it.id == account.id) account else it
+        }
+        saveAccounts(list)
+        _userMessage.value = "已更新帳戶資訊"
+    }
+
+    fun moveAccount(fromIndex: Int, toIndex: Int) {
+        val list = _customAccounts.value.toMutableList()
+        if (fromIndex in list.indices && toIndex in list.indices && fromIndex != toIndex) {
+            val item = list.removeAt(fromIndex)
+            list.add(toIndex, item)
+            saveAccounts(list)
+        }
+    }
+
+    fun moveAccountUp(index: Int) {
+        val list = _customAccounts.value.toMutableList()
+        if (index > 0 && index < list.size) {
+            val item = list.removeAt(index)
+            list.add(index - 1, item)
+            saveAccounts(list)
+        }
+    }
+
+    fun moveAccountDown(index: Int) {
+        val list = _customAccounts.value.toMutableList()
+        if (index >= 0 && index < list.size - 1) {
+            val item = list.removeAt(index)
+            list.add(index + 1, item)
+            saveAccounts(list)
+        }
     }
 
     fun deleteAccount(accountId: String) {

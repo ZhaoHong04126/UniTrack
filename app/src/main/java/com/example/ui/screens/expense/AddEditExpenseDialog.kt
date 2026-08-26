@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import com.example.data.model.ExpenseCategory
 import com.example.data.model.ExpenseRecord
 import com.example.data.model.ExpenseType
+import com.example.data.model.PaymentAccount
 import com.example.data.model.PaymentMethod
 import com.example.ui.theme.*
 import java.text.SimpleDateFormat
@@ -42,6 +43,7 @@ import java.util.*
 @Composable
 fun AddEditExpenseDialog(
     initialExpense: ExpenseRecord? = null,
+    accounts: List<PaymentAccount> = emptyList(),
     onDismiss: () -> Unit,
     onSave: (ExpenseRecord) -> Unit,
     onDelete: ((ExpenseRecord) -> Unit)? = null
@@ -54,7 +56,11 @@ fun AddEditExpenseDialog(
     var amountText by remember { mutableStateOf(initialExpense?.amount?.toInt()?.toString() ?: "") }
     var type by remember { mutableStateOf(initialExpense?.type ?: ExpenseType.EXPENSE) }
     var category by remember { mutableStateOf(initialExpense?.category ?: ExpenseCategory.FOOD) }
-    var paymentMethod by remember { mutableStateOf(initialExpense?.paymentMethod ?: PaymentMethod.CASH) }
+    var paymentMethod by remember {
+        mutableStateOf(
+            initialExpense?.paymentMethod ?: accounts.firstOrNull()?.method ?: PaymentMethod.CASH
+        )
+    }
     var dateString by remember { mutableStateOf(initialExpense?.dateString ?: dateFormat.format(Date())) }
     var note by remember { mutableStateOf(initialExpense?.note ?: "") }
 
@@ -326,8 +332,9 @@ fun AddEditExpenseDialog(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            val currentAccountName = accounts.firstOrNull { it.method == paymentMethod }?.name ?: paymentMethod.label
                             Text(
-                                text = paymentMethod.label,
+                                text = currentAccountName,
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 maxLines = 1,
@@ -594,37 +601,74 @@ fun AddEditExpenseDialog(
                     fontWeight = FontWeight.Bold
                 )
 
-                PaymentMethod.entries.forEach { method ->
-                    val isSelected = paymentMethod == method
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(
-                                if (isSelected) SapphirePrimary.copy(alpha = 0.12f)
-                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                if (accounts.isNotEmpty()) {
+                    accounts.forEach { account ->
+                        val isSelected = paymentMethod == account.method
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    if (isSelected) SapphirePrimary.copy(alpha = 0.12f)
+                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                                )
+                                .clickable {
+                                    paymentMethod = account.method
+                                    showPaymentSheet = false
+                                }
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = account.name,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) SapphirePrimary else MaterialTheme.colorScheme.onSurface
                             )
-                            .clickable {
-                                paymentMethod = method
-                                showPaymentSheet = false
+                            if (isSelected) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = SapphirePrimary,
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = method.label,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (isSelected) SapphirePrimary else MaterialTheme.colorScheme.onSurface
-                        )
-                        if (isSelected) {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = null,
-                                tint = SapphirePrimary,
-                                modifier = Modifier.size(20.dp)
+                        }
+                    }
+                } else {
+                    PaymentMethod.entries.forEach { method ->
+                        val isSelected = paymentMethod == method
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    if (isSelected) SapphirePrimary.copy(alpha = 0.12f)
+                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                                )
+                                .clickable {
+                                    paymentMethod = method
+                                    showPaymentSheet = false
+                                }
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = method.label,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) SapphirePrimary else MaterialTheme.colorScheme.onSurface
                             )
+                            if (isSelected) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = SapphirePrimary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         }
                     }
                 }
