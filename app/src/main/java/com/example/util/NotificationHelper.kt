@@ -157,4 +157,11 @@ object NotificationHelper {
             // Permission might have been revoked dynamically
         }
     }
+
+    fun cancelNotification(context: Context, notificationId: Int) {
+        try {
+            NotificationManagerCompat.from(context).cancel(notificationId)
+        } catch (_: Exception) {
+        }
+    }
 }

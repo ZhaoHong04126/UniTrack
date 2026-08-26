@@ -10,14 +10,19 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -171,7 +176,66 @@ class MainActivity : ComponentActivity() {
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
-                    snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+                    snackbarHost = {
+                        SnackbarHost(
+                            hostState = snackbarHostState,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
+                        ) { data ->
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = MaterialTheme.colorScheme.inverseSurface,
+                                contentColor = MaterialTheme.colorScheme.inverseOnSurface,
+                                tonalElevation = 6.dp,
+                                shadowElevation = 10.dp,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = Color(0xFF10B981).copy(alpha = 0.2f),
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier.fillMaxSize()
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.CheckCircle,
+                                                contentDescription = null,
+                                                tint = Color(0xFF10B981),
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                    }
+                                    Text(
+                                        text = data.visuals.message,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    if (data.visuals.actionLabel != null) {
+                                        TextButton(
+                                            onClick = { data.performAction() },
+                                            colors = ButtonDefaults.textButtonColors(
+                                                contentColor = MaterialTheme.colorScheme.inversePrimary
+                                            )
+                                        ) {
+                                            Text(
+                                                text = data.visuals.actionLabel!!,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
                     bottomBar = {
                         if (showBottomBar) {
                             NavigationBar(

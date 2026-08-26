@@ -314,3 +314,9 @@ data class PaymentAccount(
     val initialBalance: Double = 0.0,
     val note: String = ""
 )
+
+sealed class SemesterScheduleStatus {
+    data class NotStarted(val daysUntilStart: Long, val startDate: String) : SemesterScheduleStatus()
+    data class InSession(val currentWeek: Int, val totalWeeks: Int) : SemesterScheduleStatus()
+    data class Ended(val totalWeeks: Int) : SemesterScheduleStatus()
+}

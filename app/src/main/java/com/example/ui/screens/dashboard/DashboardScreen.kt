@@ -14,6 +14,7 @@ import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.Course
+import com.example.data.model.SemesterScheduleStatus
 import com.example.ui.components.SectionHeader
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.StudentViewModel
@@ -43,6 +45,16 @@ fun DashboardScreen(
     val expenseSummary by viewModel.monthlyExpenseSummary.collectAsStateWithLifecycle()
     val semesterGpaList by viewModel.semesterGpaList.collectAsStateWithLifecycle()
     val unreadNotificationsCount by viewModel.unreadNotificationCount.collectAsStateWithLifecycle()
+    val semesterTimeConfigVersion by viewModel.semesterTimeConfigVersion.collectAsStateWithLifecycle()
+
+    val currentSemester = plan.currentSemester.ifBlank { "114-1" }
+    val semesterStatus = remember(currentSemester, semesterTimeConfigVersion) {
+        viewModel.getSemesterScheduleStatus(currentSemester)
+    }
+    val nowMinutes = remember { viewModel.getCurrentMinutes() }
+    val activeClasses = remember(todayClasses, nowMinutes) {
+        todayClasses.filter { !viewModel.isCourseEndedToday(it, nowMinutes) }
+    }
 
     LazyColumn(
         modifier = modifier
@@ -147,60 +159,203 @@ fun DashboardScreen(
 
         // Today's Course Schedule
         item {
+            val subtitleText = when (semesterStatus) {
+                is SemesterScheduleStatus.NotStarted -> "開學倒數 D-${semesterStatus.daysUntilStart}"
+                is SemesterScheduleStatus.InSession -> "第 ${semesterStatus.currentWeek} 週 · ${getDayOfWeekString()}"
+                is SemesterScheduleStatus.Ended -> "學期已結束"
+            }
             SectionHeader(
                 title = "今日課表",
-                subtitle = getDayOfWeekString(),
+                subtitle = subtitleText,
                 actionText = "完整課表",
                 onActionClick = onNavigateToTimetable
             )
         }
 
-        if (todayClasses.isEmpty()) {
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        when (semesterStatus) {
+            is SemesterScheduleStatus.NotStarted -> {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                     ) {
-                        Box(
+                        Row(
                             modifier = Modifier
-                                .size(48.dp)
-                                .clip(CircleShape)
-                                .background(TealLight),
-                            contentAlignment = Alignment.Center
+                                .fillMaxWidth()
+                                .padding(20.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.WbSunny,
-                                contentDescription = null,
-                                tint = TealSecondary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                        Column {
-                            Text(
-                                text = "今天沒有排定課程",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "可以好好安排自習、專題或休息放鬆！",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .background(AmberLight),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CalendarMonth,
+                                    contentDescription = null,
+                                    tint = AmberWarning,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(
+                                    text = "尚未開學（開學倒數 D-${semesterStatus.daysUntilStart}）",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "預計開學日：${semesterStatus.startDate}，開學後將自動顯示每日課堂排程與即時上課提醒！",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 }
             }
-        } else {
-            items(todayClasses) { course ->
-                TodayCourseItemCard(course = course)
+            is SemesterScheduleStatus.Ended -> {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .background(PurpleLight),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Celebration,
+                                    contentDescription = null,
+                                    tint = PurpleAccent,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(
+                                    text = "本學期課程已全數結束",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "辛苦了！祝你有個愉快的假期，記得確認各科成績與畢業學分審查。",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            is SemesterScheduleStatus.InSession -> {
+
+                if (todayClasses.isEmpty()) {
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(20.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .clip(CircleShape)
+                                        .background(TealLight),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.WbSunny,
+                                        contentDescription = null,
+                                        tint = TealSecondary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                                Column {
+                                    Text(
+                                        text = "今天沒有排定課程",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = "可以好好安排自習、專題或休息放鬆！",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } else if (activeClasses.isEmpty()) {
+                    // 今日課程皆已結束
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(20.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .clip(CircleShape)
+                                        .background(EmeraldLight),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.TaskAlt,
+                                        contentDescription = null,
+                                        tint = EmeraldAccent,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text(
+                                        text = "今日課程已全數結束",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = "今天的課程皆已下課完畢，辛苦了！好好休息吧。",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    items(activeClasses) { course ->
+                        val isOngoing = viewModel.isCourseOngoingToday(course, nowMinutes)
+                        TodayCourseItemCard(course = course, isOngoing = isOngoing)
+                    }
+                }
             }
         }
 
@@ -364,14 +519,18 @@ fun DashboardScreen(
 }
 
 @Composable
-private fun TodayCourseItemCard(course: Course) {
+private fun TodayCourseItemCard(course: Course, isOngoing: Boolean = false) {
     val courseColor = runCatching { Color(course.colorHex.toColorInt()) }
         .getOrDefault(SapphirePrimary)
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isOngoing) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f)
+            else MaterialTheme.colorScheme.surface
+        ),
+        border = if (isOngoing) BorderStroke(1.dp, SapphirePrimary.copy(alpha = 0.5f)) else null,
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
@@ -403,6 +562,14 @@ private fun TodayCourseItemCard(course: Course) {
                         contentColor = course.category.badgeColor
                     ) {
                         Text(text = course.category.shortLabel)
+                    }
+                    if (isOngoing) {
+                        Badge(
+                            containerColor = EmeraldLight,
+                            contentColor = EmeraldAccent
+                        ) {
+                            Text(text = "⚡ 上課中", fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
                 Row(

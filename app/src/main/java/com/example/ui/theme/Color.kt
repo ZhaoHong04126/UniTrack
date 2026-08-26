@@ -28,6 +28,9 @@ val EmeraldLight = Color(0xFFD1FAE5)
 val IndigoAccent = Color(0xFF4F46E5)
 val IndigoLight = Color(0xFFEEF2FF)
 
+val PurpleAccent = Color(0xFF9333EA)
+val PurpleLight = Color(0xFFF3E8FF)
+
 // Neutrals
 val Slate50 = Color(0xFFF8FAFC)
 val Slate100 = Color(0xFFF1F5F9)

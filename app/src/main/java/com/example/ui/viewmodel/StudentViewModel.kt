@@ -135,6 +135,76 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         return prefs.getInt("semester_total_weeks_$semester", 18)
     }
 
+    fun getSemesterScheduleStatus(semester: String): SemesterScheduleStatus {
+        val startDateStr = getSemesterStartDate(semester)
+        val totalWeeks = getSemesterTotalWeeks(semester)
+        return try {
+            val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd")
+            val startDate = java.time.LocalDate.parse(startDateStr, formatter)
+            val today = java.time.LocalDate.now()
+            val daysDiff = java.time.temporal.ChronoUnit.DAYS.between(today, startDate)
+            when {
+                daysDiff > 0 -> SemesterScheduleStatus.NotStarted(daysDiff, startDateStr)
+                daysDiff == 0L -> SemesterScheduleStatus.InSession(1, totalWeeks)
+                else -> {
+                    val daysPassed = -daysDiff
+                    val weekNum = (daysPassed / 7).toInt() + 1
+                    if (weekNum <= totalWeeks) SemesterScheduleStatus.InSession(weekNum, totalWeeks)
+                    else SemesterScheduleStatus.Ended(totalWeeks)
+                }
+            }
+        } catch (_: Exception) {
+            SemesterScheduleStatus.InSession(1, totalWeeks)
+        }
+    }
+
+    fun isSemesterInSession(semester: String): Boolean {
+        return getSemesterScheduleStatus(semester) is SemesterScheduleStatus.InSession
+    }
+
+    fun parseCourseTimeToMinutes(timeStr: String, fallbackPeriod: Int, isStart: Boolean): Int {
+        val parts = timeStr.split(":")
+        if (parts.size == 2) {
+            val h = parts[0].toIntOrNull()
+            val m = parts[1].toIntOrNull()
+            if (h != null && m != null) return h * 60 + m
+        }
+        val periodMap = mapOf(
+            1 to (8 * 60 + 10 to 9 * 60),
+            2 to (9 * 60 + 10 to 10 * 60),
+            3 to (10 * 60 + 10 to 11 * 60),
+            4 to (11 * 60 + 10 to 12 * 60),
+            5 to (13 * 60 + 10 to 14 * 60),
+            6 to (14 * 60 + 10 to 15 * 60),
+            7 to (15 * 60 + 10 to 16 * 60),
+            8 to (16 * 60 + 10 to 17 * 60),
+            9 to (17 * 60 + 10 to 18 * 60),
+            10 to (18 * 60 + 20 to 19 * 60 + 10),
+            11 to (19 * 60 + 15 to 20 * 60 + 5),
+            12 to (20 * 60 + 10 to 21 * 60),
+            13 to (21 * 60 + 5 to 21 * 60 + 55),
+            14 to (22 * 60 to 22 * 60 + 50)
+        )
+        val pair = periodMap[fallbackPeriod] ?: (8 * 60 to 9 * 60)
+        return if (isStart) pair.first else pair.second
+    }
+
+    fun getCurrentMinutes(): Int {
+        val calendar = Calendar.getInstance()
+        return calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE)
+    }
+
+    fun isCourseEndedToday(course: Course, nowMinutes: Int = getCurrentMinutes()): Boolean {
+        val endMin = parseCourseTimeToMinutes(course.endTime, course.endPeriod, false)
+        return nowMinutes > endMin
+    }
+
+    fun isCourseOngoingToday(course: Course, nowMinutes: Int = getCurrentMinutes()): Boolean {
+        val startMin = parseCourseTimeToMinutes(course.startTime, course.startPeriod, true)
+        val endMin = parseCourseTimeToMinutes(course.endTime, course.endPeriod, false)
+        return nowMinutes in startMin..endMin
+    }
+
     fun saveSemesterTimeConfig(semester: String, startDate: String, totalWeeks: Int) {
         prefs.edit {
             putString("semester_start_date_$semester", startDate)
@@ -925,7 +995,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         )
     }
 
-    fun updateCourse(course: Course) = viewModelScope.launch {
+    fun updateCourse(course: Course, sendNotify: Boolean = true) = viewModelScope.launch {
         repository.updateCourse(course)
         val user = currentUser.value
         if (user != null) {
@@ -933,6 +1003,20 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         }
         WidgetUpdateHelper.updateAllWidgets(getApplication())
         _userMessage.value = "已更新課程：${course.name}"
+
+        if (sendNotify) {
+            val dayName = listOf("星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日")
+                .getOrElse(course.dayOfWeek - 1) { "星期一" }
+            val timeInfo = if (course.startTime.isNotBlank()) "$dayName ${course.startTime}" else dayName
+            val locationInfo = if (course.location.isNotBlank()) "，教室：${course.location}" else ""
+            sendNotification(
+                title = "✏️ 課程資訊已更新：${course.name}",
+                message = "已更新「${course.name}」課程內容，上課時間：$timeInfo$locationInfo。",
+                type = NotificationType.COURSE,
+                actionRoute = "timetable",
+                sendSystemPush = true
+            )
+        }
     }
 
     fun deleteCourse(course: Course) = viewModelScope.launch {

@@ -54,6 +54,7 @@ fun NotificationScreen(
 
     var selectedFilter by remember { mutableStateOf<NotificationType?>(null) }
     var showClearDialog by remember { mutableStateOf(false) }
+    var notificationToDelete by remember { mutableStateOf<AppNotification?>(null) }
 
     val filteredNotifications = remember(allNotifications, selectedFilter) {
         if (selectedFilter == null) allNotifications
@@ -343,13 +344,38 @@ fun NotificationScreen(
                                 }
                             },
                             onDeleteClick = {
-                                viewModel.deleteNotification(item.id)
+                                notificationToDelete = item
                             }
                         )
                     }
                 }
             }
         }
+    }
+
+    // 單則通知刪除確認對話框
+    notificationToDelete?.let { notification ->
+        AlertDialog(
+            onDismissRequest = { notificationToDelete = null },
+            title = { Text("刪除通知？", fontWeight = FontWeight.Bold) },
+            text = { Text("確定要刪除「${notification.title}」這則通知嗎？") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteNotification(notification.id)
+                        notificationToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = RoseAccent)
+                ) {
+                    Text("確定刪除")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { notificationToDelete = null }) {
+                    Text("取消")
+                }
+            }
+        )
     }
 
     if (showClearDialog) {
