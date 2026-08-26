@@ -67,7 +67,7 @@ class Converters {
 
     @TypeConverter
     fun toGpaScale(value: String?): GpaScale? =
-        value?.let { enumValueOfOrDefault(it, GpaScale.SCALE_4_3) }
+        value?.let { enumValueOfOrDefault(it, GpaScale.PERCENTAGE) }
 
     @TypeConverter
     fun fromNotificationType(value: com.example.data.model.NotificationType?): String? = value?.name

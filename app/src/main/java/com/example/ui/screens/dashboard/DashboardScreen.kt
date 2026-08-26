@@ -43,9 +43,26 @@ fun DashboardScreen(
     val plan by viewModel.graduationPlan.collectAsStateWithLifecycle()
     val todayClasses by viewModel.todayClasses.collectAsStateWithLifecycle()
     val expenseSummary by viewModel.monthlyExpenseSummary.collectAsStateWithLifecycle()
+    val allExpenses by viewModel.allExpenses.collectAsStateWithLifecycle(emptyList())
     val semesterGpaList by viewModel.semesterGpaList.collectAsStateWithLifecycle()
     val unreadNotificationsCount by viewModel.unreadNotificationCount.collectAsStateWithLifecycle()
     val semesterTimeConfigVersion by viewModel.semesterTimeConfigVersion.collectAsStateWithLifecycle()
+
+    val todayStr = remember { java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date()) }
+    val todayExpense = remember(allExpenses, todayStr) {
+        allExpenses.filter { it.dateString == todayStr && it.type == com.example.data.model.ExpenseType.EXPENSE }.sumOf { it.amount }
+    }
+
+    val todayAvailableBudget = remember(expenseSummary, todayExpense) {
+        val cal = Calendar.getInstance()
+        val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+        val currentDay = cal.get(Calendar.DAY_OF_MONTH)
+        val remainingDays = (daysInMonth - currentDay + 1).coerceAtLeast(1)
+
+        val baseDailyBudget = (expenseSummary.remainingBudget + todayExpense) / remainingDays
+        val available = baseDailyBudget - todayExpense
+        Triple(available, baseDailyBudget, remainingDays)
+    }
 
     val currentSemester = plan.currentSemester.ifBlank { "114-1" }
     val semesterStatus = remember(currentSemester, semesterTimeConfigVersion) {
@@ -203,7 +220,7 @@ fun DashboardScreen(
                             }
                             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 Text(
-                                    text = "尚未開學（開學倒數 D-${semesterStatus.daysUntilStart}）",
+                                    text = "享受最後的假期 🎉",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -370,6 +387,9 @@ fun DashboardScreen(
         }
 
         item {
+            val (todayAvailable, baseDailyBudget, remainingDays) = todayAvailableBudget
+            val isOverDailyBudget = todayAvailable < 0
+
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -390,68 +410,72 @@ fun DashboardScreen(
                     ) {
                         Column {
                             Text(
-                                text = "本月累積支出",
+                                text = if (isOverDailyBudget) "今日已超支 ⚠️" else "今日可用額度",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                fontWeight = FontWeight.Medium,
+                                color = if (isOverDailyBudget) RoseAccent else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = "$${expenseSummary.totalExpense.toInt()}",
-                                style = MaterialTheme.typography.titleLarge,
+                                text = if (isOverDailyBudget) "-$${(-todayAvailable).toInt()}" else "$${todayAvailable.toInt()}",
+                                style = MaterialTheme.typography.headlineMedium,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = if (expenseSummary.budgetUsagePercentage > 90f) RoseAccent else MaterialTheme.colorScheme.onSurface
+                                color = if (isOverDailyBudget) RoseAccent else EmeraldAccent
                             )
                         }
                         Column(horizontalAlignment = Alignment.End) {
                             Text(
-                                text = "剩餘預算",
+                                text = "今日已花費",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = "$${expenseSummary.remainingBudget.toInt()}",
-                                style = MaterialTheme.typography.titleMedium,
+                                text = "$${todayExpense.toInt()}",
+                                style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
-                                color = if (expenseSummary.remainingBudget < 0) RoseAccent else EmeraldAccent
+                                color = if (isOverDailyBudget) RoseAccent else MaterialTheme.colorScheme.onSurface
                             )
                         }
                     }
 
-                    // Budget bar
+                    // Daily budget usage bar
+                    val todayUsageFraction = if (baseDailyBudget > 0) (todayExpense / baseDailyBudget).toFloat().coerceIn(0f, 1f) else 1f
                     LinearProgressIndicator(
-                        progress = { (expenseSummary.budgetUsagePercentage / 100f).coerceIn(0f, 1f) },
+                        progress = { todayUsageFraction },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(6.dp)
                             .clip(RoundedCornerShape(3.dp)),
-                        color = if (expenseSummary.budgetUsagePercentage > 90f) RoseAccent else TealSecondary,
+                        color = if (isOverDailyBudget) RoseAccent else TealSecondary,
                         trackColor = MaterialTheme.colorScheme.surfaceVariant
                     )
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "預算已使用 ${expenseSummary.budgetUsagePercentage.toInt()}% (總額 $${expenseSummary.budgetAmount.toInt()})",
+                            text = "本月已花 $${expenseSummary.totalExpense.toInt()} · 剩餘 $${expenseSummary.remainingBudget.toInt()}",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = "本月收入: $${expenseSummary.totalIncome.toInt()}",
+                            text = "剩餘 $remainingDays 天 (預算 $${baseDailyBudget.toInt()}/日)",
                             style = MaterialTheme.typography.labelSmall,
-                            color = EmeraldAccent
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
             }
         }
 
-        // GPA Trend History Across Semesters
+        // Academic Semester Score History Across Semesters (百分制)
         if (semesterGpaList.isNotEmpty()) {
             item {
                 SectionHeader(
-                    title = "歷年學期 GPA 走勢",
-                    subtitle = "學分加權平均計算",
+                    title = "歷年學期成績",
+                    subtitle = "學分加權平均計算（百分制）",
                     actionText = "詳細學分",
                     onActionClick = onNavigateToGraduation
                 )
@@ -468,7 +492,7 @@ fun DashboardScreen(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        semesterGpaList.take(4).forEach { semGpa ->
+                        semesterGpaList.forEachIndexed { index, semGpa ->
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -497,19 +521,23 @@ fun DashboardScreen(
                                     if (semGpa.averageScore > 0) {
                                         Text(
                                             text = "均分 ${semGpa.averageScore}",
-                                            style = MaterialTheme.typography.bodySmall,
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = SapphirePrimary
+                                        )
+                                    } else {
+                                        Text(
+                                            text = "修習中",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Medium,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
-                                    Text(
-                                        text = if (semGpa.gpa > 0) "GPA ${semGpa.gpa}" else "修習中",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (semGpa.gpa > 0) SapphirePrimary else MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
                                 }
                             }
-                            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                            if (index < semesterGpaList.lastIndex) {
+                                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                            }
                         }
                     }
                 }

@@ -602,11 +602,11 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // GPA calculations
-    val semesterGpaList: StateFlow<List<SemesterGpa>> = combine(allCourses, graduationPlan) { courses, plan ->
-        val semesterGroup = courses.groupBy { it.semester }
+    val semesterGpaList: StateFlow<List<SemesterGpa>> = combine(allCourses, graduationPlan, allSemesters) { courses, plan, semList ->
         val result = mutableListOf<SemesterGpa>()
 
-        for ((sem, semCourses) in semesterGroup) {
+        for (sem in semList) {
+            val semCourses = courses.filter { it.semester == sem }
             val gradedCourses = semCourses.filter { it.score != null || it.letterGrade != null }
             if (gradedCourses.isEmpty()) {
                 val totalCredits = semCourses.sumOf { it.credits }
@@ -614,16 +614,13 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                 continue
             }
 
-            var totalWeightedGpa = 0.0
             var totalWeightedScore = 0.0
             var totalGradedCredits = 0.0
             var passedCredits = 0.0
 
             for (c in gradedCourses) {
-                val gpaVal = calculateCourseGpa(c, plan.gpaScale)
-                val scoreVal = c.score ?: scoreFromLetterGrade(c.letterGrade) ?: (gpaVal * 20.0)
+                val scoreVal = c.score ?: scoreFromLetterGrade(c.letterGrade) ?: 0.0
 
-                totalWeightedGpa += gpaVal * c.credits
                 totalWeightedScore += scoreVal * c.credits
                 totalGradedCredits += c.credits
 
@@ -632,14 +629,13 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                 }
             }
 
-            val semGpa = if (totalGradedCredits > 0) totalWeightedGpa / totalGradedCredits else 0.0
             val semAvg = if (totalGradedCredits > 0) totalWeightedScore / totalGradedCredits else 0.0
             val totalCredits = semCourses.sumOf { it.credits }
 
             result.add(
                 SemesterGpa(
                     semester = sem,
-                    gpa = round(semGpa * 100.0) / 100.0,
+                    gpa = round(semAvg * 10.0) / 10.0,
                     averageScore = round(semAvg * 10.0) / 10.0,
                     totalCredits = totalCredits,
                     passedCredits = passedCredits,
@@ -650,29 +646,26 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         result.sortedByDescending { it.semester }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // Cumulative GPA & Average Score
-    val cumulativeAcademicSummary: StateFlow<Pair<Double, Double>> = combine(allCourses, graduationPlan) { courses, plan ->
+    // Cumulative GPA & Average Score (百分制均分)
+    val cumulativeAcademicSummary: StateFlow<Pair<Double, Double>> = combine(allCourses, graduationPlan) { courses, _ ->
         val gradedCourses = courses.filter { it.score != null || it.letterGrade != null }
         if (gradedCourses.isEmpty()) return@combine Pair(0.0, 0.0)
 
-        var totalWeightedGpa = 0.0
         var totalWeightedScore = 0.0
         var totalGradedCredits = 0.0
 
         for (c in gradedCourses) {
-            val gpaVal = calculateCourseGpa(c, plan.gpaScale)
-            val scoreVal = c.score ?: scoreFromLetterGrade(c.letterGrade) ?: (gpaVal * 20.0)
+            val scoreVal = c.score ?: scoreFromLetterGrade(c.letterGrade) ?: 0.0
 
-            totalWeightedGpa += gpaVal * c.credits
             totalWeightedScore += scoreVal * c.credits
             totalGradedCredits += c.credits
         }
 
-        val gpa = if (totalGradedCredits > 0) totalWeightedGpa / totalGradedCredits else 0.0
         val avg = if (totalGradedCredits > 0) totalWeightedScore / totalGradedCredits else 0.0
+        val roundedAvg = round(avg * 10.0) / 10.0
 
-        Pair(round(gpa * 100.0) / 100.0, round(avg * 10.0) / 10.0)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Pair(3.82, 87.5))
+        Pair(roundedAvg, roundedAvg)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Pair(0.0, 0.0))
 
     // Graduation Audit Summary
     val graduationAudit: StateFlow<GraduationAuditSummary> = combine(
@@ -1407,67 +1400,12 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         return success
     }
 
-    private fun calculateCourseGpa(course: Course, scale: GpaScale): Double {
+    private fun calculateCourseGpa(course: Course): Double {
         if (course.letterGrade != null) {
-            return when (scale) {
-                GpaScale.SCALE_4_3 -> when (course.letterGrade.uppercase()) {
-                    "A+" -> 4.3
-                    "A" -> 4.0
-                    "A-" -> 3.7
-                    "B+" -> 3.3
-                    "B" -> 3.0
-                    "B-" -> 2.7
-                    "C+" -> 2.3
-                    "C" -> 2.0
-                    "C-" -> 1.7
-                    "D" -> 1.0
-                    else -> 0.0
-                }
-                GpaScale.SCALE_4_0 -> when (course.letterGrade.uppercase()) {
-                    "A+", "A" -> 4.0
-                    "A-" -> 3.7
-                    "B+" -> 3.3
-                    "B" -> 3.0
-                    "B-" -> 2.7
-                    "C+" -> 2.3
-                    "C" -> 2.0
-                    "C-" -> 1.7
-                    "D" -> 1.0
-                    else -> 0.0
-                }
-                GpaScale.PERCENTAGE -> scoreFromLetterGrade(course.letterGrade) ?: 0.0
-            }
+            return scoreFromLetterGrade(course.letterGrade) ?: 0.0
         }
         if (course.score != null) {
-            val score = course.score
-            return when (scale) {
-                GpaScale.SCALE_4_3 -> when {
-                    score >= 90 -> 4.3
-                    score >= 85 -> 4.0
-                    score >= 80 -> 3.7
-                    score >= 77 -> 3.3
-                    score >= 73 -> 3.0
-                    score >= 70 -> 2.7
-                    score >= 67 -> 2.3
-                    score >= 63 -> 2.0
-                    score >= 60 -> 1.7
-                    score >= 50 -> 1.0
-                    else -> 0.0
-                }
-                GpaScale.SCALE_4_0 -> when {
-                    score >= 85 -> 4.0
-                    score >= 80 -> 3.7
-                    score >= 77 -> 3.3
-                    score >= 73 -> 3.0
-                    score >= 70 -> 2.7
-                    score >= 67 -> 2.3
-                    score >= 63 -> 2.0
-                    score >= 60 -> 1.7
-                    score >= 50 -> 1.0
-                    else -> 0.0
-                }
-                GpaScale.PERCENTAGE -> score
-            }
+            return course.score
         }
         return 0.0
     }

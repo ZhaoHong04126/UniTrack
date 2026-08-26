@@ -67,8 +67,6 @@ enum class PaymentMethod(val label: String) {
 }
 
 enum class GpaScale(val label: String, @Suppress("unused") val maxGpa: Double) {
-    SCALE_4_3("4.3 制 (A+=4.3, A=4.0...)", 4.3),
-    SCALE_4_0("4.0 制 (A=4.0, B=3.0...)", 4.0),
     PERCENTAGE("百分制 (100分制)", 100.0)
 }
 
