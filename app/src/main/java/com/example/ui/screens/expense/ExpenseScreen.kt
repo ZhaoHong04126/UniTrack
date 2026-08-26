@@ -1617,12 +1617,14 @@ private fun AddEditAccountBottomSheet(
             val quickPresets = remember {
                 listOf(
                     "現金" to PaymentMethod.CASH,
-                    "LINE Pay" to PaymentMethod.MOBILE_PAY,
-                    "悠遊卡" to PaymentMethod.IC_CARD,
+                    "學生證" to PaymentMethod.IC_CARD,
                     "一卡通" to PaymentMethod.IC_CARD,
-                    "信用卡" to PaymentMethod.CARD,
-                    "簽帳金融卡" to PaymentMethod.CARD,
-                    "銀行轉帳" to PaymentMethod.TRANSFER,
+                    "悠遊卡" to PaymentMethod.IC_CARD,
+                    "郵局" to PaymentMethod.TRANSFER,
+                    "全支付" to PaymentMethod.MOBILE_PAY,
+                    "LINE Pay" to PaymentMethod.MOBILE_PAY,
+                    "Google Pay" to PaymentMethod.MOBILE_PAY,
+
                 )
             }
 

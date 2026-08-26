@@ -904,27 +904,31 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     )
 
     private fun loadAccounts(): List<PaymentAccount> {
-        val json = prefs.getString("pref_custom_accounts", null)
         val defaultList = listOf(
             PaymentAccount(id = "default_cash", name = "現金", method = PaymentMethod.CASH),
-            PaymentAccount(id = "default_mobile", name = "行動支付", method = PaymentMethod.MOBILE_PAY),
-            PaymentAccount(id = "default_ic", name = "悠遊卡 / 一卡通", method = PaymentMethod.IC_CARD),
-            PaymentAccount(id = "default_card", name = "信用卡 / 簽帳卡", method = PaymentMethod.CARD),
-            PaymentAccount(id = "default_transfer", name = "銀行轉帳", method = PaymentMethod.TRANSFER)
+            PaymentAccount(id = "default_student_card", name = "學生證", method = PaymentMethod.IC_CARD),
+            PaymentAccount(id = "default_post_office", name = "郵局", method = PaymentMethod.TRANSFER)
         )
+        val json = prefs.getString("pref_custom_accounts", null)
         if (json.isNullOrBlank()) {
             return defaultList
         }
         return try {
             val array = org.json.JSONArray(json)
             val list = mutableListOf<PaymentAccount>()
+            val oldDefaultIds = setOf("default_mobile", "default_ic", "default_card", "default_transfer")
+            var containsOldDefaults = false
             for (i in 0 until array.length()) {
                 val obj = array.getJSONObject(i)
+                val id = obj.optString("id", UUID.randomUUID().toString())
+                if (id in oldDefaultIds) {
+                    containsOldDefaults = true
+                }
                 val mName = obj.optString("method", PaymentMethod.CASH.name)
                 val m = runCatching { PaymentMethod.valueOf(mName) }.getOrDefault(PaymentMethod.CASH)
                 list.add(
                     PaymentAccount(
-                        id = obj.optString("id", UUID.randomUUID().toString()),
+                        id = id,
                         name = obj.optString("name", m.label),
                         method = m,
                         initialBalance = obj.optDouble("initialBalance", 0.0),
@@ -932,7 +936,32 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                     )
                 )
             }
-            if (list.isEmpty()) defaultList else list
+            if (containsOldDefaults) {
+                val cashAccount = list.firstOrNull { it.id == "default_cash" } ?: defaultList[0]
+                val customAccountsOnly = list.filterNot { it.id.startsWith("default_") }
+                val migrated = listOf(
+                    cashAccount,
+                    defaultList[1],
+                    defaultList[2]
+                ) + customAccountsOnly
+
+                val outArray = org.json.JSONArray()
+                migrated.forEach { acc ->
+                    val obj = org.json.JSONObject()
+                    obj.put("id", acc.id)
+                    obj.put("name", acc.name)
+                    obj.put("method", acc.method.name)
+                    obj.put("initialBalance", acc.initialBalance)
+                    obj.put("note", acc.note)
+                    outArray.put(obj)
+                }
+                prefs.edit { putString("pref_custom_accounts", outArray.toString()) }
+                migrated
+            } else if (list.isEmpty()) {
+                defaultList
+            } else {
+                list
+            }
         } catch (_: Throwable) {
             defaultList
         }
