@@ -48,6 +48,10 @@ class StudentRepository(
         courseDao.insertCourse(course)
     }
 
+    suspend fun insertCourses(courses: List<Course>) = withContext(Dispatchers.IO) {
+        courseDao.insertCourses(courses)
+    }
+
     suspend fun updateCourse(course: Course) = withContext(Dispatchers.IO) {
         courseDao.updateCourse(course)
     }

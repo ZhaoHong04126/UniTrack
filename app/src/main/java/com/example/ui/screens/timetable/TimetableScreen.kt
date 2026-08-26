@@ -104,11 +104,6 @@ fun TimetableScreen(
         else courses.filter { isCourseInWeek(it, currentWeek) }
     }
 
-    val maxPeriod = remember(courses) {
-        val courseMax = courses.maxOfOrNull { it.endPeriod } ?: 8
-        maxOf(8, courseMax)
-    }
-
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -309,7 +304,6 @@ fun TimetableScreen(
                 daysCount = daysCount,
                 dayNames = dayNames,
                 dates = null,
-                maxPeriod = maxPeriod,
                 selectedWeek = 0,
                 onModeToggle = { isWeeklyMode = true },
                 onCourseClick = { selectedCourseDetail = it },
@@ -338,7 +332,6 @@ fun TimetableScreen(
                     daysCount = daysCount,
                     dayNames = dayNames,
                     dates = pageDates,
-                    maxPeriod = maxPeriod,
                     selectedWeek = weekNum,
                     onModeToggle = { isWeeklyMode = false },
                     onCourseClick = { selectedCourseDetail = it },
@@ -366,10 +359,10 @@ fun TimetableScreen(
             },
             onSaveMultiple = { coursesToSave ->
                 if (editingCourse == null) {
-                    coursesToSave.forEach { viewModel.addCourse(it) }
+                    viewModel.addCourses(coursesToSave)
                 } else {
                     coursesToSave.firstOrNull()?.let { viewModel.updateCourse(it) }
-                    coursesToSave.drop(1).forEach { viewModel.addCourse(it) }
+                    coursesToSave.drop(1).forEach { viewModel.addCourse(it, sendNotify = false) }
                 }
                 showAddDialog = false
             }
@@ -660,7 +653,6 @@ private fun WeeklyTimetableGrid(
     courses: List<Course>,
     daysCount: Int,
     dayNames: List<String>,
-    maxPeriod: Int,
     selectedWeek: Int,
     onModeToggle: () -> Unit,
     onCourseClick: (Course) -> Unit,

@@ -874,7 +874,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         _userMessage.value = msg
     }
 
-    fun addCourse(course: Course) = viewModelScope.launch {
+    fun addCourse(course: Course, sendNotify: Boolean = true) = viewModelScope.launch {
         repository.insertCourse(course)
         val user = currentUser.value
         if (user != null) {
@@ -882,6 +882,47 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         }
         WidgetUpdateHelper.updateAllWidgets(getApplication())
         _userMessage.value = "已成功新增課程：${course.name}"
+
+        if (sendNotify) {
+            val dayName = listOf("星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日")
+                .getOrElse(course.dayOfWeek - 1) { "星期一" }
+            val timeInfo = if (course.startTime.isNotBlank()) "$dayName ${course.startTime}" else dayName
+            val locationInfo = if (course.location.isNotBlank()) "，教室：${course.location}" else ""
+            sendNotification(
+                title = "📚 新增課程成功：${course.name}",
+                message = "已將「${course.name}」(${course.credits.toInt()} 學分) 加入課表，上課時間：$timeInfo$locationInfo。",
+                type = NotificationType.COURSE,
+                actionRoute = "timetable",
+                sendSystemPush = true
+            )
+        }
+    }
+
+    fun addCourses(courses: List<Course>) = viewModelScope.launch {
+        if (courses.isEmpty()) return@launch
+        repository.insertCourses(courses)
+        val user = currentUser.value
+        if (user != null) {
+            firestoreSyncRepository.uploadAllToCloud(user.uid)
+        }
+        WidgetUpdateHelper.updateAllWidgets(getApplication())
+        val firstCourse = courses.first()
+        _userMessage.value = "已成功新增課程：${firstCourse.name}"
+
+        val dayNames = courses.map { c ->
+            val dayName = listOf("星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日")
+                .getOrElse(c.dayOfWeek - 1) { "星期一" }
+            if (c.startTime.isNotBlank()) "$dayName ${c.startTime}" else dayName
+        }.distinct().joinToString("、")
+
+        val locationInfo = if (firstCourse.location.isNotBlank()) "，教室：${firstCourse.location}" else ""
+        sendNotification(
+            title = "📚 新增課程成功：${firstCourse.name}",
+            message = "已將「${firstCourse.name}」(${firstCourse.credits.toInt()} 學分) 加入課表，上課時間：$dayNames$locationInfo。",
+            type = NotificationType.COURSE,
+            actionRoute = "timetable",
+            sendSystemPush = true
+        )
     }
 
     fun updateCourse(course: Course) = viewModelScope.launch {
