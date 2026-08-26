@@ -907,7 +907,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         val json = prefs.getString("pref_custom_accounts", null)
         val defaultList = listOf(
             PaymentAccount(id = "default_cash", name = "現金", method = PaymentMethod.CASH),
-            PaymentAccount(id = "default_mobile", name = "行動支付 (LinePay/街口)", method = PaymentMethod.MOBILE_PAY),
+            PaymentAccount(id = "default_mobile", name = "行動支付", method = PaymentMethod.MOBILE_PAY),
             PaymentAccount(id = "default_ic", name = "悠遊卡 / 一卡通", method = PaymentMethod.IC_CARD),
             PaymentAccount(id = "default_card", name = "信用卡 / 簽帳卡", method = PaymentMethod.CARD),
             PaymentAccount(id = "default_transfer", name = "銀行轉帳", method = PaymentMethod.TRANSFER)
@@ -954,6 +954,12 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             array.put(obj)
         }
         prefs.edit { putString("pref_custom_accounts", array.toString()) }
+        val user = currentUser.value
+        if (user != null) {
+            viewModelScope.launch {
+                firestoreSyncRepository.uploadAllToCloud(user.uid)
+            }
+        }
     }
 
     // Expense Monthly Summary
@@ -1273,6 +1279,13 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         current.add(account)
         saveAccounts(current)
         _userMessage.value = "已成功新增帳戶：${account.name}"
+        sendNotification(
+            title = "新增支付帳戶",
+            message = "已成功新增「${account.name}」，起始餘額為 $${account.initialBalance.toInt()}。",
+            type = NotificationType.EXPENSE,
+            actionRoute = "expense",
+            sendSystemPush = true
+        )
     }
 
     fun updateAccount(account: PaymentAccount) {
@@ -1281,6 +1294,17 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         }
         saveAccounts(list)
         _userMessage.value = "已更新帳戶資訊"
+        sendNotification(
+            title = "帳戶餘額設定成功",
+            message = "已將「${account.name}」的起始餘額設定為 $${account.initialBalance.toInt()}。",
+            type = NotificationType.EXPENSE,
+            actionRoute = "expense",
+            sendSystemPush = true
+        )
+    }
+
+    fun onAccountMoved() {
+        _userMessage.value = "移動完成"
     }
 
     fun moveAccount(fromIndex: Int, toIndex: Int) {

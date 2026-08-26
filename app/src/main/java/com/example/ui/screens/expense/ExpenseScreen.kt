@@ -3,6 +3,7 @@ package com.example.ui.screens.expense
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -541,6 +542,9 @@ fun ExpenseScreen(
                                             }
                                         },
                                         onDragEnd = {
+                                            if (draggingAccountIndex != null) {
+                                                viewModel.onAccountMoved()
+                                            }
                                             draggingAccountIndex = null
                                             dragOffsetY = 0f
                                         },
@@ -1142,111 +1146,147 @@ private fun PaymentAccountCard(
     isDragging: Boolean = false,
     translationY: Float = 0f
 ) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .graphicsLayer {
-                this.translationY = translationY
-                this.scaleX = if (isDragging) 1.03f else 1f
-                this.scaleY = if (isDragging) 1.03f else 1f
-            }
-            .clickable { onClick() },
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isDragging) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface
-        ),
-        border = if (isDragging) BorderStroke(1.5.dp, SapphirePrimary) else null,
-        elevation = CardDefaults.cardElevation(defaultElevation = if (isDragging) 8.dp else 1.5.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
+    Box(modifier = modifier.fillMaxWidth()) {
+        // 拖曳中顯示的落點影子 / 槽位預覽 (Drop Target Placeholder Shadow Slot)
+        if (isDragging) {
             Box(
                 modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(SapphirePrimary.copy(alpha = 0.12f)),
+                    .matchParentSize()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(SapphirePrimary.copy(alpha = 0.08f))
+                    .border(
+                        BorderStroke(1.5.dp, SapphirePrimary.copy(alpha = 0.5f)),
+                        shape = RoundedCornerShape(14.dp)
+                    ),
                 contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = getPaymentMethodIcon(account.method),
-                    contentDescription = null,
-                    tint = SapphirePrimary,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Text(
-                        text = account.name,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
+                    Icon(
+                        imageVector = Icons.Default.SwapVert,
+                        contentDescription = null,
+                        tint = SapphirePrimary.copy(alpha = 0.75f),
+                        modifier = Modifier.size(18.dp)
                     )
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                    Text(
+                        text = "放開後移至此位置",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = SapphirePrimary.copy(alpha = 0.85f)
+                    )
+                }
+            }
+        }
+
+        // 浮動跟隨手指的帳戶卡片 (Floating Draggable Card)
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .graphicsLayer {
+                    this.translationY = translationY
+                    this.scaleX = if (isDragging) 1.03f else 1f
+                    this.scaleY = if (isDragging) 1.03f else 1f
+                }
+                .clickable { onClick() },
+            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = if (isDragging) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface
+            ),
+            border = if (isDragging) BorderStroke(1.5.dp, SapphirePrimary) else null,
+            elevation = CardDefaults.cardElevation(defaultElevation = if (isDragging) 10.dp else 1.5.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(SapphirePrimary.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = getPaymentMethodIcon(account.method),
+                        contentDescription = null,
+                        tint = SapphirePrimary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = "$recordCount 筆",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            text = account.name,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                        ) {
+                            Text(
+                                text = "$recordCount 筆",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text = "支出: -$${expenseAmount.toInt()}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (expenseAmount > 0) RoseAccent else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "收入: +$${incomeAmount.toInt()}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (incomeAmount > 0) EmeraldAccent else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Text(
-                        text = "支出: -$${expenseAmount.toInt()}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (expenseAmount > 0) RoseAccent else MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "當前餘額",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    val currentBalance = account.initialBalance + netAmount
                     Text(
-                        text = "收入: +$${incomeAmount.toInt()}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (incomeAmount > 0) EmeraldAccent else MaterialTheme.colorScheme.onSurfaceVariant
+                        text = if (currentBalance >= 0) "$${currentBalance.toInt()}" else "-$${kotlin.math.abs(currentBalance).toInt()}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (currentBalance >= 0) EmeraldAccent else RoseAccent
                     )
                 }
-            }
 
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                Text(
-                    text = "當前餘額",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                val currentBalance = account.initialBalance + netAmount
-                Text(
-                    text = if (currentBalance >= 0) "$${currentBalance.toInt()}" else "-$${kotlin.math.abs(currentBalance).toInt()}",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = if (currentBalance >= 0) EmeraldAccent else RoseAccent
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                    contentDescription = "查看明細",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.size(14.dp)
                 )
             }
-
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                contentDescription = "查看明細",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                modifier = Modifier.size(14.dp)
-            )
         }
     }
 }
@@ -1578,18 +1618,11 @@ private fun AddEditAccountBottomSheet(
                 listOf(
                     "現金" to PaymentMethod.CASH,
                     "LINE Pay" to PaymentMethod.MOBILE_PAY,
-                    "街口支付" to PaymentMethod.MOBILE_PAY,
-                    "全支付" to PaymentMethod.MOBILE_PAY,
                     "悠遊卡" to PaymentMethod.IC_CARD,
                     "一卡通" to PaymentMethod.IC_CARD,
                     "信用卡" to PaymentMethod.CARD,
                     "簽帳金融卡" to PaymentMethod.CARD,
                     "銀行轉帳" to PaymentMethod.TRANSFER,
-                    "郵局活存" to PaymentMethod.TRANSFER,
-                    "Richart" to PaymentMethod.TRANSFER,
-                    "國泰世華" to PaymentMethod.TRANSFER,
-                    "中國信託" to PaymentMethod.TRANSFER,
-                    "玉山銀行" to PaymentMethod.TRANSFER
                 )
             }
 
@@ -1632,43 +1665,6 @@ private fun AddEditAccountBottomSheet(
                                 labelColor = if (name == presetName) SapphirePrimary else MaterialTheme.colorScheme.onSurface
                             ),
                             border = if (name == presetName) BorderStroke(1.dp, SapphirePrimary) else null
-                        )
-                    }
-                }
-            }
-
-            // Payment Method Selector
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    text = "帳戶類型",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    PaymentMethod.entries.forEach { method ->
-                        val isSelected = selectedMethod == method
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = { selectedMethod = method },
-                            label = { Text(method.label) },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = getPaymentMethodIcon(method),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            },
-                            shape = RoundedCornerShape(10.dp),
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = SapphirePrimary.copy(alpha = 0.12f),
-                                selectedLabelColor = SapphirePrimary,
-                                selectedLeadingIconColor = SapphirePrimary
-                            )
                         )
                     }
                 }
@@ -1722,9 +1718,16 @@ private fun AddEditAccountBottomSheet(
                     onClick = {
                         if (name.isNotBlank()) {
                             val initBal = initialBalanceText.toDoubleOrNull() ?: 0.0
+                            val inferredMethod = when {
+                                name.contains("卡") || name.contains("Card", ignoreCase = true) || name.contains("簽帳") -> PaymentMethod.CARD
+                                name.contains("悠遊") || name.contains("一卡通") -> PaymentMethod.IC_CARD
+                                name.contains("Pay", ignoreCase = true) || name.contains("街口") || name.contains("行動") || name.contains("支付") -> PaymentMethod.MOBILE_PAY
+                                name.contains("銀行") || name.contains("轉帳") || name.contains("郵局") || name.contains("帳戶") || name.contains("活存") -> PaymentMethod.TRANSFER
+                                else -> selectedMethod
+                            }
                             val account = PaymentAccount(
                                 name = name.trim(),
-                                method = selectedMethod,
+                                method = inferredMethod,
                                 initialBalance = initBal,
                                 note = note.trim()
                             )

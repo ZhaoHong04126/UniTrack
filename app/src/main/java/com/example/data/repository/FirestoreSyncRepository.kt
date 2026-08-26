@@ -2,6 +2,7 @@ package com.example.data.repository
 
 import android.content.Context
 import android.util.Log
+import androidx.core.content.edit
 import com.example.data.local.CourseDao
 import com.example.data.local.DefaultData
 import com.example.data.local.ExpenseDao
@@ -21,6 +22,11 @@ class FirestoreSyncRepository(
     private val expenseDao: ExpenseDao
 ) {
     private val tag = "FirestoreSync"
+
+    @Suppress("SpellCheckingInspection")
+    private val prefs by lazy {
+        context.getSharedPreferences("unitrack_prefs", Context.MODE_PRIVATE)
+    }
 
     private val firestore: FirebaseFirestore? by lazy {
         try {
@@ -173,6 +179,13 @@ class FirestoreSyncRepository(
                     "budgetAmount" to b.budgetAmount
                 )
                 budgetsCol.document(b.yearMonth).set(bMap, SetOptions.merge()).await()
+            }
+
+            // 6. 上傳 Custom Accounts (包含排序與初始餘額)
+            val accountsJson = prefs.getString("pref_custom_accounts", null)
+            if (!accountsJson.isNullOrBlank()) {
+                userDocRef.collection("profile").document("custom_accounts")
+                    .set(hashMapOf("accountsJson" to accountsJson, "lastUpdated" to System.currentTimeMillis()), SetOptions.merge()).await()
             }
 
             Log.i(tag, "Upload all data to Firestore completed successfully for user: $userId")
@@ -395,6 +408,15 @@ class FirestoreSyncRepository(
                     val ym = doc.getString("yearMonth") ?: doc.id
                     val amount = doc.getDouble("budgetAmount") ?: 12000.0
                     expenseDao.setBudget(MonthlyBudget(yearMonth = ym, budgetAmount = amount))
+                }
+            }
+
+            // 6. 下載 Custom Accounts (包含排序與初始餘額)
+            val accountsSnapshot = userDocRef.collection("profile").document("custom_accounts").get().await()
+            if (accountsSnapshot.exists()) {
+                val remoteAccountsJson = accountsSnapshot.getString("accountsJson")
+                if (!remoteAccountsJson.isNullOrBlank()) {
+                    prefs.edit { putString("pref_custom_accounts", remoteAccountsJson) }
                 }
             }
 
