@@ -372,8 +372,18 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     val notificationPreferences: StateFlow<NotificationPreferences> = _notificationPreferences.asStateFlow()
 
     fun updateNotificationPreferences(preferences: NotificationPreferences) {
+        val oldPrefs = _notificationPreferences.value
         _notificationPreferences.value = preferences
         repository.saveNotificationPreferences(preferences)
+
+        // 當使用者開啟預算警示或更改門檻時，若當月支出已超過或等於新門檻，立即發送推播提醒！
+        if (preferences.masterEnabled && preferences.expenseAlertEnabled) {
+            val thresholdChanged = oldPrefs.expenseAlertThresholdPercent != preferences.expenseAlertThresholdPercent
+            val justEnabled = !oldPrefs.expenseAlertEnabled || !oldPrefs.masterEnabled
+            if (thresholdChanged || justEnabled) {
+                checkExpenseBudgetAlert(_selectedExpenseMonth.value)
+            }
+        }
     }
 
     fun sendNotification(
@@ -942,11 +952,38 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     fun addExpense(expense: ExpenseRecord) = viewModelScope.launch {
         repository.insertExpense(expense)
         _userMessage.value = "已記錄${expense.type.label}：$${expense.amount.toInt()}"
+        if (expense.type == ExpenseType.EXPENSE) {
+            checkExpenseBudgetAlert(expense.dateString)
+        }
     }
 
     fun updateExpense(expense: ExpenseRecord) = viewModelScope.launch {
         repository.updateExpense(expense)
         _userMessage.value = "已更新記錄"
+        if (expense.type == ExpenseType.EXPENSE) {
+            checkExpenseBudgetAlert(expense.dateString)
+        }
+    }
+
+    private fun checkExpenseBudgetAlert(dateString: String) = viewModelScope.launch {
+        val month = if (dateString.length >= 7) dateString.substring(0, 7) else _selectedExpenseMonth.value
+        val expenses = repository.getAllExpensesOnce()
+        val monthExpenses = expenses.filter { it.dateString.startsWith(month) }
+        val totalExp = monthExpenses.filter { it.type == ExpenseType.EXPENSE }.sumOf { it.amount }
+        val budgets = repository.getAllBudgetsOnce()
+        val budget = budgets.firstOrNull { it.yearMonth == month }?.budgetAmount ?: 10000.0
+        val prefs = _notificationPreferences.value
+        if (budget > 0 && prefs.masterEnabled && prefs.expenseAlertEnabled) {
+            val usagePct = ((totalExp / budget) * 100).toInt()
+            if (usagePct >= prefs.expenseAlertThresholdPercent) {
+                sendNotification(
+                    title = "⚠️ 記帳預算警示 ($month)",
+                    message = "本月累積支出 $${totalExp.toInt()}，已達設定預算 $${budget.toInt()} 的 ${usagePct}%！",
+                    type = NotificationType.EXPENSE,
+                    actionRoute = "expense"
+                )
+            }
+        }
     }
 
     fun deleteExpense(expense: ExpenseRecord) = viewModelScope.launch {
@@ -986,6 +1023,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         mockData.forEach { record ->
             repository.insertExpense(record)
         }
+        checkExpenseBudgetAlert(month)
         _userMessage.value = "已成功為 $month 月匯入 20 筆測試資料！"
     }
 
@@ -993,6 +1031,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         val month = _selectedExpenseMonth.value
         repository.setBudget(MonthlyBudget(yearMonth = month, budgetAmount = amount))
         _userMessage.value = "已更新 $month 月預算為 $${amount.toInt()}"
+        checkExpenseBudgetAlert(month)
     }
 
     private val _customAccounts = MutableStateFlow(loadAccounts())

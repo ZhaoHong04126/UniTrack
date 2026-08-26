@@ -100,7 +100,29 @@ fun NotificationSettingsScreen(
                 windowInsets = WindowInsets(0.dp),
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
-                )
+                ),
+                actions = {
+                    IconButton(
+                        onClick = {
+                            if (!isSystemPermissionGranted) {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                } else {
+                                    NotificationHelper.openNotificationSettings(context)
+                                }
+                            } else {
+                                viewModel.sendTestSystemNotification()
+                                Toast.makeText(context, "已發送測試推播通知！請查看上方通知列", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AddAlert,
+                            contentDescription = "發送測試推播",
+                            tint = SapphirePrimary
+                        )
+                    }
+                }
             )
         }
     ) { innerPadding ->
@@ -192,7 +214,7 @@ fun NotificationSettingsScreen(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "通知無法在狀態列即時顯示，請開啟系統權限",
+                                text = "通知無法在狀態列即時顯示，請點擊允許通知",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -215,6 +237,147 @@ fun NotificationSettingsScreen(
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
                             )
+                        }
+                    }
+                }
+            }
+
+            // Quick Test Notification Trigger Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.NotificationsActive,
+                                contentDescription = null,
+                                tint = SapphirePrimary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = "即時測試推播通知",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    Text(
+                        text = "點擊下方按鈕測試不同情境的系統推播，確認手機狀態列是否能即時彈出橫幅：",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FilledTonalButton(
+                            onClick = {
+                                if (!isSystemPermissionGranted) {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    } else {
+                                        NotificationHelper.openNotificationSettings(context)
+                                    }
+                                } else {
+                                    viewModel.sendNotification(
+                                        title = "今日上課提醒",
+                                        message = "下午 14:00 有「線性代數」課程，教室：理學院 302。",
+                                        type = com.example.data.model.NotificationType.COURSE,
+                                        actionRoute = "timetable"
+                                    )
+                                    Toast.makeText(context, "已發送「課表提醒」測試通知", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("📅 課表提醒", style = MaterialTheme.typography.labelMedium)
+                        }
+
+                        FilledTonalButton(
+                            onClick = {
+                                if (!isSystemPermissionGranted) {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    } else {
+                                        NotificationHelper.openNotificationSettings(context)
+                                    }
+                                } else {
+                                    viewModel.sendNotification(
+                                        title = "⚠️ 記帳預算警示",
+                                        message = "本月份生活預算已使用達 ${preferences.expenseAlertThresholdPercent}%，請留意近期支出。",
+                                        type = com.example.data.model.NotificationType.EXPENSE,
+                                        actionRoute = "expense"
+                                    )
+                                    Toast.makeText(context, "已發送「記帳預算」測試通知", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("💰 預算警示", style = MaterialTheme.typography.labelMedium)
+                        }
+
+                        FilledTonalButton(
+                            onClick = {
+                                if (!isSystemPermissionGranted) {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    } else {
+                                        NotificationHelper.openNotificationSettings(context)
+                                    }
+                                } else {
+                                    viewModel.sendNotification(
+                                        title = "學業審查進度更新",
+                                        message = "恭喜！您已滿足本系基礎模組必修 24 學分門檻。",
+                                        type = com.example.data.model.NotificationType.GRADUATION,
+                                        actionRoute = "graduation"
+                                    )
+                                    Toast.makeText(context, "已發送「學業審查」測試通知", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("🎓 畢業審查", style = MaterialTheme.typography.labelMedium)
+                        }
+
+                        FilledTonalButton(
+                            onClick = {
+                                if (!isSystemPermissionGranted) {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    } else {
+                                        NotificationHelper.openNotificationSettings(context)
+                                    }
+                                } else {
+                                    viewModel.sendNotification(
+                                        title = "UniTrack+ 系統推播測試",
+                                        message = "這是一則測試通知，代表手機系統推播功能運作正常！",
+                                        type = com.example.data.model.NotificationType.SYSTEM,
+                                        actionRoute = "notifications"
+                                    )
+                                    Toast.makeText(context, "已發送「系統推播」測試通知", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("📢 系統推播", style = MaterialTheme.typography.labelMedium)
                         }
                     }
                 }

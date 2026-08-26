@@ -37,33 +37,37 @@ object NotificationHelper {
         ).apply {
             description = "提供每日課表、上課前提醒與課程異動通知"
             enableVibration(true)
+            setShowBadge(true)
         }
 
         val expenseChannel = NotificationChannel(
             CHANNEL_ID_EXPENSES,
             "記帳與預算警示",
-            NotificationManager.IMPORTANCE_DEFAULT
+            NotificationManager.IMPORTANCE_HIGH
         ).apply {
             description = "提供每月預算使用超標警示與記帳提醒"
             enableVibration(true)
+            setShowBadge(true)
         }
 
         val graduationChannel = NotificationChannel(
             CHANNEL_ID_GRADUATION,
             "學業與畢業審查",
-            NotificationManager.IMPORTANCE_DEFAULT
+            NotificationManager.IMPORTANCE_HIGH
         ).apply {
             description = "提供學分門檻達成、GPA 成績結算與學業提醒"
             enableVibration(true)
+            setShowBadge(true)
         }
 
         val systemChannel = NotificationChannel(
             CHANNEL_ID_SYSTEM,
             "系統與公告通知",
-            NotificationManager.IMPORTANCE_DEFAULT
+            NotificationManager.IMPORTANCE_HIGH
         ).apply {
             description = "UniTrack+ 系統公告、歡迎與備份提醒"
             enableVibration(true)
+            setShowBadge(true)
         }
 
         notificationManager.createNotificationChannels(
@@ -142,10 +146,8 @@ object NotificationHelper {
             .setContentTitle(title)
             .setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
-            .setPriority(
-                if (type == NotificationType.COURSE) NotificationCompat.PRIORITY_HIGH
-                else NotificationCompat.PRIORITY_DEFAULT
-            )
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
 

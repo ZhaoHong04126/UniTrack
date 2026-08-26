@@ -115,6 +115,14 @@ class StudentRepository(
     val allExpenses: Flow<List<ExpenseRecord>> = expenseDao.getAllExpenses()
     val allBudgets: Flow<List<MonthlyBudget>> = expenseDao.getAllBudgets()
 
+    suspend fun getAllExpensesOnce(): List<ExpenseRecord> = withContext(Dispatchers.IO) {
+        expenseDao.getAllExpensesOnce()
+    }
+
+    suspend fun getAllBudgetsOnce(): List<MonthlyBudget> = withContext(Dispatchers.IO) {
+        expenseDao.getAllBudgetsOnce()
+    }
+
     suspend fun insertExpense(expense: ExpenseRecord): Long = withContext(Dispatchers.IO) {
         expenseDao.insertExpense(expense)
     }
