@@ -1206,7 +1206,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             message = "${expense.category.label} ${if (isExpense) "-$" else "+$"}${expense.amount.toInt()} (${expense.paymentMethod.label}) ｜ 日期：${expense.dateString}$noteInfo",
             type = NotificationType.EXPENSE,
             actionRoute = "expense",
-            sendSystemPush = true
+            sendSystemPush = _notificationPreferences.value.expenseTransactionNoticeEnabled
         )
 
         if (expense.type == ExpenseType.EXPENSE) {
@@ -1227,7 +1227,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             message = "${expense.category.label} ${if (isExpense) "-$" else "+$"}${expense.amount.toInt()} (${expense.paymentMethod.label}) ｜ 日期：${expense.dateString}$noteInfo",
             type = NotificationType.EXPENSE,
             actionRoute = "expense",
-            sendSystemPush = true
+            sendSystemPush = _notificationPreferences.value.expenseTransactionNoticeEnabled
         )
 
         if (expense.type == ExpenseType.EXPENSE) {
@@ -1260,12 +1260,30 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         repository.deleteExpense(expense)
         currentUser.value?.let { firestoreSyncRepository.uploadAllToCloud(it.uid) }
         _userMessage.value = "已刪除記錄"
+
+        val isExpense = expense.type == ExpenseType.EXPENSE
+        val itemTitle = expense.title.ifBlank { expense.category.label }
+        sendNotification(
+            title = "🗑️ 記帳記錄已刪除：$itemTitle",
+            message = "已刪除 ${expense.category.label} ${if (isExpense) "-$" else "+$"}${expense.amount.toInt()} (${expense.paymentMethod.label}) ｜ 日期：${expense.dateString}",
+            type = NotificationType.EXPENSE,
+            actionRoute = "expense",
+            sendSystemPush = _notificationPreferences.value.expenseTransactionNoticeEnabled
+        )
     }
 
     fun clearAllExpenses() = viewModelScope.launch {
         repository.deleteAllExpenses()
         currentUser.value?.let { firestoreSyncRepository.uploadAllToCloud(it.uid) }
         _userMessage.value = "已清空所有記帳記錄"
+
+        sendNotification(
+            title = "🗑️ 記帳本已清空",
+            message = "已清空本機與雲端所有的記帳收支明細記錄。",
+            type = NotificationType.EXPENSE,
+            actionRoute = "expense",
+            sendSystemPush = _notificationPreferences.value.expenseTransactionNoticeEnabled
+        )
     }
 
     fun seedMockExpenses() = viewModelScope.launch {
@@ -1371,9 +1389,20 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun deleteAccount(accountId: String) {
+        val deletedAccount = _customAccounts.value.firstOrNull { it.id == accountId }
         val current = _customAccounts.value.filterNot { it.id == accountId }
         saveAccounts(current)
         _userMessage.value = "已刪除自訂帳戶"
+
+        deletedAccount?.let { acc ->
+            sendNotification(
+                title = "🗑️ 已刪除支付帳戶",
+                message = "已成功刪除「${acc.name}」支付帳戶。",
+                type = NotificationType.EXPENSE,
+                actionRoute = "expense",
+                sendSystemPush = true
+            )
+        }
     }
 
     fun resetToSampleData() = viewModelScope.launch {

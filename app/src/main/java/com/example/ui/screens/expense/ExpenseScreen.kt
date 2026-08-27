@@ -79,7 +79,6 @@ fun ExpenseScreen(
     var showAddDialog by remember { mutableStateOf(false) }
     var editingExpense by remember { mutableStateOf<ExpenseRecord?>(null) }
     var showBudgetDialog by remember { mutableStateOf(false) }
-    var showClearConfirmDialog by remember { mutableStateOf(false) }
     var showFilterBottomSheet by remember { mutableStateOf(false) }
     var showAddAccountDialog by remember { mutableStateOf(false) }
     var showDeleteAccountsBottomSheet by remember { mutableStateOf(false) }
@@ -207,19 +206,6 @@ fun ExpenseScreen(
                                 contentDescription = if (isCalendarView) "切換至列表視圖" else "切換至月曆視圖",
                                 tint = SapphirePrimary
                             )
-                        }
-
-                        if (allExpenses.isNotEmpty()) {
-                            IconButton(
-                                onClick = { showClearConfirmDialog = true },
-                                modifier = Modifier.testTag("clear_expenses_button")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.DeleteOutline,
-                                    contentDescription = "清空所有記帳記錄",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
                         }
                     }
                 }
@@ -987,30 +973,6 @@ fun ExpenseScreen(
             },
             dismissButton = {
                 TextButton(onClick = { accountToDelete = null }) {
-                    Text("取消")
-                }
-            }
-        )
-    }
-
-    if (showClearConfirmDialog) {
-        AlertDialog(
-            onDismissRequest = { showClearConfirmDialog = false },
-            title = { Text("清空記帳明細", fontWeight = FontWeight.Bold) },
-            text = { Text("確定要清空所有的記帳與收支明細嗎？此動作無法復原。") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        viewModel.clearAllExpenses()
-                        showClearConfirmDialog = false
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Text("確定清空")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showClearConfirmDialog = false }) {
                     Text("取消")
                 }
             }

@@ -146,7 +146,9 @@ object NotificationHelper {
             .setContentTitle(title)
             .setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setCategory(NotificationCompat.CATEGORY_EVENT)
             .setDefaults(NotificationCompat.DEFAULT_ALL)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
@@ -158,6 +160,7 @@ object NotificationHelper {
         }
     }
 
+    @Suppress("unused")
     fun cancelNotification(context: Context, notificationId: Int) {
         try {
             NotificationManagerCompat.from(context).cancel(notificationId)

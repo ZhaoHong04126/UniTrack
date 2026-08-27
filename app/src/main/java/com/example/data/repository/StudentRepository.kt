@@ -422,6 +422,7 @@ class StudentRepository(
             expenseDailyReminderEnabled = prefs.getBoolean("notif_expense_daily_reminder", false),
             expenseDailyReminderTime = prefs.getString("notif_expense_daily_reminder_time", "21:30") ?: "21:30",
             expenseMonthlyReportEnabled = prefs.getBoolean("notif_expense_monthly_report", true),
+            expenseTransactionNoticeEnabled = prefs.getBoolean("notif_expense_transaction_notice", true),
             // 3. 學業與畢業審查
             graduationAlertEnabled = prefs.getBoolean("notif_graduation_enabled", true),
             graduationCreditThresholdNotice = prefs.getBoolean("notif_graduation_credit_threshold", true),
@@ -453,6 +454,7 @@ class StudentRepository(
             putBoolean("notif_expense_daily_reminder", preferences.expenseDailyReminderEnabled)
             putString("notif_expense_daily_reminder_time", preferences.expenseDailyReminderTime)
             putBoolean("notif_expense_monthly_report", preferences.expenseMonthlyReportEnabled)
+            putBoolean("notif_expense_transaction_notice", preferences.expenseTransactionNoticeEnabled)
             // 3. 學業與畢業審查
             putBoolean("notif_graduation_enabled", preferences.graduationAlertEnabled)
             putBoolean("notif_graduation_credit_threshold", preferences.graduationCreditThresholdNotice)

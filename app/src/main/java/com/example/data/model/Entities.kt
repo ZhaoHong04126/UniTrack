@@ -311,6 +311,7 @@ data class NotificationPreferences(
     val expenseDailyReminderEnabled: Boolean = false,
     val expenseDailyReminderTime: String = "21:30",
     val expenseMonthlyReportEnabled: Boolean = true,
+    val expenseTransactionNoticeEnabled: Boolean = true,
     // 3. 學業與畢業審查
     val graduationAlertEnabled: Boolean = true,
     val graduationCreditThresholdNotice: Boolean = true,

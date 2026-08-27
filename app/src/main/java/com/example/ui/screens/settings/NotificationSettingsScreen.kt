@@ -732,6 +732,15 @@ fun NotificationSettingsScreen(
                             viewModel.updateNotificationPreferences(preferences.copy(expenseMonthlyReportEnabled = it))
                         }
                     )
+
+                    SubOptionRow(
+                        title = "記帳收支異動即時通知",
+                        subtitle = "新增、編輯或刪除記帳明細時立即發送推播通知",
+                        checked = preferences.expenseTransactionNoticeEnabled,
+                        onCheckedChange = {
+                            viewModel.updateNotificationPreferences(preferences.copy(expenseTransactionNoticeEnabled = it))
+                        }
+                    )
                 }
             }
 
