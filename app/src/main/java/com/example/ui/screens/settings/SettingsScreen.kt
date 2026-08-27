@@ -35,13 +35,18 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.BuildConfig
 import com.example.data.model.AuthProvider
 import com.example.data.model.GraduationPlan
 import com.example.data.model.UserProfile
 import com.example.ui.components.SectionHeader
+import com.example.ui.components.UpdateDialog
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.StudentViewModel
 import com.example.util.NotificationHelper
+import com.example.util.UpdateChecker
+import com.example.util.UpdateInfo
+import kotlinx.coroutines.launch
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -84,6 +89,10 @@ fun SettingsScreen(
     var showSignOutConfirmDialog by remember { mutableStateOf(false) }
     var showDeleteAccountConfirmDialog by remember { mutableStateOf(false) }
     var showFinalExecutionDialog by remember { mutableStateOf(false) }
+
+    val coroutineScope = rememberCoroutineScope()
+    var isCheckingUpdate by remember { mutableStateOf(false) }
+    var updateInfoDialog by remember { mutableStateOf<UpdateInfo?>(null) }
 
     Column(
         modifier = modifier
@@ -176,6 +185,39 @@ fun SettingsScreen(
             )
         }
 
+        // Section: Version & Update (版本與更新)
+        SectionHeader(title = "版本與更新")
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        ) {
+            SettingTileRow(
+                icon = Icons.Default.SystemUpdate,
+                title = "檢查版本更新",
+                subtitle = if (isCheckingUpdate) "正在檢查 GitHub 最新釋出..." else "點擊檢查 GitHub Releases 最新版本",
+                iconTint = SapphirePrimary,
+                badgeText = "v${BuildConfig.VERSION_NAME}",
+                badgeContainerColor = SapphirePrimary.copy(alpha = 0.12f),
+                badgeContentColor = SapphirePrimary,
+                onClick = {
+                    if (!isCheckingUpdate) {
+                        isCheckingUpdate = true
+                        coroutineScope.launch {
+                            val update = UpdateChecker.checkForUpdate(BuildConfig.VERSION_NAME)
+                            isCheckingUpdate = false
+                            if (update != null) {
+                                updateInfoDialog = update
+                            } else {
+                                Toast.makeText(context, "目前已是最新版本 (v${BuildConfig.VERSION_NAME})", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                }
+            )
+        }
+
         // Footer: Sign Out / Delete Account & Copyright
         val user = currentUser
         if (user != null && !user.isAnonymous) {
@@ -241,6 +283,14 @@ fun SettingsScreen(
         }
 
         Spacer(modifier = Modifier.height(72.dp))
+    }
+
+    // Version Update Dialog
+    updateInfoDialog?.let { info ->
+        UpdateDialog(
+            updateInfo = info,
+            onDismiss = { updateInfoDialog = null }
+        )
     }
 
     // Edit Profile Dialog (帳號個人資料編輯頁面)
