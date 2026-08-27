@@ -110,8 +110,12 @@ object UpdateChecker {
         val remoteClean = remote.removePrefix("v").trim()
         val localClean = local.removePrefix("v").trim()
 
-        val remoteParts = remoteClean.split(".").mapNotNull { it.toIntOrNull() }
-        val localParts = localClean.split(".").mapNotNull { it.toIntOrNull() }
+        val remoteParts = remoteClean.split(".").mapNotNull { segment ->
+            segment.takeWhile { it.isDigit() }.toIntOrNull()
+        }
+        val localParts = localClean.split(".").mapNotNull { segment ->
+            segment.takeWhile { it.isDigit() }.toIntOrNull()
+        }
         if (remoteParts.isEmpty() || localParts.isEmpty()) return remoteClean > localClean
         val maxLen = maxOf(remoteParts.size, localParts.size)
         for (i in 0 until maxLen) {
