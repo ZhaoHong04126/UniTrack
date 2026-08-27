@@ -1399,7 +1399,7 @@ private fun AccountDetailBottomSheet(
     val cumInc = cumulativeExpenses.filter { it.type == ExpenseType.INCOME }.sumOf { it.amount }
     val currentBalance = if (isBeforeStart) 0.0 else account.initialBalance + (cumInc - cumExp)
 
-    var showEditInitialBalanceDialog by remember { mutableStateOf(false) }
+    var showEditAccountBottomSheet by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -1441,11 +1441,27 @@ private fun AccountDetailBottomSheet(
                         )
                     }
                     Column {
-                        Text(
-                            text = account.name,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = account.name,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            IconButton(
+                                onClick = { showEditAccountBottomSheet = true },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "修改帳戶",
+                                    tint = SapphirePrimary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
                         Text(
                             text = "類型: ${account.method.label} · 本月 ${methodExpenses.size} 筆記錄",
                             style = MaterialTheme.typography.bodySmall,
@@ -1468,7 +1484,7 @@ private fun AccountDetailBottomSheet(
                 }
             }
 
-            // Summary Card (Initial Balance with Edit, Net Income/Expense, Current Balance)
+            // Summary Card (Initial Balance, Net Income/Expense, Current Balance)
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp),
@@ -1481,30 +1497,15 @@ private fun AccountDetailBottomSheet(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Initial Balance with Edit Button
+                    // Initial Balance
                     Column(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable { showEditInitialBalanceDialog = true }
-                            .padding(vertical = 2.dp, horizontal = 4.dp),
                         verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(
-                                text = "起始餘額",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = "設定初始餘額",
-                                tint = if (isBeforeStart) MaterialTheme.colorScheme.onSurfaceVariant else SapphirePrimary,
-                                modifier = Modifier.size(13.dp)
-                            )
-                        }
+                        Text(
+                            text = "起始餘額",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                         Text(
                             text = if (isBeforeStart) "$0" else "$${account.initialBalance.toInt()}",
                             style = MaterialTheme.typography.titleSmall,
@@ -1606,63 +1607,13 @@ private fun AccountDetailBottomSheet(
         }
     }
 
-    if (showEditInitialBalanceDialog) {
-        var newBalanceText by remember {
-            mutableStateOf(
-                if (isBeforeStart) "0"
-                else if (account.initialBalance > 0) account.initialBalance.toInt().toString()
-                else ""
-            )
-        }
-        AlertDialog(
-            onDismissRequest = { showEditInitialBalanceDialog = false },
-            title = { Text("設定「${account.name}」起始餘額", fontWeight = FontWeight.Bold) },
-            text = {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "設定此帳戶的起始基礎餘額，APP 將自動結合收支計算出即時當前餘額：",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    OutlinedTextField(
-                        value = newBalanceText,
-                        onValueChange = { input ->
-                            if (input.isEmpty() || input.all { it.isDigit() }) {
-                                newBalanceText = input
-                            }
-                        },
-                        label = { Text("起始餘額 ($)") },
-                        placeholder = { Text("0") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val amount = newBalanceText.toDoubleOrNull() ?: 0.0
-                        onUpdateAccount(
-                            account.copy(
-                                initialBalance = amount,
-                                startYearMonth = if (isBeforeStart && amount > 0) selectedMonth else account.startYearMonth
-                            )
-                        )
-                        showEditInitialBalanceDialog = false
-                    }
-                ) {
-                    Text("儲存")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showEditInitialBalanceDialog = false }) {
-                    Text("取消")
-                }
+    if (showEditAccountBottomSheet) {
+        AddEditAccountBottomSheet(
+            initialAccount = account,
+            onDismiss = { showEditAccountBottomSheet = false },
+            onSave = { updated ->
+                onUpdateAccount(updated)
+                showEditAccountBottomSheet = false
             }
         )
     }
@@ -1671,13 +1622,18 @@ private fun AccountDetailBottomSheet(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddEditAccountBottomSheet(
+    initialAccount: PaymentAccount? = null,
     onDismiss: () -> Unit,
     onSave: (PaymentAccount) -> Unit
 ) {
-    var name by remember { mutableStateOf("") }
-    var selectedMethod by remember { mutableStateOf(PaymentMethod.CASH) }
-    var initialBalanceText by remember { mutableStateOf("") }
-    var note by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf(initialAccount?.name ?: "") }
+    var selectedMethod by remember { mutableStateOf(initialAccount?.method ?: PaymentMethod.CASH) }
+    var initialBalanceText by remember {
+        mutableStateOf(
+            if (initialAccount != null && initialAccount.initialBalance > 0) initialAccount.initialBalance.toInt().toString() else ""
+        )
+    }
+    var note by remember { mutableStateOf(initialAccount?.note ?: "") }
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -1696,7 +1652,7 @@ private fun AddEditAccountBottomSheet(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = "新增支付帳戶",
+                text = if (initialAccount == null) "新增支付帳戶" else "編輯支付帳戶",
                 style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.fillMaxWidth(),
@@ -1725,7 +1681,6 @@ private fun AddEditAccountBottomSheet(
                     "全支付" to PaymentMethod.MOBILE_PAY,
                     "LINE Pay" to PaymentMethod.MOBILE_PAY,
                     "Google Pay" to PaymentMethod.MOBILE_PAY,
-
                 )
             }
 
@@ -1828,7 +1783,13 @@ private fun AddEditAccountBottomSheet(
                                 name.contains("銀行") || name.contains("轉帳") || name.contains("郵局") || name.contains("帳戶") || name.contains("活存") -> PaymentMethod.TRANSFER
                                 else -> selectedMethod
                             }
-                            val account = PaymentAccount(
+                            val base = initialAccount ?: PaymentAccount(
+                                name = name.trim(),
+                                method = inferredMethod,
+                                initialBalance = initBal,
+                                note = note.trim()
+                            )
+                            val account = base.copy(
                                 name = name.trim(),
                                 method = inferredMethod,
                                 initialBalance = initBal,
@@ -1843,7 +1804,7 @@ private fun AddEditAccountBottomSheet(
                         .weight(1.5f)
                         .height(48.dp)
                 ) {
-                    Text("建立帳戶", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                    Text(if (initialAccount == null) "建立帳戶" else "儲存修改", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
                 }
             }
         }

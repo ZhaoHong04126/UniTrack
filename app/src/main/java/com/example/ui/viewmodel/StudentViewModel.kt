@@ -1352,17 +1352,29 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun updateAccount(account: PaymentAccount) {
+        val oldAccount = _customAccounts.value.find { it.id == account.id }
         val list = _customAccounts.value.map {
             if (it.id == account.id) account else it
         }
         saveAccounts(list)
         _userMessage.value = "已更新帳戶資訊"
+
+        val isNameChanged = oldAccount != null && oldAccount.name != account.name
+        val title = if (isNameChanged) "帳戶名稱異動" else "帳戶資訊更新"
+        val message = if (isNameChanged) {
+            "「${oldAccount.name}」改成「${account.name}」"
+        } else if (oldAccount != null && oldAccount.initialBalance != account.initialBalance) {
+            "已將「${account.name}」的起始餘額設定為 $${account.initialBalance.toInt()}。"
+        } else {
+            "已成功更新「${account.name}」的帳戶資訊。"
+        }
+
         sendNotification(
-            title = "帳戶餘額設定成功",
-            message = "已將「${account.name}」的起始餘額設定為 $${account.initialBalance.toInt()}。",
+            title = title,
+            message = message,
             type = NotificationType.EXPENSE,
             actionRoute = "expense",
-            sendSystemPush = true
+            sendSystemPush = _notificationPreferences.value.expenseTransactionNoticeEnabled
         )
     }
 
