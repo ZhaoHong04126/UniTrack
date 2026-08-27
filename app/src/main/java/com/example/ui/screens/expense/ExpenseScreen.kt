@@ -235,10 +235,10 @@ fun ExpenseScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
-                                    text = "$${summary.totalExpense.toInt()}",
+                                    text = "-$${summary.totalExpense.toInt()}",
                                     style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.ExtraBold,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    color = RoseAccent
                                 )
                             }
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -2243,7 +2243,7 @@ private fun ExpenseLineTrendChart(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "$${totalExp.toInt()}",
+                        text = "-$${totalExp.toInt()}",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = RoseAccent
