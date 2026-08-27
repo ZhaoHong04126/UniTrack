@@ -101,6 +101,24 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         prefs.edit { putBoolean("pref_show_weekend", show) }
     }
 
+    // Weekly Mode setting (true: 各週模式/左右滑動顯示日期, false: 整學期模式)
+    private val _isWeeklyMode = MutableStateFlow(prefs.getBoolean("pref_is_weekly_mode", true))
+    val isWeeklyMode: StateFlow<Boolean> = _isWeeklyMode.asStateFlow()
+
+    fun setIsWeeklyMode(isWeekly: Boolean) {
+        _isWeeklyMode.value = isWeekly
+        prefs.edit { putBoolean("pref_is_weekly_mode", isWeekly) }
+    }
+
+    // Timeline display setting (false: 節次 1,2,3... / true: 時間 08:10...)
+    private val _showTimeInsteadOfPeriod = MutableStateFlow(prefs.getBoolean("pref_show_timeline_as_time", false))
+    val showTimeInsteadOfPeriod: StateFlow<Boolean> = _showTimeInsteadOfPeriod.asStateFlow()
+
+    fun setShowTimeInsteadOfPeriod(showTime: Boolean) {
+        _showTimeInsteadOfPeriod.value = showTime
+        prefs.edit { putBoolean("pref_show_timeline_as_time", showTime) }
+    }
+
     // Semester Time Settings (開學日 & 總週數)
     private val _semesterTimeConfigVersion = MutableStateFlow(0)
     val semesterTimeConfigVersion: StateFlow<Int> = _semesterTimeConfigVersion.asStateFlow()

@@ -27,9 +27,10 @@ object TimetableImageGenerator {
         context: Context,
         semesterLabel: String,
         courses: List<Course>,
-        showWeekend: Boolean
+        showWeekend: Boolean,
+        showTimeInsteadOfPeriod: Boolean = false
     ) {
-        val bitmap = generateTimetableBitmap(semesterLabel, courses, showWeekend)
+        val bitmap = generateTimetableBitmap(semesterLabel, courses, showWeekend, showTimeInsteadOfPeriod)
         val imageUri = saveBitmapToCache(context, bitmap) ?: return
 
         val shareIntent = Intent(Intent.ACTION_SEND).apply {
@@ -50,7 +51,8 @@ object TimetableImageGenerator {
     private fun generateTimetableBitmap(
         semesterLabel: String,
         courses: List<Course>,
-        showWeekend: Boolean
+        showWeekend: Boolean,
+        showTimeInsteadOfPeriod: Boolean
     ): Bitmap {
         val width = 1200
         val height = 1800
@@ -84,6 +86,25 @@ object TimetableImageGenerator {
             else -> "$p"
         }
 
+        fun getPeriodTimeRange(period: Int): Pair<String, String> = when (period) {
+            0 -> "07:10" to "08:00"
+            1 -> "08:10" to "09:00"
+            2 -> "09:10" to "10:00"
+            3 -> "10:10" to "11:00"
+            4 -> "11:10" to "12:00"
+            5 -> "13:10" to "14:00"
+            6 -> "14:10" to "15:00"
+            7 -> "15:10" to "16:00"
+            8 -> "16:10" to "17:00"
+            9 -> "17:10" to "18:00"
+            10 -> "18:20" to "19:10"
+            11 -> "19:15" to "20:05"
+            12 -> "20:10" to "21:00"
+            13 -> "21:05" to "21:55"
+            14 -> "22:00" to "22:50"
+            else -> String.format(java.util.Locale.US, "%02d:00", (7 + period)) to String.format(java.util.Locale.US, "%02d:50", (7 + period))
+        }
+
         // Paints
         val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.rgb(30, 41, 59) // Slate 800
@@ -111,20 +132,38 @@ object TimetableImageGenerator {
         }
 
         val periodPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.rgb(100, 116, 139) // Slate 500
+            textSize = 30f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            textAlign = Paint.Align.CENTER
+        }
+
+        val timeStartPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.rgb(51, 65, 85) // Slate 700
+            textSize = 24f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            textAlign = Paint.Align.CENTER
+        }
+
+        val timeEndPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.rgb(148, 163, 184) // Slate 400
-            textSize = 28f
+            textSize = 20f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
             textAlign = Paint.Align.CENTER
         }
 
         val gridLinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(241, 245, 249) // Slate 100
+            color = Color.rgb(226, 232, 240) // Slate 200
             strokeWidth = 2f
         }
 
         val headerLinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(226, 232, 240) // Slate 200
+            color = Color.rgb(203, 213, 225) // Slate 300
             strokeWidth = 3f
+        }
+
+        val headerBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.rgb(241, 245, 249) // Slate 100
         }
 
         // Draw Header
@@ -139,7 +178,7 @@ object TimetableImageGenerator {
         // Grid Coordinates
         val gridTop = headerTop + 130f
         val gridBottom = height - 100f
-        val periodColWidth = 80f
+        val periodColWidth = if (showTimeInsteadOfPeriod) 110f else 76f
         val tableLeft = paddingLeft + periodColWidth
         val tableWidth = paddingRight - tableLeft
         val colWidth = tableWidth / daysCount
@@ -149,26 +188,43 @@ object TimetableImageGenerator {
         val contentHeight = gridBottom - contentTop
         val rowHeight = contentHeight / totalPeriods
 
+        // Draw Header Background (Weekday header + Top-left corner)
+        val headerRect = RectF(paddingLeft, gridTop, paddingRight, contentTop)
+        canvas.drawRoundRect(headerRect, 12f, 12f, headerBgPaint)
+
+        // Draw Timeline Left Column Background (Matches header background color)
+        val timelineRect = RectF(paddingLeft, contentTop, tableLeft, gridBottom)
+        canvas.drawRoundRect(timelineRect, 12f, 12f, headerBgPaint)
+
         // Draw Day Headers
         for (i in 0 until daysCount) {
             val centerX = tableLeft + i * colWidth + colWidth / 2
-            canvas.drawText(dayHeaders[i], centerX, gridTop + 40f, headerDayPaint)
+            canvas.drawText(dayHeaders[i], centerX, gridTop + 42f, headerDayPaint)
         }
 
         // Horizontal line under day headers
         canvas.drawLine(paddingLeft, contentTop, paddingRight, contentTop, headerLinePaint)
 
+        // Vertical line between timeline column and timetable grid
+        canvas.drawLine(tableLeft, gridTop, tableLeft, gridBottom, headerLinePaint)
+
         // Draw Period Rows and Horizontal Grid lines
         for (p in 0 until totalPeriods) {
             val currentPeriod = minPeriod + p
             val y = contentTop + p * rowHeight
-
-            // Period number on left
-            canvas.drawText(getPeriodCode(currentPeriod), paddingLeft + periodColWidth / 2, y + rowHeight / 2 + 10f, periodPaint)
+            // Period number or time range on left
+            val centerX = paddingLeft + periodColWidth / 2
+            if (showTimeInsteadOfPeriod) {
+                val timeRange = getPeriodTimeRange(currentPeriod)
+                canvas.drawText(timeRange.first, centerX, y + rowHeight / 2 - 4f, timeStartPaint)
+                canvas.drawText(timeRange.second, centerX, y + rowHeight / 2 + 22f, timeEndPaint)
+            } else {
+                canvas.drawText(getPeriodCode(currentPeriod), centerX, y + rowHeight / 2 + 10f, periodPaint)
+            }
 
             // Grid Line
             if (p > 0) {
-                canvas.drawLine(tableLeft, y, paddingRight, y, gridLinePaint)
+                canvas.drawLine(paddingLeft, y, paddingRight, y, gridLinePaint)
             }
         }
 

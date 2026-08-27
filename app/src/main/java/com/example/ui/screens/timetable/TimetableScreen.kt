@@ -15,7 +15,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -86,10 +85,23 @@ fun TimetableScreen(
     var showSemesterManageDialog by remember { mutableStateOf(false) }
     var showTimeSettingsSheet by remember { mutableStateOf(false) }
     var isGridView by remember { mutableStateOf(true) }
-    var isWeeklyMode by rememberSaveable { mutableStateOf(false) }
+    val isWeeklyMode by viewModel.isWeeklyMode.collectAsStateWithLifecycle()
     val showWeekend by viewModel.showWeekend.collectAsStateWithLifecycle()
+    val showTimeInsteadOfPeriod by viewModel.showTimeInsteadOfPeriod.collectAsStateWithLifecycle()
 
-    val weekPagerState = rememberPagerState(initialPage = 0) { currentTotalWeeks }
+    val initialWeekIndex = remember(currentStartDateStr, currentTotalWeeks) {
+        try {
+            val formatter = DateTimeFormatter.ofPattern("yyyy.MM.dd")
+            val startDate = LocalDate.parse(currentStartDateStr, formatter)
+            val today = LocalDate.now()
+            val daysDiff = ChronoUnit.DAYS.between(startDate, today)
+            if (daysDiff >= 0) {
+                val weekNum = (daysDiff / 7).toInt()
+                weekNum.coerceIn(0, (currentTotalWeeks - 1).coerceAtLeast(0))
+            } else 0
+        } catch (_: Exception) { 0 }
+    }
+    val weekPagerState = rememberPagerState(initialPage = initialWeekIndex) { currentTotalWeeks }
     val currentWeek = (weekPagerState.currentPage + 1).coerceAtMost(currentTotalWeeks)
 
     val daysCount = if (showWeekend) 7 else 5
@@ -167,7 +179,8 @@ fun TimetableScreen(
                             context = context,
                             semesterLabel = semesterLabel,
                             courses = courses,
-                            showWeekend = showWeekend
+                            showWeekend = showWeekend,
+                            showTimeInsteadOfPeriod = showTimeInsteadOfPeriod
                         )
                     },
                     shape = RoundedCornerShape(12.dp)
@@ -260,10 +273,33 @@ fun TimetableScreen(
             }
 
             Text(
-                text = if (isGridView) (if (isWeeklyMode) "左右滑動切換週次" else "點擊左上角切換各週") else "點擊列表查看詳細",
+                text = if (isGridView) (if (isWeeklyMode) "左右滑動切換週次" else "點擊左上角切換模式") else "點擊列表查看詳細",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+
+        val cycleNextMode: () -> Unit = {
+            when {
+                // 1. 各週 + 節次 -> 2. 各週 + 時間
+                isWeeklyMode && !showTimeInsteadOfPeriod -> {
+                    viewModel.setShowTimeInsteadOfPeriod(true)
+                }
+                // 2. 各週 + 時間 -> 3. 整學期 + 節次
+                isWeeklyMode && showTimeInsteadOfPeriod -> {
+                    viewModel.setIsWeeklyMode(false)
+                    viewModel.setShowTimeInsteadOfPeriod(false)
+                }
+                // 3. 整學期 + 節次 -> 4. 整學期 + 時間
+                !isWeeklyMode && !showTimeInsteadOfPeriod -> {
+                    viewModel.setShowTimeInsteadOfPeriod(true)
+                }
+                // 4. 整學期 + 時間 -> 1. 各週 + 節次
+                else -> {
+                    viewModel.setIsWeeklyMode(true)
+                    viewModel.setShowTimeInsteadOfPeriod(false)
+                }
+            }
         }
 
         if (!isGridView) {
@@ -303,13 +339,14 @@ fun TimetableScreen(
                 courses = courses,
                 daysCount = daysCount,
                 dayNames = dayNames,
-                dates = null,
                 selectedWeek = 0,
-                onModeToggle = { isWeeklyMode = true },
+                onModeToggle = cycleNextMode,
                 onCourseClick = { selectedCourseDetail = it },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f)
+                    .weight(1f),
+                showTimeInsteadOfPeriod = showTimeInsteadOfPeriod,
+                dates = null
             )
         } else {
             // 各週課表模式：可在第 1 ~ 18 週之間左右滑動
@@ -331,11 +368,12 @@ fun TimetableScreen(
                     courses = pageCourses,
                     daysCount = daysCount,
                     dayNames = dayNames,
-                    dates = pageDates,
                     selectedWeek = weekNum,
-                    onModeToggle = { isWeeklyMode = false },
+                    onModeToggle = cycleNextMode,
                     onCourseClick = { selectedCourseDetail = it },
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    showTimeInsteadOfPeriod = showTimeInsteadOfPeriod,
+                    dates = pageDates
                 )
             }
         }
@@ -437,9 +475,11 @@ fun TimetableScreen(
         SemesterTimeSettingsBottomSheet(
             initialStartDate = currentStartDateStr,
             initialEndDate = currentEndDateStr,
+            initialShowTime = showTimeInsteadOfPeriod,
             onDismiss = { showTimeSettingsSheet = false },
-            onSave = { startDate, endDate, totalWeeks ->
+            onSave = { startDate, endDate, totalWeeks, showTime ->
                 viewModel.saveSemesterTimeConfig(selectedSemester, startDate, endDate, totalWeeks)
+                viewModel.setShowTimeInsteadOfPeriod(showTime)
                 showTimeSettingsSheet = false
             }
         )
@@ -451,8 +491,9 @@ fun TimetableScreen(
 private fun SemesterTimeSettingsBottomSheet(
     initialStartDate: String,
     initialEndDate: String,
+    initialShowTime: Boolean,
     onDismiss: () -> Unit,
-    onSave: (startDate: String, endDate: String, totalWeeks: Int) -> Unit
+    onSave: (startDate: String, endDate: String, totalWeeks: Int, showTime: Boolean) -> Unit
 ) {
     val context = LocalContext.current
     var tempStartDate by remember(initialStartDate) { mutableStateOf(initialStartDate) }
@@ -467,6 +508,7 @@ private fun SemesterTimeSettingsBottomSheet(
             }
         )
     }
+    var tempShowTime by remember(initialShowTime) { mutableStateOf(initialShowTime) }
 
     val calculatedDuration = remember(tempStartDate, tempEndDate) {
         try {
@@ -590,6 +632,54 @@ private fun SemesterTimeSettingsBottomSheet(
                 }
             }
 
+            // Section 3: 側邊欄顯示方式 (節次 / 時間)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "側邊欄顯示",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (!tempShowTime) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { tempShowTime = false }
+                    ) {
+                        Text(
+                            text = "節次 (0,1,2)",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (!tempShowTime) FontWeight.Bold else FontWeight.Normal,
+                            color = if (!tempShowTime) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (tempShowTime) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { tempShowTime = true }
+                    ) {
+                        Text(
+                            text = "時間 (08:10)",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (tempShowTime) FontWeight.Bold else FontWeight.Normal,
+                            color = if (tempShowTime) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
+                    }
+                }
+            }
+
             // Duration Summary or Error Banner
             if (calculatedDuration.third != null) {
                 Surface(
@@ -627,7 +717,7 @@ private fun SemesterTimeSettingsBottomSheet(
             Button(
                 onClick = {
                     if (calculatedDuration.third == null) {
-                        onSave(tempStartDate, tempEndDate, calculatedDuration.second)
+                        onSave(tempStartDate, tempEndDate, calculatedDuration.second, tempShowTime)
                     }
                 },
                 enabled = calculatedDuration.third == null,
@@ -657,6 +747,7 @@ private fun WeeklyTimetableGrid(
     onModeToggle: () -> Unit,
     onCourseClick: (Course) -> Unit,
     modifier: Modifier = Modifier,
+    showTimeInsteadOfPeriod: Boolean = false,
     dates: List<String>? = null
 ) {
     val scrollState = rememberScrollState()
@@ -668,7 +759,7 @@ private fun WeeklyTimetableGrid(
     }
     val totalPeriods = maxPeriodToDisplay - minPeriod + 1
     val hourHeight = 60.dp
-    val timeColumnWidth = 36.dp
+    val timeColumnWidth = if (showTimeInsteadOfPeriod) 46.dp else 36.dp
 
     fun getPeriodCode(period: Int): String = when (period) {
         0 -> "0"
@@ -679,6 +770,25 @@ private fun WeeklyTimetableGrid(
         14 -> "E"
         15 -> "F"
         else -> "$period"
+    }
+
+    fun getPeriodTimeRange(period: Int): Pair<String, String> = when (period) {
+        0 -> "07:10" to "08:00"
+        1 -> "08:10" to "09:00"
+        2 -> "09:10" to "10:00"
+        3 -> "10:10" to "11:00"
+        4 -> "11:10" to "12:00"
+        5 -> "13:10" to "14:00"
+        6 -> "14:10" to "15:00"
+        7 -> "15:10" to "16:00"
+        8 -> "16:10" to "17:00"
+        9 -> "17:10" to "18:00"
+        10 -> "18:20" to "19:10"
+        11 -> "19:15" to "20:05"
+        12 -> "20:10" to "21:00"
+        13 -> "21:05" to "21:55"
+        14 -> "22:00" to "22:50"
+        else -> String.format(Locale.US, "%02d:00", (7 + period)) to String.format(Locale.US, "%02d:50", (7 + period))
     }
 
     Column(
@@ -695,7 +805,7 @@ private fun WeeklyTimetableGrid(
                 .padding(vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Mode toggle corner button (一鍵切換：整學期 vs 各週)
+            // Mode toggle corner button (一鍵循環切換四模式：各週節次 -> 各週時間 -> 整學期節次 -> 整學期時間)
             Box(
                 modifier = Modifier
                     .width(timeColumnWidth)
@@ -703,21 +813,24 @@ private fun WeeklyTimetableGrid(
                     .clickable { onModeToggle() },
                 contentAlignment = Alignment.Center
             ) {
-                if (selectedWeek == 0) {
-                    Icon(
-                        imageVector = Icons.Default.GridView,
-                        contentDescription = "切換至各週課表",
-                        modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.CalendarMonth,
-                        contentDescription = "切換至整學期課表",
-                        modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+                val icon = when {
+                    selectedWeek > 0 && !showTimeInsteadOfPeriod -> Icons.Default.CalendarToday
+                    selectedWeek > 0 && showTimeInsteadOfPeriod -> Icons.Default.CalendarMonth
+                    selectedWeek == 0 && !showTimeInsteadOfPeriod -> Icons.Default.GridView
+                    else -> Icons.Default.Schedule
                 }
+                val desc = when {
+                    selectedWeek > 0 && !showTimeInsteadOfPeriod -> "各週節次模式"
+                    selectedWeek > 0 && showTimeInsteadOfPeriod -> "各週時間模式"
+                    selectedWeek == 0 && !showTimeInsteadOfPeriod -> "整學期節次模式"
+                    else -> "整學期時間模式"
+                }
+                Icon(
+                    imageVector = icon,
+                    contentDescription = desc,
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
             }
 
             dayNames.forEachIndexed { index, dayName ->
@@ -757,11 +870,13 @@ private fun WeeklyTimetableGrid(
                 .fillMaxWidth()
                 .verticalScroll(scrollState)
         ) {
-            // Timeline Period Numbers Column (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, A, ...)
+            // Timeline Period Numbers / Time Column
             Box(
                 modifier = Modifier
                     .width(timeColumnWidth)
                     .height(hourHeight * totalPeriods)
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                    .clip(RoundedCornerShape(topStart = 0.dp, bottomStart = 12.dp))
             ) {
                 for (p in minPeriod..maxPeriodToDisplay) {
                     val periodIndex = p - minPeriod
@@ -769,18 +884,48 @@ private fun WeeklyTimetableGrid(
                         modifier = Modifier
                             .offset(y = hourHeight * periodIndex)
                             .width(timeColumnWidth)
-                            .height(hourHeight),
-                        contentAlignment = Alignment.TopCenter
-                    ) {
-                        Text(
-                            text = getPeriodCode(p),
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold
+                            .height(hourHeight)
+                            .border(
+                                width = 0.5.dp,
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
                             ),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (showTimeInsteadOfPeriod) {
+                            val timeRange = getPeriodTimeRange(p)
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center,
+                                modifier = Modifier.fillMaxHeight().padding(horizontal = 2.dp)
+                            ) {
+                                Text(
+                                    text = timeRange.first,
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    ),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = timeRange.second,
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontSize = 8.5.sp,
+                                        fontWeight = FontWeight.Normal
+                                    ),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+                                )
+                            }
+                        } else {
+                            Text(
+                                text = getPeriodCode(p),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
                     }
                 }
             }
