@@ -1010,6 +1010,11 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         }
 
         val totalInitialBalance = accounts.sumOf { it.initialBalance }
+        val cumulativeExpenses = expenses.filter { it.dateString.substringBeforeLast("-") <= month }
+        val cumExp = cumulativeExpenses.filter { it.type == ExpenseType.EXPENSE }.sumOf { it.amount }
+        val cumInc = cumulativeExpenses.filter { it.type == ExpenseType.INCOME }.sumOf { it.amount }
+        val totalAccountBalance = totalInitialBalance + (cumInc - cumExp)
+
         val budget = budgets.firstOrNull { it.yearMonth == month }?.budgetAmount ?: 10000.0
         val remaining = budget - totalExp
         val usagePercentage = if (budget > 0) ((totalExp / budget) * 100.0).coerceIn(0.0, 100.0).toFloat() else 0f
@@ -1018,7 +1023,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             yearMonth = month,
             totalExpense = totalExp,
             totalIncome = totalInc,
-            netBalance = totalInitialBalance + (totalInc - totalExp),
+            netBalance = totalAccountBalance,
             budgetAmount = budget,
             remainingBudget = remaining,
             budgetUsagePercentage = round(usagePercentage * 10f) / 10f,

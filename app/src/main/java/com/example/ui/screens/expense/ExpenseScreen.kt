@@ -79,6 +79,7 @@ fun ExpenseScreen(
     var showAddDialog by remember { mutableStateOf(false) }
     var editingExpense by remember { mutableStateOf<ExpenseRecord?>(null) }
     var showBudgetDialog by remember { mutableStateOf(false) }
+    var showYearMonthPicker by remember { mutableStateOf(false) }
     var showFilterBottomSheet by remember { mutableStateOf(false) }
     var showAddAccountDialog by remember { mutableStateOf(false) }
     var showDeleteAccountsBottomSheet by remember { mutableStateOf(false) }
@@ -95,7 +96,6 @@ fun ExpenseScreen(
     var cardHeightWithSpacingPx by remember { mutableFloatStateOf(0f) }
 
     val locale = LocalConfiguration.current.locales[0]
-    val monthFormat = remember(locale) { SimpleDateFormat("yyyy-MM", locale) }
     val todayDateString = remember(locale) {
         SimpleDateFormat("yyyy-MM-dd", locale).format(Date())
     }
@@ -105,15 +105,6 @@ fun ExpenseScreen(
         mutableStateOf(
             if (todayDateString.startsWith(selectedMonth)) todayDateString else "$selectedMonth-01"
         )
-    }
-
-    fun calTime(format: SimpleDateFormat, dateStr: String, offset: Int): String? {
-        return runCatching {
-            val cal = Calendar.getInstance()
-            cal.time = format.parse(dateStr) ?: Date()
-            cal.add(Calendar.MONTH, offset)
-            format.format(cal.time)
-        }.getOrNull()
     }
 
     val monthExpenses = remember(allExpenses, selectedMonth, selectedCategoryFilter) {
@@ -167,32 +158,25 @@ fun ExpenseScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(
-                            onClick = {
-                                calTime(monthFormat, selectedMonth, -1)?.let {
-                                    viewModel.setSelectedExpenseMonth(it)
-                                }
-                            }
-                        ) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "上個月")
-                        }
-
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable { showYearMonthPicker = true }
+                            .padding(horizontal = 6.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
                         Text(
                             text = "$selectedMonth 月記帳",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
-
-                        IconButton(
-                            onClick = {
-                                calTime(monthFormat, selectedMonth, 1)?.let {
-                                    viewModel.setSelectedExpenseMonth(it)
-                                }
-                            }
-                        ) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "下個月")
-                        }
+                        Icon(
+                            imageVector = Icons.Default.ArrowDropDown,
+                            contentDescription = "選擇年月",
+                            tint = SapphirePrimary,
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -248,7 +232,7 @@ fun ExpenseScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
-                                    text = if (summary.netBalance >= 0) "+$${summary.netBalance.toInt()}" else "-$${kotlin.math.abs(summary.netBalance).toInt()}",
+                                    text = if (summary.netBalance >= 0) "$${summary.netBalance.toInt()}" else "-$${kotlin.math.abs(summary.netBalance).toInt()}",
                                     style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.ExtraBold,
                                     color = if (summary.netBalance >= 0) EmeraldAccent else RoseAccent
@@ -600,7 +584,14 @@ fun ExpenseScreen(
                         val methodExpenses = allMonthExpensesNoFilter.filter { it.paymentMethod == account.method }
                         val totalExp = methodExpenses.filter { it.type == ExpenseType.EXPENSE }.sumOf { it.amount }
                         val totalInc = methodExpenses.filter { it.type == ExpenseType.INCOME }.sumOf { it.amount }
-                        val net = totalInc - totalExp
+
+                        // 計算包含過往所有月份的累積餘額
+                        val cumulativeExpenses = allExpenses.filter {
+                            it.paymentMethod == account.method && it.dateString.substringBeforeLast("-") <= selectedMonth
+                        }
+                        val cumExp = cumulativeExpenses.filter { it.type == ExpenseType.EXPENSE }.sumOf { it.amount }
+                        val cumInc = cumulativeExpenses.filter { it.type == ExpenseType.INCOME }.sumOf { it.amount }
+                        val net = cumInc - cumExp
                         val isDragging = draggingAccountIndex == index
 
                         PaymentAccountCard(
@@ -920,7 +911,9 @@ fun ExpenseScreen(
         val currentAccount = customAccounts.find { it.id == account.id } ?: account
         AccountDetailBottomSheet(
             account = currentAccount,
-            expenses = allMonthExpensesNoFilter,
+            monthExpenses = allMonthExpensesNoFilter,
+            allExpenses = allExpenses,
+            selectedMonth = selectedMonth,
             onDismiss = { viewingAccount = null },
             onEditExpense = { record ->
                 editingExpense = record
@@ -986,6 +979,17 @@ fun ExpenseScreen(
             onSave = { newBudget ->
                 viewModel.setMonthlyBudget(newBudget)
                 showBudgetDialog = false
+            }
+        )
+    }
+
+    if (showYearMonthPicker) {
+        YearMonthPickerDialog(
+            currentYearMonth = selectedMonth,
+            onDismiss = { showYearMonthPicker = false },
+            onConfirm = { newYearMonth ->
+                viewModel.setSelectedExpenseMonth(newYearMonth)
+                showYearMonthPicker = false
             }
         )
     }
@@ -1367,19 +1371,29 @@ private fun PaymentAccountCard(
 @Composable
 private fun AccountDetailBottomSheet(
     account: PaymentAccount,
-    expenses: List<ExpenseRecord>,
+    monthExpenses: List<ExpenseRecord>,
+    allExpenses: List<ExpenseRecord>,
+    selectedMonth: String,
     onDismiss: () -> Unit,
     onEditExpense: (ExpenseRecord) -> Unit,
     onUpdateAccount: (PaymentAccount) -> Unit,
     onDeleteAccount: (() -> Unit)? = null
 ) {
-    val methodExpenses = remember(expenses, account) {
-        expenses.filter { it.paymentMethod == account.method }.sortedByDescending { it.dateString }
+    val methodExpenses = remember(monthExpenses, account) {
+        monthExpenses.filter { it.paymentMethod == account.method }.sortedByDescending { it.dateString }
     }
     val totalExpense = methodExpenses.filter { it.type == ExpenseType.EXPENSE }.sumOf { it.amount }
     val totalIncome = methodExpenses.filter { it.type == ExpenseType.INCOME }.sumOf { it.amount }
     val net = totalIncome - totalExpense
-    val currentBalance = account.initialBalance + net
+
+    val cumulativeExpenses = remember(allExpenses, account, selectedMonth) {
+        allExpenses.filter {
+            it.paymentMethod == account.method && it.dateString.substringBeforeLast("-") <= selectedMonth
+        }
+    }
+    val cumExp = cumulativeExpenses.filter { it.type == ExpenseType.EXPENSE }.sumOf { it.amount }
+    val cumInc = cumulativeExpenses.filter { it.type == ExpenseType.INCOME }.sumOf { it.amount }
+    val currentBalance = account.initialBalance + (cumInc - cumExp)
 
     var showEditInitialBalanceDialog by remember { mutableStateOf(false) }
 
@@ -2854,4 +2868,135 @@ private fun ExpenseMonthlyCalendarCard(
             }
         }
     }
+}
+
+@Composable
+private fun YearMonthPickerDialog(
+    currentYearMonth: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    val parts = currentYearMonth.split("-")
+    val initialYear = parts.getOrNull(0)?.toIntOrNull() ?: Calendar.getInstance().get(Calendar.YEAR)
+    val initialMonth = parts.getOrNull(1)?.toIntOrNull() ?: (Calendar.getInstance().get(Calendar.MONTH) + 1)
+
+    var selectedYear by remember { mutableIntStateOf(initialYear) }
+    var selectedMonth by remember { mutableIntStateOf(initialMonth) }
+
+    val currentCal = Calendar.getInstance()
+    val thisYear = currentCal.get(Calendar.YEAR)
+    val thisMonth = currentCal.get(Calendar.MONTH) + 1
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "選擇記帳年月",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                TextButton(
+                    onClick = {
+                        selectedYear = thisYear
+                        selectedMonth = thisMonth
+                    }
+                ) {
+                    Text("回到本月", color = SapphirePrimary, fontWeight = FontWeight.Bold)
+                }
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Year Switcher Header
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = { selectedYear-- }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "上一年")
+                    }
+                    Text(
+                        text = "$selectedYear 年",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = { selectedYear++ }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "下一年")
+                    }
+                }
+
+                // 12 Months Grid
+                val months = (1..12).toList().chunked(4)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    months.forEach { rowMonths ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            rowMonths.forEach { m ->
+                                val isSelected = selectedMonth == m
+                                val isCurrentActualMonth = selectedYear == thisYear && m == thisMonth
+
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(44.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(
+                                            if (isSelected) SapphirePrimary
+                                            else if (isCurrentActualMonth) SapphirePrimary.copy(alpha = 0.12f)
+                                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                                        )
+                                        .then(
+                                            if (isCurrentActualMonth && !isSelected) {
+                                                Modifier.border(1.dp, SapphirePrimary, RoundedCornerShape(10.dp))
+                                            } else Modifier
+                                        )
+                                        .clickable { selectedMonth = m },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "${m}月",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = if (isSelected || isCurrentActualMonth) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (isSelected) Color.White else if (isCurrentActualMonth) SapphirePrimary else MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val formatted = String.format(Locale.US, "%04d-%02d", selectedYear, selectedMonth)
+                    onConfirm(formatted)
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = SapphirePrimary),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Text("確定", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    )
 }
