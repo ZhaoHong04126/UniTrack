@@ -376,6 +376,19 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                             }
                         }
                     }
+
+                    // 3. 首次登入發送歡迎通知（僅發送一次）
+                    val welcomeKey = "has_welcomed_user_${profile.uid}"
+                    if (!prefs.getBoolean(welcomeKey, false)) {
+                        prefs.edit { putBoolean(welcomeKey, true) }
+                        sendNotification(
+                            title = "歡迎使用 UniTrack+",
+                            message = "UniTrack+ 智慧學業助理已準備就緒，隨時為您管理課表、畢業審查與記帳！",
+                            type = NotificationType.SYSTEM,
+                            actionRoute = "notifications",
+                            sendSystemPush = false
+                        )
+                    }
                 }
             }
         }
@@ -549,34 +562,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun checkAndGenerateSmartNotifications() {
-        viewModelScope.launch {
-            val currentList = repository.getAllNotificationsOnce()
-            if (currentList.isEmpty()) {
-                val initialNotifications = listOf(
-                    AppNotification(
-                        title = "歡迎使用 UniTrack+",
-                        message = "UniTrack+ 智慧學業助理已準備就緒，隨時為您管理課表、畢業審查與記帳！",
-                        type = NotificationType.SYSTEM,
-                        timestamp = System.currentTimeMillis() - 1000 * 60 * 120
-                    ),
-                    AppNotification(
-                        title = "學期課表提醒",
-                        message = "新的學期開始了！記得在課表頁面確認本學期的排課與時間。",
-                        type = NotificationType.COURSE,
-                        timestamp = System.currentTimeMillis() - 1000 * 60 * 60,
-                        actionRoute = "timetable"
-                    ),
-                    AppNotification(
-                        title = "每月記帳與預算管理",
-                        message = "本月份預算已設定，每筆消費都能即時記錄分析收支狀態。",
-                        type = NotificationType.EXPENSE,
-                        timestamp = System.currentTimeMillis() - 1000 * 60 * 30,
-                        actionRoute = "expense"
-                    )
-                )
-                repository.insertNotifications(initialNotifications)
-            }
-        }
+        // Real notifications are generated on-demand by events (course changes, budget thresholds, etc.)
     }
 
     // Filtered courses for currently selected semester
