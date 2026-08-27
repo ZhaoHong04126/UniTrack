@@ -929,7 +929,8 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                         name = obj.optString("name", m.label),
                         method = m,
                         initialBalance = obj.optDouble("initialBalance", 0.0),
-                        note = obj.optString("note", "")
+                        note = obj.optString("note", ""),
+                        startYearMonth = obj.optString("startYearMonth", "2026-08")
                     )
                 )
             }
@@ -950,6 +951,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                     obj.put("method", acc.method.name)
                     obj.put("initialBalance", acc.initialBalance)
                     obj.put("note", acc.note)
+                    obj.put("startYearMonth", acc.startYearMonth)
                     outArray.put(obj)
                 }
                 prefs.edit { putString("pref_custom_accounts", outArray.toString()) }
@@ -977,6 +979,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             obj.put("method", acc.method.name)
             obj.put("initialBalance", acc.initialBalance)
             obj.put("note", acc.note)
+            obj.put("startYearMonth", acc.startYearMonth)
             array.put(obj)
         }
         prefs.edit { putString("pref_custom_accounts", array.toString()) }
@@ -1009,11 +1012,12 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             }
         }
 
-        val totalInitialBalance = accounts.sumOf { it.initialBalance }
+        val activeAccounts = accounts.filter { it.startYearMonth <= month }
+        val totalInitialBalance = activeAccounts.sumOf { it.initialBalance }
         val cumulativeExpenses = expenses.filter { it.dateString.substringBeforeLast("-") <= month }
         val cumExp = cumulativeExpenses.filter { it.type == ExpenseType.EXPENSE }.sumOf { it.amount }
         val cumInc = cumulativeExpenses.filter { it.type == ExpenseType.INCOME }.sumOf { it.amount }
-        val totalAccountBalance = totalInitialBalance + (cumInc - cumExp)
+        val totalAccountBalance = if (activeAccounts.isEmpty() && cumulativeExpenses.isEmpty()) 0.0 else totalInitialBalance + (cumInc - cumExp)
 
         val budget = budgets.firstOrNull { it.yearMonth == month }?.budgetAmount ?: 10000.0
         val remaining = budget - totalExp

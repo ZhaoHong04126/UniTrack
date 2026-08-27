@@ -331,7 +331,8 @@ data class PaymentAccount(
     val name: String,
     val method: PaymentMethod,
     val initialBalance: Double = 0.0,
-    val note: String = ""
+    val note: String = "",
+    val startYearMonth: String = "2026-08"
 )
 
 sealed class SemesterScheduleStatus {

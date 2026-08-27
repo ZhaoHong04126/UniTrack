@@ -585,21 +585,22 @@ fun ExpenseScreen(
                         val totalExp = methodExpenses.filter { it.type == ExpenseType.EXPENSE }.sumOf { it.amount }
                         val totalInc = methodExpenses.filter { it.type == ExpenseType.INCOME }.sumOf { it.amount }
 
-                        // 計算包含過往所有月份的累積餘額
+                        val isBeforeStart = selectedMonth < account.startYearMonth
                         val cumulativeExpenses = allExpenses.filter {
                             it.paymentMethod == account.method && it.dateString.substringBeforeLast("-") <= selectedMonth
                         }
                         val cumExp = cumulativeExpenses.filter { it.type == ExpenseType.EXPENSE }.sumOf { it.amount }
                         val cumInc = cumulativeExpenses.filter { it.type == ExpenseType.INCOME }.sumOf { it.amount }
-                        val net = cumInc - cumExp
+                        val currentBalance = if (isBeforeStart) 0.0 else account.initialBalance + (cumInc - cumExp)
                         val isDragging = draggingAccountIndex == index
 
                         PaymentAccountCard(
                             account = account,
                             expenseAmount = totalExp,
                             incomeAmount = totalInc,
-                            netAmount = net,
+                            balance = currentBalance,
                             recordCount = methodExpenses.size,
+                            isBeforeStart = isBeforeStart,
                             isDragging = isDragging,
                             translationY = if (isDragging) dragOffsetY else 0f,
                             onClick = {
@@ -1215,10 +1216,11 @@ private fun PaymentAccountCard(
     account: PaymentAccount,
     expenseAmount: Double,
     incomeAmount: Double,
-    netAmount: Double,
+    balance: Double,
     recordCount: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    isBeforeStart: Boolean = false,
     isDragging: Boolean = false,
     translationY: Float = 0f
 ) {
@@ -1262,16 +1264,18 @@ private fun PaymentAccountCard(
                 .fillMaxWidth()
                 .graphicsLayer {
                     this.translationY = translationY
-                    this.scaleX = if (isDragging) 1.03f else 1f
-                    this.scaleY = if (isDragging) 1.03f else 1f
+                    if (isDragging) {
+                        this.shadowElevation = 16f
+                        this.scaleX = 1.02f
+                        this.scaleY = 1.02f
+                    }
                 }
-                .clickable { onClick() },
+                .clickable(onClick = onClick),
             shape = RoundedCornerShape(14.dp),
             colors = CardDefaults.cardColors(
                 containerColor = if (isDragging) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface
             ),
-            border = if (isDragging) BorderStroke(1.5.dp, SapphirePrimary) else null,
-            elevation = CardDefaults.cardElevation(defaultElevation = if (isDragging) 10.dp else 1.5.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = if (isDragging) 8.dp else 0.dp)
         ) {
             Row(
                 modifier = Modifier
@@ -1343,16 +1347,15 @@ private fun PaymentAccountCard(
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Text(
-                        text = "當前餘額",
+                        text = if (isBeforeStart) "尚未啟用" else "當前餘額",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    val currentBalance = account.initialBalance + netAmount
                     Text(
-                        text = if (currentBalance >= 0) "$${currentBalance.toInt()}" else "-$${kotlin.math.abs(currentBalance).toInt()}",
+                        text = if (isBeforeStart) "$0" else if (balance >= 0) "$${balance.toInt()}" else "-$${kotlin.math.abs(balance).toInt()}",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = if (currentBalance >= 0) EmeraldAccent else RoseAccent
+                        color = if (isBeforeStart) MaterialTheme.colorScheme.onSurfaceVariant else if (balance >= 0) EmeraldAccent else RoseAccent
                     )
                 }
 
@@ -1386,6 +1389,7 @@ private fun AccountDetailBottomSheet(
     val totalIncome = methodExpenses.filter { it.type == ExpenseType.INCOME }.sumOf { it.amount }
     val net = totalIncome - totalExpense
 
+    val isBeforeStart = selectedMonth < account.startYearMonth
     val cumulativeExpenses = remember(allExpenses, account, selectedMonth) {
         allExpenses.filter {
             it.paymentMethod == account.method && it.dateString.substringBeforeLast("-") <= selectedMonth
@@ -1393,7 +1397,7 @@ private fun AccountDetailBottomSheet(
     }
     val cumExp = cumulativeExpenses.filter { it.type == ExpenseType.EXPENSE }.sumOf { it.amount }
     val cumInc = cumulativeExpenses.filter { it.type == ExpenseType.INCOME }.sumOf { it.amount }
-    val currentBalance = account.initialBalance + (cumInc - cumExp)
+    val currentBalance = if (isBeforeStart) 0.0 else account.initialBalance + (cumInc - cumExp)
 
     var showEditInitialBalanceDialog by remember { mutableStateOf(false) }
 
@@ -1497,15 +1501,15 @@ private fun AccountDetailBottomSheet(
                             Icon(
                                 imageVector = Icons.Default.Edit,
                                 contentDescription = "設定初始餘額",
-                                tint = SapphirePrimary,
+                                tint = if (isBeforeStart) MaterialTheme.colorScheme.onSurfaceVariant else SapphirePrimary,
                                 modifier = Modifier.size(13.dp)
                             )
                         }
                         Text(
-                            text = "$${account.initialBalance.toInt()}",
+                            text = if (isBeforeStart) "$0" else "$${account.initialBalance.toInt()}",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
-                            color = SapphirePrimary
+                            color = if (isBeforeStart) MaterialTheme.colorScheme.onSurfaceVariant else SapphirePrimary
                         )
                     }
 
@@ -1533,15 +1537,15 @@ private fun AccountDetailBottomSheet(
                         verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         Text(
-                            text = "當前餘額",
+                            text = if (isBeforeStart) "尚未啟用" else "當前餘額",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = "${if (currentBalance >= 0) "+" else ""}$${currentBalance.toInt()}",
+                            text = if (isBeforeStart) "$0" else if (currentBalance >= 0) "$${currentBalance.toInt()}" else "-$${kotlin.math.abs(currentBalance).toInt()}",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.ExtraBold,
-                            color = if (currentBalance >= 0) EmeraldAccent else RoseAccent
+                            color = if (isBeforeStart) MaterialTheme.colorScheme.onSurfaceVariant else if (currentBalance >= 0) EmeraldAccent else RoseAccent
                         )
                     }
                 }
@@ -1603,7 +1607,13 @@ private fun AccountDetailBottomSheet(
     }
 
     if (showEditInitialBalanceDialog) {
-        var newBalanceText by remember { mutableStateOf(if (account.initialBalance > 0) account.initialBalance.toInt().toString() else "") }
+        var newBalanceText by remember {
+            mutableStateOf(
+                if (isBeforeStart) "0"
+                else if (account.initialBalance > 0) account.initialBalance.toInt().toString()
+                else ""
+            )
+        }
         AlertDialog(
             onDismissRequest = { showEditInitialBalanceDialog = false },
             title = { Text("設定「${account.name}」起始餘額", fontWeight = FontWeight.Bold) },
@@ -1637,7 +1647,12 @@ private fun AccountDetailBottomSheet(
                 Button(
                     onClick = {
                         val amount = newBalanceText.toDoubleOrNull() ?: 0.0
-                        onUpdateAccount(account.copy(initialBalance = amount))
+                        onUpdateAccount(
+                            account.copy(
+                                initialBalance = amount,
+                                startYearMonth = if (isBeforeStart && amount > 0) selectedMonth else account.startYearMonth
+                            )
+                        )
                         showEditInitialBalanceDialog = false
                     }
                 ) {
