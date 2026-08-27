@@ -47,10 +47,7 @@ import com.example.ui.screens.timetable.GradeEntryScreen
 import com.example.ui.screens.timetable.TimetableScreen
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.viewmodel.StudentViewModel
-import com.example.ui.components.UpdateDialog
 import com.example.util.NotificationHelper
-import com.example.util.UpdateChecker
-import com.example.util.UpdateInfo
 
 sealed class AppDestination(
     val route: String,
@@ -138,27 +135,11 @@ class MainActivity : ComponentActivity() {
                 val userMessage by studentViewModel.userMessage.collectAsStateWithLifecycle()
                 val snackbarHostState = remember { SnackbarHostState() }
 
-                var availableUpdate by remember { mutableStateOf<UpdateInfo?>(null) }
-
-                LaunchedEffect(Unit) {
-                    val update = UpdateChecker.checkForUpdate(BuildConfig.VERSION_NAME)
-                    if (update != null) {
-                        availableUpdate = update
-                    }
-                }
-
                 LaunchedEffect(userMessage) {
                     userMessage?.let { msg ->
                         snackbarHostState.showSnackbar(msg)
                         studentViewModel.clearUserMessage()
                     }
-                }
-
-                availableUpdate?.let { updateInfo ->
-                    UpdateDialog(
-                        updateInfo = updateInfo,
-                        onDismiss = { availableUpdate = null }
-                    )
                 }
 
                 val navController = rememberNavController()
