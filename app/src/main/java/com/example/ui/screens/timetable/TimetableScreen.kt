@@ -175,12 +175,17 @@ fun TimetableScreen(
                 FilledTonalIconButton(
                     onClick = {
                         val semesterLabel = formatSemesterHeaderLabel(selectedSemester, graduationPlan.admissionSemester)
+                        val currentWeekNum = if (isWeeklyMode) currentWeek else 0
+                        val currentWeekDates = if (isWeeklyMode) getWeekDates(currentStartDateStr, currentWeek, daysCount) else null
+                        val shareCourses = if (isWeeklyMode) courses.filter { isCourseInWeek(it, currentWeek) } else courses
                         TimetableImageGenerator.shareTimetableImage(
                             context = context,
                             semesterLabel = semesterLabel,
-                            courses = courses,
+                            courses = shareCourses,
                             showWeekend = showWeekend,
-                            showTimeInsteadOfPeriod = showTimeInsteadOfPeriod
+                            showTimeInsteadOfPeriod = showTimeInsteadOfPeriod,
+                            weekNum = currentWeekNum,
+                            dates = currentWeekDates
                         )
                     },
                     shape = RoundedCornerShape(12.dp)

@@ -85,6 +85,12 @@ fun SettingsScreen(
     var showDeleteAccountConfirmDialog by remember { mutableStateOf(false) }
     var showFinalExecutionDialog by remember { mutableStateOf(false) }
 
+    val appVersion = remember {
+        runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        }.getOrNull()?.let { "v$it" } ?: "v1.2.0"
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -220,6 +226,12 @@ fun SettingsScreen(
                 }
 
                 Text(
+                    text = "UniTrack+ $appVersion",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                )
+
+                Text(
                     text = "© 2026 UniTrack+. All rights reserved.",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.outlineVariant
@@ -230,8 +242,15 @@ fun SettingsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
+                Text(
+                    text = "UniTrack+ $appVersion",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                )
+
                 Text(
                     text = "© 2026 UniTrack+. All rights reserved.",
                     style = MaterialTheme.typography.labelSmall,

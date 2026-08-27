@@ -28,9 +28,18 @@ object TimetableImageGenerator {
         semesterLabel: String,
         courses: List<Course>,
         showWeekend: Boolean,
-        showTimeInsteadOfPeriod: Boolean = false
+        showTimeInsteadOfPeriod: Boolean = false,
+        weekNum: Int = 0,
+        dates: List<String>? = null
     ) {
-        val bitmap = generateTimetableBitmap(semesterLabel, courses, showWeekend, showTimeInsteadOfPeriod)
+        val bitmap = generateTimetableBitmap(
+            semesterLabel = semesterLabel,
+            courses = courses,
+            showWeekend = showWeekend,
+            showTimeInsteadOfPeriod = showTimeInsteadOfPeriod,
+            weekNum = weekNum,
+            dates = dates
+        )
         val imageUri = saveBitmapToCache(context, bitmap) ?: return
 
         val shareIntent = Intent(Intent.ACTION_SEND).apply {
@@ -52,7 +61,9 @@ object TimetableImageGenerator {
         semesterLabel: String,
         courses: List<Course>,
         showWeekend: Boolean,
-        showTimeInsteadOfPeriod: Boolean
+        showTimeInsteadOfPeriod: Boolean,
+        weekNum: Int,
+        dates: List<String>?
     ): Bitmap {
         val width = 1200
         val height = 1800
@@ -126,8 +137,15 @@ object TimetableImageGenerator {
 
         val headerDayPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.rgb(71, 85, 105) // Slate 600
-            textSize = 36f
+            textSize = 34f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            textAlign = Paint.Align.CENTER
+        }
+
+        val headerDatePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.rgb(100, 116, 139) // Slate 500
+            textSize = 22f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
             textAlign = Paint.Align.CENTER
         }
 
@@ -171,7 +189,8 @@ object TimetableImageGenerator {
         val paddingRight = width - 60f
         val headerTop = 90f
 
-        canvas.drawText("📅 課表  $semesterLabel", paddingLeft, headerTop, titlePaint)
+        val fullTitle = if (weekNum > 0) "📅 課表  $semesterLabel (第 $weekNum 週)" else "📅 課表  $semesterLabel"
+        canvas.drawText(fullTitle, paddingLeft, headerTop, titlePaint)
         canvas.drawText("unitrack+", paddingRight, headerTop, brandPaint)
         canvas.drawText("總學分：$totalCredits 學分 · 共 ${courses.size} 門課程", paddingLeft, headerTop + 50f, subtitlePaint)
 
@@ -199,7 +218,13 @@ object TimetableImageGenerator {
         // Draw Day Headers
         for (i in 0 until daysCount) {
             val centerX = tableLeft + i * colWidth + colWidth / 2
-            canvas.drawText(dayHeaders[i], centerX, gridTop + 42f, headerDayPaint)
+            val dateStr = dates?.getOrNull(i)
+            if (dateStr != null) {
+                canvas.drawText(dayHeaders[i], centerX, gridTop + 30f, headerDayPaint)
+                canvas.drawText(dateStr, centerX, gridTop + 52f, headerDatePaint)
+            } else {
+                canvas.drawText(dayHeaders[i], centerX, gridTop + 42f, headerDayPaint)
+            }
         }
 
         // Horizontal line under day headers
