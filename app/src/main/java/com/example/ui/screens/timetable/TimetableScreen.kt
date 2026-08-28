@@ -1,18 +1,22 @@
 package com.example.ui.screens.timetable
 
+import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.EditCalendar
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -85,6 +89,7 @@ fun TimetableScreen(
     var showSemesterManageDialog by remember { mutableStateOf(false) }
     var showTimeSettingsSheet by remember { mutableStateOf(false) }
     var isGridView by remember { mutableStateOf(true) }
+    var isFabExpanded by remember { mutableStateOf(false) }
     val isWeeklyMode by viewModel.isWeeklyMode.collectAsStateWithLifecycle()
     val showWeekend by viewModel.showWeekend.collectAsStateWithLifecycle()
     val showTimeInsteadOfPeriod by viewModel.showTimeInsteadOfPeriod.collectAsStateWithLifecycle()
@@ -116,269 +121,333 @@ fun TimetableScreen(
         else courses.filter { isCourseInWeek(it, currentWeek) }
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        // Header: Semester Switcher & View Mode Toggles
-        Row(
+    Box(modifier = modifier.fillMaxSize()) {
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxSize()
+                .padding(horizontal = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Semester selector button
-            OutlinedButton(
-                onClick = { showSemesterManageDialog = true },
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text(
-                    text = formatSemesterHeaderLabel(selectedSemester, graduationPlan.admissionSemester),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Icon(
-                    imageVector = Icons.Default.ArrowDropDown,
-                    contentDescription = "選擇學期",
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
-
+            // Header: Semester Switcher & View Mode Toggles
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Toggle 5-day / 7-day week display button
-                FilledTonalIconButton(
-                    onClick = {
-                        viewModel.setShowWeekend(!showWeekend)
-                    },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = if (showWeekend) SapphirePrimary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = if (showWeekend) SapphirePrimary else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.CalendarViewWeek,
-                        contentDescription = if (showWeekend) "切換為平日 (五天)" else "切換為一週 (七天)",
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-
-                // Share Timetable Image Button (Direct image share)
-                FilledTonalIconButton(
-                    onClick = {
-                        val semesterLabel = formatSemesterHeaderLabel(selectedSemester, graduationPlan.admissionSemester)
-                        val currentWeekNum = if (isWeeklyMode) currentWeek else 0
-                        val currentWeekDates = if (isWeeklyMode) getWeekDates(currentStartDateStr, currentWeek, daysCount) else null
-                        val shareCourses = if (isWeeklyMode) courses.filter { isCourseInWeek(it, currentWeek) } else courses
-                        TimetableImageGenerator.shareTimetableImage(
-                            context = context,
-                            semesterLabel = semesterLabel,
-                            courses = shareCourses,
-                            showWeekend = showWeekend,
-                            showTimeInsteadOfPeriod = showTimeInsteadOfPeriod,
-                            weekNum = currentWeekNum,
-                            dates = currentWeekDates
-                        )
-                    },
+                // Semester selector button
+                OutlinedButton(
+                    onClick = { showSemesterManageDialog = true },
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Share,
-                        contentDescription = "分享課表圖片",
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
-
-                // Grade Entry Button (Calculator icon)
-                FilledTonalIconButton(
-                    onClick = onNavigateToGrades,
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.testTag("grade_entry_button")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Calculate,
-                        contentDescription = "登錄成績",
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-
-                // Add Course Button (Icon only)
-                FilledIconButton(
-                    onClick = {
-                        editingCourse = null
-                        showAddDialog = true
-                    },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = SapphirePrimary,
-                        contentColor = Color.White
-                    ),
-                    modifier = Modifier.testTag("add_course_button")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "新增課程",
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-            }
-        }
-
-        // Summary Row with Countdown & Credits Badges
-        val totalCredits = courses.sumOf { it.credits }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                // Countdown Badge (開學 D-13 / 第 X 週)
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable { showTimeSettingsSheet = true }
-                ) {
                     Text(
-                        text = countdownBadgeText,
-                        style = MaterialTheme.typography.labelMedium,
+                        text = formatSemesterHeaderLabel(selectedSemester, graduationPlan.admissionSemester),
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Icon(
+                        imageVector = Icons.Default.ArrowDropDown,
+                        contentDescription = "選擇學期",
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
 
-                // Credits Badge (X 學分)
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                    modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "${totalCredits.toInt()} 學分",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                    )
-                }
-            }
+                    // Toggle 5-day / 7-day week display button
+                    FilledTonalIconButton(
+                        onClick = {
+                            viewModel.setShowWeekend(!showWeekend)
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = if (showWeekend) SapphirePrimary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (showWeekend) SapphirePrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CalendarViewWeek,
+                            contentDescription = if (showWeekend) "切換為平日 (五天)" else "切換為一週 (七天)",
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
 
-            Text(
-                text = if (isGridView) (if (isWeeklyMode) "左右滑動切換週次" else "點擊左上角切換模式") else "點擊列表查看詳細",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+                    // Share Timetable Image Button (Direct image share)
+                    FilledTonalIconButton(
+                        onClick = {
+                            val semesterLabel = formatSemesterHeaderLabel(selectedSemester, graduationPlan.admissionSemester)
+                            val currentWeekNum = if (isWeeklyMode) currentWeek else 0
+                            val currentWeekDates = if (isWeeklyMode) getWeekDates(currentStartDateStr, currentWeek, daysCount) else null
+                            val shareCourses = if (isWeeklyMode) courses.filter { isCourseInWeek(it, currentWeek) } else courses
+                            TimetableImageGenerator.shareTimetableImage(
+                                context = context,
+                                semesterLabel = semesterLabel,
+                                courses = shareCourses,
+                                showWeekend = showWeekend,
+                                showTimeInsteadOfPeriod = showTimeInsteadOfPeriod,
+                                weekNum = currentWeekNum,
+                                dates = currentWeekDates
+                            )
+                        },
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = "分享課表圖片",
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
 
-        val cycleNextMode: () -> Unit = {
-            when {
-                // 1. 各週 + 節次 -> 2. 各週 + 時間
-                isWeeklyMode && !showTimeInsteadOfPeriod -> {
-                    viewModel.setShowTimeInsteadOfPeriod(true)
-                }
-                // 2. 各週 + 時間 -> 3. 整學期 + 節次
-                isWeeklyMode && showTimeInsteadOfPeriod -> {
-                    viewModel.setIsWeeklyMode(false)
-                    viewModel.setShowTimeInsteadOfPeriod(false)
-                }
-                // 3. 整學期 + 節次 -> 4. 整學期 + 時間
-                !isWeeklyMode && !showTimeInsteadOfPeriod -> {
-                    viewModel.setShowTimeInsteadOfPeriod(true)
-                }
-                // 4. 整學期 + 時間 -> 1. 各週 + 節次
-                else -> {
-                    viewModel.setIsWeeklyMode(true)
-                    viewModel.setShowTimeInsteadOfPeriod(false)
-                }
-            }
-        }
-
-        if (!isGridView) {
-            // List View Mode
-            if (courses.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "這個學期還沒有排定課程",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(bottom = 16.dp)
-                ) {
-                    items(displayCourses.sortedWith(compareBy({ it.dayOfWeek }, { it.startPeriod }))) { course ->
-                        CourseListItemCard(
-                            course = course,
-                            onClick = { selectedCourseDetail = course }
+                    // Grade Entry Button (Calculator icon)
+                    FilledTonalIconButton(
+                        onClick = onNavigateToGrades,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.testTag("grade_entry_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Calculate,
+                            contentDescription = "登錄成績",
+                            modifier = Modifier.size(22.dp)
                         )
                     }
                 }
             }
-        } else if (!isWeeklyMode) {
-            // 整學期課表模式：不可左右滑動，顯示整學期全部課程
-            WeeklyTimetableGrid(
-                courses = courses,
-                daysCount = daysCount,
-                dayNames = dayNames,
-                selectedWeek = 0,
-                onModeToggle = cycleNextMode,
-                onCourseClick = { selectedCourseDetail = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                showTimeInsteadOfPeriod = showTimeInsteadOfPeriod,
-                dates = null
-            )
-        } else {
-            // 各週課表模式：可在第 1 ~ 18 週之間左右滑動
-            HorizontalPager(
-                state = weekPagerState,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            ) { page ->
-                val weekNum = page + 1
-                val pageCourses = remember(courses, weekNum) {
-                    courses.filter { isCourseInWeek(it, weekNum) }
-                }
-                val pageDates = remember(currentStartDateStr, weekNum, daysCount) {
-                    getWeekDates(currentStartDateStr, weekNum, daysCount)
+
+            // Summary Row with Countdown & Credits Badges
+            val totalCredits = courses.sumOf { it.credits }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    // Countdown Badge (開學 D-13 / 第 X 週)
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { showTimeSettingsSheet = true }
+                    ) {
+                        Text(
+                            text = countdownBadgeText,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                        )
+                    }
+
+                    // Credits Badge (X 學分)
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                        modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                    ) {
+                        Text(
+                            text = "${totalCredits.toInt()} 學分",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                        )
+                    }
                 }
 
+                Text(
+                    text = if (isGridView) (if (isWeeklyMode) "左右滑動切換週次" else "點擊左上角切換模式") else "點擊列表查看詳細",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            val cycleNextMode: () -> Unit = {
+                when {
+                    // 1. 各週 + 節次 -> 2. 各週 + 時間
+                    isWeeklyMode && !showTimeInsteadOfPeriod -> {
+                        viewModel.setShowTimeInsteadOfPeriod(true)
+                    }
+                    // 2. 各週 + 時間 -> 3. 整學期 + 節次
+                    isWeeklyMode && showTimeInsteadOfPeriod -> {
+                        viewModel.setIsWeeklyMode(false)
+                        viewModel.setShowTimeInsteadOfPeriod(false)
+                    }
+                    // 3. 整學期 + 節次 -> 4. 整學期 + 時間
+                    !isWeeklyMode && !showTimeInsteadOfPeriod -> {
+                        viewModel.setShowTimeInsteadOfPeriod(true)
+                    }
+                    // 4. 整學期 + 時間 -> 1. 各週 + 節次
+                    else -> {
+                        viewModel.setIsWeeklyMode(true)
+                        viewModel.setShowTimeInsteadOfPeriod(false)
+                    }
+                }
+            }
+
+            if (!isGridView) {
+                // List View Mode
+                if (courses.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "這個學期還沒有排定課程",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(bottom = 16.dp)
+                    ) {
+                        items(displayCourses.sortedWith(compareBy({ it.dayOfWeek }, { it.startPeriod }))) { course ->
+                            CourseListItemCard(
+                                course = course,
+                                onClick = { selectedCourseDetail = course }
+                            )
+                        }
+                    }
+                }
+            } else if (!isWeeklyMode) {
+                // 整學期課表模式：不可左右滑動，顯示整學期全部課程
                 WeeklyTimetableGrid(
-                    courses = pageCourses,
+                    courses = courses,
                     daysCount = daysCount,
                     dayNames = dayNames,
-                    selectedWeek = weekNum,
+                    selectedWeek = 0,
                     onModeToggle = cycleNextMode,
                     onCourseClick = { selectedCourseDetail = it },
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
                     showTimeInsteadOfPeriod = showTimeInsteadOfPeriod,
-                    dates = pageDates
+                    dates = null
+                )
+            } else {
+                // 各週課表模式：可在第 1 ~ 18 週之間左右滑動
+                HorizontalPager(
+                    state = weekPagerState,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) { page ->
+                    val weekNum = page + 1
+                    val pageCourses = remember(courses, weekNum) {
+                        courses.filter { isCourseInWeek(it, weekNum) }
+                    }
+                    val pageDates = remember(currentStartDateStr, weekNum, daysCount) {
+                        getWeekDates(currentStartDateStr, weekNum, daysCount)
+                    }
+
+                    WeeklyTimetableGrid(
+                        courses = pageCourses,
+                        daysCount = daysCount,
+                        dayNames = dayNames,
+                        selectedWeek = weekNum,
+                        onModeToggle = cycleNextMode,
+                        onCourseClick = { selectedCourseDetail = it },
+                        modifier = Modifier.fillMaxSize(),
+                        showTimeInsteadOfPeriod = showTimeInsteadOfPeriod,
+                        dates = pageDates
+                    )
+                }
+            }
+        }
+
+        // Tap-outside backdrop scrim when speed dial is open
+        if (isFabExpanded) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        isFabExpanded = false
+                    }
+            )
+        }
+
+        // Floating Action Button with Speed Dial Popup Menu
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 16.dp, bottom = 16.dp),
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            AnimatedVisibility(
+                visible = isFabExpanded,
+                enter = fadeIn() + slideInVertically { it / 2 } + scaleIn(transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 1f)),
+                exit = fadeOut() + slideOutVertically { it / 2 } + scaleOut(transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 1f))
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 6.dp,
+                    shadowElevation = 8.dp,
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
+                    ),
+                    modifier = Modifier.clip(RoundedCornerShape(16.dp))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .clickable {
+                                isFabExpanded = false
+                                editingCourse = null
+                                showAddDialog = true
+                            }
+                            .padding(horizontal = 18.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.EditCalendar,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Text(
+                            text = "手動輸入",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+
+            FloatingActionButton(
+                onClick = { isFabExpanded = !isFabExpanded },
+                shape = CircleShape,
+                containerColor = SapphirePrimary,
+                contentColor = Color.White,
+                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp),
+                modifier = Modifier
+                    .size(56.dp)
+                    .testTag("add_course_button")
+            ) {
+                Icon(
+                    imageVector = if (isFabExpanded) Icons.Default.Close else Icons.Default.Add,
+                    contentDescription = if (isFabExpanded) "關閉選單" else "新增課程",
+                    modifier = Modifier.size(26.dp)
                 )
             }
         }
