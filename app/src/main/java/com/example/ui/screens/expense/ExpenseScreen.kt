@@ -89,6 +89,7 @@ fun ExpenseScreen(
     var chartType by remember { mutableIntStateOf(0) } // 0: 圓餅圖, 1: 折線圖
     var chartExpenseType by remember { mutableStateOf<ExpenseType?>(ExpenseType.EXPENSE) }
     var viewingAccount by remember { mutableStateOf<PaymentAccount?>(null) }
+    var isFabExpanded by remember { mutableStateOf(false) }
     var draggingAccountIndex by remember { mutableStateOf<Int?>(null) }
     var dragOffsetY by remember { mutableFloatStateOf(0f) }
     val currentAccountsSnapshot by rememberUpdatedState(customAccounts)
@@ -129,17 +130,71 @@ fun ExpenseScreen(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         floatingActionButton = {
             if (currentTab == 0) {
-                ExtendedFloatingActionButton(
-                    onClick = {
-                        editingExpense = null
-                        showAddDialog = true
-                    },
-                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                    text = { Text("記一筆") },
-                    containerColor = TealSecondary,
-                    contentColor = Color.White,
-                    modifier = Modifier.testTag("add_expense_fab")
-                )
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = isFabExpanded,
+                        enter = androidx.compose.animation.fadeIn() +
+                                androidx.compose.animation.slideInVertically { it / 2 } +
+                                androidx.compose.animation.scaleIn(transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 1f)),
+                        exit = androidx.compose.animation.fadeOut() +
+                               androidx.compose.animation.slideOutVertically { it / 2 } +
+                               androidx.compose.animation.scaleOut(transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 1f))
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.surface,
+                            tonalElevation = 6.dp,
+                            shadowElevation = 8.dp,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+                            modifier = Modifier.clip(RoundedCornerShape(16.dp))
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .clickable {
+                                        isFabExpanded = false
+                                        editingExpense = null
+                                        showAddDialog = true
+                                    }
+                                    .padding(horizontal = 18.dp, vertical = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                                Text(
+                                    text = "手動輸入",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+
+                    FloatingActionButton(
+                        onClick = { isFabExpanded = !isFabExpanded },
+                        shape = CircleShape,
+                        containerColor = TealSecondary,
+                        contentColor = Color.White,
+                        elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp),
+                        modifier = Modifier
+                            .size(56.dp)
+                            .testTag("add_expense_fab")
+                    ) {
+                        Icon(
+                            imageVector = if (isFabExpanded) Icons.Default.Close else Icons.Default.Add,
+                            contentDescription = if (isFabExpanded) "關閉選單" else "記一筆",
+                            modifier = Modifier.size(26.dp)
+                        )
+                    }
+                }
             }
         }
     ) { innerPadding ->
