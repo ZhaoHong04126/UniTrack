@@ -11,7 +11,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.*
@@ -44,21 +43,56 @@ fun GradeEntryScreen(
     val courses by viewModel.currentSemesterCourses.collectAsStateWithLifecycle()
     val plan by viewModel.graduationPlan.collectAsStateWithLifecycle()
     val locale = LocalConfiguration.current.locales[0]
+    val focusManager = LocalFocusManager.current
 
     var showSemesterManageDialog by remember { mutableStateOf(false) }
 
-    // Calculate semester average score & earned credits
-    val scoredCourses = courses.filter { it.score != null }
+    // Map of courseId -> Pair<Double? (score), String? (letterGrade)>
+    val draftGrades = remember(courses) {
+        mutableStateMapOf<Long, Pair<Double?, String?>>().apply {
+            courses.forEach { c ->
+                put(c.id, Pair(c.score, c.letterGrade))
+            }
+        }
+    }
+
+    val displayCourses = remember(courses, draftGrades.toMap()) {
+        courses.map { c ->
+            val draft = draftGrades[c.id] ?: Pair(c.score, c.letterGrade)
+            val isCompleted = when {
+                draft.first != null -> draft.first!! >= plan.minPassingScore
+                draft.second in listOf("抵免", "通過", "免修") -> true
+                draft.second == "不通過" -> false
+                else -> false
+            }
+            c.copy(
+                score = draft.first,
+                letterGrade = draft.second,
+                isCompleted = isCompleted
+            )
+        }
+    }
+
+    val changedCourses = remember(courses, displayCourses) {
+        displayCourses.filter { displayCourse ->
+            val original = courses.firstOrNull { it.id == displayCourse.id }
+            original != null && (original.score != displayCourse.score || original.letterGrade != displayCourse.letterGrade)
+        }
+    }
+    val hasChanges = changedCourses.isNotEmpty()
+
+    // Calculate semester average score & earned credits dynamically
+    val scoredCourses = displayCourses.filter { it.score != null }
     val totalGradedCredits = scoredCourses.sumOf { it.credits }
     val weightedScoreSum = scoredCourses.sumOf { (it.score ?: 0.0) * it.credits }
     val semesterAverageScore = if (totalGradedCredits > 0) weightedScoreSum / totalGradedCredits else 0.0
-    val totalSemesterCredits = courses.sumOf { it.credits }
-    val passedCredits = courses.filter {
+    val totalSemesterCredits = displayCourses.sumOf { it.credits }
+    val passedCredits = displayCourses.filter {
         (it.score != null && it.score >= plan.minPassingScore) ||
         (it.letterGrade in listOf("抵免", "通過", "免修")) ||
         (it.isCompleted && it.letterGrade != "不通過")
     }.sumOf { it.credits }
-    val loggedCount = courses.count { it.score != null || it.letterGrade != null }
+    val loggedCount = displayCourses.count { it.score != null || it.letterGrade != null }
 
     Scaffold(
         topBar = {
@@ -108,6 +142,45 @@ fun GradeEntryScreen(
                 }
             )
         },
+        bottomBar = {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surface,
+                shadowElevation = 8.dp
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                        .navigationBarsPadding()
+                ) {
+                    Button(
+                        onClick = {
+                            if (hasChanges) {
+                                viewModel.saveCourseGradesBatch(changedCourses, semester = selectedSemester)
+                                focusManager.clearFocus()
+                            }
+                        },
+                        enabled = hasChanges,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = SapphirePrimary,
+                            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                        )
+                    ) {
+                        Text(
+                            text = if (hasChanges) "儲存成績變更 (${changedCourses.size} 筆)" else "儲存",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        },
         modifier = modifier.fillMaxSize()
     ) { innerPadding ->
         LazyColumn(
@@ -116,7 +189,7 @@ fun GradeEntryScreen(
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp)
+            contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp)
         ) {
             // Semester Stats Summary Card
             item {
@@ -177,7 +250,7 @@ fun GradeEntryScreen(
 
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = "$loggedCount / ${courses.size}",
+                                text = "$loggedCount / ${displayCourses.size}",
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = EmeraldAccent
@@ -192,7 +265,7 @@ fun GradeEntryScreen(
                 }
             }
 
-            if (courses.isEmpty()) {
+            if (displayCourses.isEmpty()) {
                 item {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -214,37 +287,20 @@ fun GradeEntryScreen(
                     }
                 }
             } else {
-                items(courses.sortedWith(compareBy({ it.dayOfWeek }, { it.startPeriod })), key = { it.id }) { course ->
+                items(displayCourses.sortedWith(compareBy({ it.dayOfWeek }, { it.startPeriod })), key = { it.id }) { course ->
+                    val draft = draftGrades[course.id] ?: Pair(course.score, course.letterGrade)
                     GradeEntryCourseCard(
                         course = course,
-                        onSaveScore = { newScore ->
-                            val isCompleted = newScore != null && newScore >= plan.minPassingScore
-                            viewModel.updateCourse(
-                                course.copy(
-                                    score = newScore,
-                                    letterGrade = null,
-                                    isCompleted = isCompleted
-                                )
-                            )
+                        draftScore = draft.first,
+                        draftLetterGrade = draft.second,
+                        onScoreChanged = { newScore ->
+                            draftGrades[course.id] = Pair(newScore, null)
                         },
-                        onSaveNonGraded = { status ->
-                            val isCompleted = status in listOf("抵免", "通過", "免修")
-                            viewModel.updateCourse(
-                                course.copy(
-                                    score = null,
-                                    letterGrade = status,
-                                    isCompleted = isCompleted
-                                )
-                            )
+                        onNonGradedChanged = { status ->
+                            draftGrades[course.id] = Pair(null, status)
                         },
-                        onClearGrade = {
-                            viewModel.updateCourse(
-                                course.copy(
-                                    score = null,
-                                    letterGrade = null,
-                                    isCompleted = false
-                                )
-                            )
+                        onClear = {
+                            draftGrades[course.id] = Pair(null, null)
                         }
                     )
                 }
@@ -275,16 +331,18 @@ fun GradeEntryScreen(
 @Composable
 private fun GradeEntryCourseCard(
     course: Course,
-    onSaveScore: (Double?) -> Unit,
-    onSaveNonGraded: (String) -> Unit,
-    onClearGrade: () -> Unit
+    draftScore: Double?,
+    draftLetterGrade: String?,
+    onScoreChanged: (Double?) -> Unit,
+    onNonGradedChanged: (String) -> Unit,
+    onClear: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
-    var scoreInput by remember(course.score) {
-        mutableStateOf(course.score?.let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() } ?: "")
+    var scoreInputText by remember(draftScore) {
+        mutableStateOf(draftScore?.let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() } ?: "")
     }
     val focusManager = LocalFocusManager.current
-    val isNonGraded = course.letterGrade in listOf("抵免", "通過", "不通過", "免修")
+    val isNonGraded = draftLetterGrade in listOf("抵免", "通過", "不通過", "免修")
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -345,7 +403,7 @@ private fun GradeEntryCourseCard(
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 if (isNonGraded) {
-                    val currentStatus = course.letterGrade ?: "通過"
+                    val currentStatus = draftLetterGrade ?: "通過"
                     val (bgColor, textColor) = when (currentStatus) {
                         "通過" -> EmeraldAccent to Color.White
                         "不通過" -> RoseAccent to Color.White
@@ -391,7 +449,7 @@ private fun GradeEntryCourseCard(
                                     text = {
                                         Text(
                                             text = opt,
-                                            fontWeight = if (course.letterGrade == opt) FontWeight.Bold else FontWeight.Normal,
+                                            fontWeight = if (draftLetterGrade == opt) FontWeight.Bold else FontWeight.Normal,
                                             color = when (opt) {
                                                 "通過" -> EmeraldAccent
                                                 "不通過" -> RoseAccent
@@ -402,7 +460,7 @@ private fun GradeEntryCourseCard(
                                         )
                                     },
                                     onClick = {
-                                        onSaveNonGraded(opt)
+                                        onNonGradedChanged(opt)
                                         showMenu = false
                                     }
                                 )
@@ -411,14 +469,14 @@ private fun GradeEntryCourseCard(
                             DropdownMenuItem(
                                 text = { Text("🔢 改為填寫分數 (0~100)") },
                                 onClick = {
-                                    onClearGrade()
+                                    onClear()
                                     showMenu = false
                                 }
                             )
                             DropdownMenuItem(
                                 text = { Text("✕ 清除紀錄", color = MaterialTheme.colorScheme.error) },
                                 onClick = {
-                                    onClearGrade()
+                                    onClear()
                                     showMenu = false
                                 }
                             )
@@ -426,10 +484,11 @@ private fun GradeEntryCourseCard(
                     }
                 } else {
                     OutlinedTextField(
-                        value = scoreInput,
+                        value = scoreInputText,
                         onValueChange = { input ->
                             if (input.isEmpty() || input.toDoubleOrNull() != null) {
-                                scoreInput = input
+                                scoreInputText = input
+                                onScoreChanged(input.toDoubleOrNull())
                             }
                         },
                         placeholder = { Text("0~100", style = MaterialTheme.typography.labelSmall) },
@@ -439,30 +498,12 @@ private fun GradeEntryCourseCard(
                         ),
                         keyboardActions = KeyboardActions(
                             onDone = {
-                                val parsed = scoreInput.toDoubleOrNull()
-                                onSaveScore(parsed)
                                 focusManager.clearFocus()
                             }
                         ),
                         singleLine = true,
                         modifier = Modifier.width(84.dp)
                     )
-
-                    IconButton(
-                        onClick = {
-                            val parsed = scoreInput.toDoubleOrNull()
-                            onSaveScore(parsed)
-                            focusManager.clearFocus()
-                        },
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "儲存成績",
-                            tint = EmeraldAccent,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
 
                     Box {
                         IconButton(
@@ -502,18 +543,18 @@ private fun GradeEntryCourseCard(
                                         )
                                     },
                                     onClick = {
-                                        onSaveNonGraded(opt)
+                                        onNonGradedChanged(opt)
                                         showMenu = false
                                     }
                                 )
                             }
-                            if (course.score != null) {
+                            if (draftScore != null) {
                                 HorizontalDivider()
                                 DropdownMenuItem(
                                     text = { Text("✕ 清除成績", color = MaterialTheme.colorScheme.error) },
                                     onClick = {
-                                        scoreInput = ""
-                                        onClearGrade()
+                                        scoreInputText = ""
+                                        onClear()
                                         showMenu = false
                                     }
                                 )

@@ -176,6 +176,7 @@ class MainActivity : ComponentActivity() {
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
+                    contentWindowInsets = WindowInsets.statusBars,
                     snackbarHost = {
                         SnackbarHost(
                             hostState = snackbarHostState,
@@ -276,7 +277,10 @@ class MainActivity : ComponentActivity() {
                         startDestination = if (isProfileReady) AppDestination.Dashboard.route else "auth",
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(innerPadding)
+                            .padding(
+                                top = innerPadding.calculateTopPadding(),
+                                bottom = if (showBottomBar) innerPadding.calculateBottomPadding() else 0.dp
+                            )
                     ) {
                         composable(AppDestination.Dashboard.route) {
                             DashboardScreen(

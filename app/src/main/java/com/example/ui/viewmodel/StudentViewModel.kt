@@ -1212,6 +1212,142 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    fun updateCourseGrade(
+        course: Course,
+        newScore: Double? = null,
+        newLetterGrade: String? = null,
+        sendNotify: Boolean = true
+    ) = viewModelScope.launch {
+        val plan = repository.getGraduationPlanOnce() ?: DefaultData.getDefaultGraduationPlan()
+        val isCompleted = when {
+            newScore != null -> newScore >= plan.minPassingScore
+            newLetterGrade in listOf("抵免", "通過", "免修") -> true
+            newLetterGrade == "不通過" -> false
+            else -> false
+        }
+
+        val updatedCourse = course.copy(
+            score = newScore,
+            letterGrade = newLetterGrade,
+            isCompleted = isCompleted
+        )
+
+        repository.updateCourse(updatedCourse)
+        val user = currentUser.value
+        if (user != null) {
+            firestoreSyncRepository.uploadAllToCloud(user.uid)
+        }
+        WidgetUpdateHelper.updateAllWidgets(getApplication())
+
+        val scoreFormatted = newScore?.let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() }
+
+        if (newScore != null) {
+            _userMessage.value = "已登錄成績：${course.name} ($scoreFormatted 分)"
+        } else if (newLetterGrade != null) {
+            _userMessage.value = "已更新狀態：${course.name} ($newLetterGrade)"
+        } else {
+            _userMessage.value = "已清除成績：${course.name}"
+        }
+
+        if (sendNotify) {
+            val creditsStr = if (course.credits % 1.0 == 0.0) course.credits.toInt().toString() else course.credits.toString()
+            val (title, message) = when {
+                newScore != null -> {
+                    if (isCompleted) {
+                        "📊 成績已登錄：${course.name}" to "「${course.name}」成績已登記為 $scoreFormatted 分（已取得 $creditsStr 學分）。"
+                    } else {
+                        "📊 成績已登錄：${course.name}" to "「${course.name}」成績已登記為 $scoreFormatted 分（未達及格標準 ${plan.minPassingScore.toInt()} 分）。"
+                    }
+                }
+                newLetterGrade in listOf("抵免", "通過", "免修") -> {
+                    "📋 成績狀態更新：${course.name}" to "「${course.name}」已設定為「$newLetterGrade」（已獲得 $creditsStr 學分，不採計 GPA）。"
+                }
+                newLetterGrade == "不通過" -> {
+                    "📋 成績狀態更新：${course.name}" to "「${course.name}」已設定為「不通過」（未取得學分）。"
+                }
+                else -> {
+                    "🔄 成績已清除：${course.name}" to "已清除「${course.name}」之成績與修課狀態紀錄。"
+                }
+            }
+
+            sendNotification(
+                title = title,
+                message = message,
+                type = NotificationType.COURSE,
+                actionRoute = "timetable",
+                sendSystemPush = true
+            )
+        }
+    }
+
+    fun saveCourseGradesBatch(
+        changedCourses: List<Course>,
+        semester: String = "",
+        sendNotify: Boolean = true
+    ) = viewModelScope.launch {
+        if (changedCourses.isEmpty()) return@launch
+
+        for (c in changedCourses) {
+            repository.updateCourse(c)
+        }
+
+        val user = currentUser.value
+        if (user != null) {
+            firestoreSyncRepository.uploadAllToCloud(user.uid)
+        }
+        WidgetUpdateHelper.updateAllWidgets(getApplication())
+
+        val count = changedCourses.size
+        _userMessage.value = "已成功儲存 $count 門課程成績"
+
+        if (sendNotify) {
+            val plan = repository.getGraduationPlanOnce() ?: DefaultData.getDefaultGraduationPlan()
+            if (count == 1) {
+                val c = changedCourses.first()
+                val scoreFormatted = c.score?.let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() }
+                val creditsStr = if (c.credits % 1.0 == 0.0) c.credits.toInt().toString() else c.credits.toString()
+                val (title, message) = when {
+                    c.score != null -> {
+                        if (c.isCompleted) {
+                            "📊 成績已更新：${c.name}" to "「${c.name}」成績已登記為 $scoreFormatted 分（已取得 $creditsStr 學分）。"
+                        } else {
+                            "📊 成績已更新：${c.name}" to "「${c.name}」成績已登記為 $scoreFormatted 分（未達及格標準 ${plan.minPassingScore.toInt()} 分）。"
+                        }
+                    }
+                    c.letterGrade in listOf("抵免", "通過", "免修") -> {
+                        "📋 成績狀態更新：${c.name}" to "「${c.name}」已設定為「${c.letterGrade}」（已獲得 $creditsStr 學分，不採計 GPA）。"
+                    }
+                    c.letterGrade == "不通過" -> {
+                        "📋 成績狀態更新：${c.name}" to "「${c.name}」已設定為「不通過」（未取得學分）。"
+                    }
+                    else -> {
+                        "🔄 成績已清除：${c.name}" to "已清除「${c.name}」之成績與修課狀態紀錄。"
+                    }
+                }
+
+                sendNotification(
+                    title = title,
+                    message = message,
+                    type = NotificationType.COURSE,
+                    actionRoute = "timetable",
+                    sendSystemPush = true
+                )
+            } else {
+                val semStr = if (semester.isNotBlank()) "$semester 學期" else "本學期"
+                val namesPreview = changedCourses.take(3).joinToString("、") { it.name }
+                val moreSuffix = if (count > 3) " 等 $count 門課程" else ""
+
+                sendNotification(
+                    title = "📊 學期成績批次儲存：$semStr（共 $count 門）",
+                    message = "已更新「$namesPreview」$moreSuffix 之成績與修課狀態，學期平均與獲得學分已同步更新。",
+                    type = NotificationType.COURSE,
+                    actionRoute = "timetable",
+                    sendSystemPush = true
+                )
+            }
+        }
+    }
+
     fun deleteCourse(course: Course, sendNotify: Boolean = true) = viewModelScope.launch {
         repository.deleteCourse(course)
         val user = currentUser.value
