@@ -12,7 +12,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -34,7 +33,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.core.content.FileProvider
 import androidx.core.graphics.toColorInt
 import com.example.data.model.Course
 import com.example.ui.theme.SapphirePrimary
@@ -42,10 +40,9 @@ import com.example.util.GeminiTimetableParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 
 private enum class ImportStep {
-    PICK_SOURCE,
+    IDLE,
     ANALYZING,
     REVIEW,
     ERROR
@@ -63,7 +60,7 @@ fun TimetableImageImportDialog(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    var currentStep by remember { mutableStateOf(ImportStep.PICK_SOURCE) }
+    var currentStep by remember { mutableStateOf(ImportStep.IDLE) }
     var selectedSemester by remember { mutableStateOf(initialSemester) }
     var previewBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var recognizedCourses by remember { mutableStateOf<List<Course>>(emptyList()) }
@@ -89,13 +86,6 @@ fun TimetableImageImportDialog(
             }
         }
         return selected
-    }
-
-    // Temporary camera image Uri
-    val tempCameraUri = remember {
-        val imagesDir = File(context.cacheDir, "images").apply { mkdirs() }
-        val imageFile = File(imagesDir, "camera_timetable_temp_${System.currentTimeMillis()}.jpg")
-        FileProvider.getUriForFile(context, "${context.packageName}.provider", imageFile)
     }
 
     // Process image function
@@ -126,155 +116,33 @@ fun TimetableImageImportDialog(
         }
     }
 
-    // Photo Gallery Launcher
+    // Photo Gallery Launcher (Directly opens photo gallery)
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
         if (uri != null) {
             processImageUri(uri)
-        } else if (currentStep == ImportStep.PICK_SOURCE) {
-            onDismiss()
+        } else {
+            if (recognizedCourses.isEmpty()) {
+                onDismiss()
+            }
         }
     }
 
-    // Camera Capture Launcher
-    val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicture()
-    ) { success: Boolean ->
-        if (success) {
-            processImageUri(tempCameraUri)
-        } else if (currentStep == ImportStep.PICK_SOURCE) {
-            onDismiss()
+    // Auto-launch gallery picker on opening
+    var hasLaunchedPicker by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        if (!hasLaunchedPicker) {
+            hasLaunchedPicker = true
+            galleryLauncher.launch(
+                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+            )
         }
     }
 
     when (currentStep) {
-        ImportStep.PICK_SOURCE -> {
-            ModalBottomSheet(
-                onDismissRequest = onDismiss,
-                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-                containerColor = MaterialTheme.colorScheme.surface,
-                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "📸 課表照片智慧導入",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "自動識別照片中的課表結構，快速匯入所有課程資訊",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        // Camera option
-                        Surface(
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(120.dp)
-                                .clip(RoundedCornerShape(16.dp))
-                                .clickable {
-                                    cameraLauncher.launch(tempCameraUri)
-                                },
-                            shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
-                            border = androidx.compose.foundation.BorderStroke(
-                                1.5.dp,
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                            )
-                        ) {
-                            Column(
-                                modifier = Modifier.fillMaxSize(),
-                                verticalArrangement = Arrangement.Center,
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(48.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.primary),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.PhotoCamera,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(26.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(10.dp))
-                                Text(
-                                    text = "拍照",
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                        }
-
-                        // Gallery option
-                        Surface(
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(120.dp)
-                                .clip(RoundedCornerShape(16.dp))
-                                .clickable {
-                                    galleryLauncher.launch(
-                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                                    )
-                                },
-                            shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f),
-                            border = androidx.compose.foundation.BorderStroke(
-                                1.5.dp,
-                                MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f)
-                            )
-                        ) {
-                            Column(
-                                modifier = Modifier.fillMaxSize(),
-                                verticalArrangement = Arrangement.Center,
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(48.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.secondary),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.PhotoLibrary,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(26.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(10.dp))
-                                Text(
-                                    text = "從相簿選取",
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(28.dp))
-                }
-            }
+        ImportStep.IDLE -> {
+            // Waiting for photo picker result
         }
 
         ImportStep.ANALYZING -> {
@@ -546,7 +414,9 @@ fun TimetableImageImportDialog(
                     ) {
                         OutlinedButton(
                             onClick = {
-                                currentStep = ImportStep.PICK_SOURCE
+                                galleryLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
                             },
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(12.dp)
@@ -687,14 +557,16 @@ fun TimetableImageImportDialog(
                 },
                 text = {
                     Text(
-                        text = errorMessage.ifBlank { "未能成功從圖片中辨識出課表資訊，請確保課表清晰並重新嘗試。" },
+                        errorMessage.ifBlank { "未能成功從圖片中辨識出課表資訊，請確保課表清晰並重新嘗試。" },
                         style = MaterialTheme.typography.bodyMedium
                     )
                 },
                 confirmButton = {
                     Button(
                         onClick = {
-                            currentStep = ImportStep.PICK_SOURCE
+                            galleryLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = SapphirePrimary)
                     ) {
@@ -942,4 +814,3 @@ private fun RecognizedCourseCard(
         }
     }
 }
-
