@@ -456,12 +456,16 @@ private fun parseNotificationMessage(notification: AppNotification): ParsedNotif
         kvList.add("導入方式" to "📸 圖片 AI 智慧辨識")
     }
 
-    kvList.add("異動狀態" to when (actionBadge) {
-        ActionBadgeType.AI_IMPORT -> "課表建立完成"
-        ActionBadgeType.ADD -> "已成功新增"
-        ActionBadgeType.DELETE -> "已確認刪除"
-        ActionBadgeType.UPDATE -> "已更新內容"
-        ActionBadgeType.NOTICE -> "系統一般通知"
+    kvList.add("異動狀態" to when {
+        title.contains("加入成績") || msg.contains("加入成績") -> "已加入成績"
+        title.contains("更動成績") || msg.contains("更動成績") -> "已更動成績"
+        title.contains("成績登錄") || msg.contains("登錄成績") -> "已登錄成績"
+        title.contains("成績已清除") || msg.contains("清除成績") -> "已清除成績"
+        actionBadge == ActionBadgeType.AI_IMPORT -> "課表建立完成"
+        actionBadge == ActionBadgeType.ADD -> "已成功新增"
+        actionBadge == ActionBadgeType.DELETE -> "已確認刪除"
+        actionBadge == ActionBadgeType.UPDATE -> "已更新內容"
+        else -> "系統一般通知"
     })
 
     val countMatch = Regex("""共\s*(\d+)\s*門課""").find(title) ?: Regex("""共\s*(\d+)\s*門課""").find(msg)

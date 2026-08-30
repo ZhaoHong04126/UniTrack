@@ -1283,6 +1283,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     fun saveCourseGradesBatch(
         changedCourses: List<Course>,
         semester: String = "",
+        originalCourses: List<Course> = emptyList(),
         sendNotify: Boolean = true
     ) = viewModelScope.launch {
         if (changedCourses.isEmpty()) return@launch
@@ -1298,27 +1299,48 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         WidgetUpdateHelper.updateAllWidgets(getApplication())
 
         val count = changedCourses.size
-        _userMessage.value = "已成功儲存 $count 門課程成績"
+        
+        // Check how many were newly added vs updated
+        val addedCount = changedCourses.count { changed ->
+            val orig = originalCourses.firstOrNull { it.id == changed.id }
+            orig != null && orig.score == null && orig.letterGrade == null && (changed.score != null || changed.letterGrade != null)
+        }
+        val isAllAdded = addedCount == count
+        val isAllUpdated = addedCount == 0 && changedCourses.all { changed ->
+            val orig = originalCourses.firstOrNull { it.id == changed.id }
+            orig != null && (orig.score != null || orig.letterGrade != null)
+        }
+
+        val actionName = when {
+            isAllAdded -> "加入 $count 門成績"
+            isAllUpdated -> "更動 $count 門成績"
+            else -> "登錄與更動 $count 門成績"
+        }
+
+        _userMessage.value = "已成功$actionName"
 
         if (sendNotify) {
             val plan = repository.getGraduationPlanOnce() ?: DefaultData.getDefaultGraduationPlan()
             if (count == 1) {
                 val c = changedCourses.first()
+                val orig = originalCourses.firstOrNull { it.id == c.id }
+                val isNew = orig != null && orig.score == null && orig.letterGrade == null && (c.score != null || c.letterGrade != null)
+                val verb = if (isNew) "加入成績" else "更動成績"
                 val scoreFormatted = c.score?.let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() }
                 val creditsStr = if (c.credits % 1.0 == 0.0) c.credits.toInt().toString() else c.credits.toString()
                 val (title, message) = when {
                     c.score != null -> {
                         if (c.isCompleted) {
-                            "📊 成績已更新：${c.name}" to "「${c.name}」成績已登記為 $scoreFormatted 分（已取得 $creditsStr 學分）。"
+                            "📊 $verb：${c.name}" to "「${c.name}」已${verb}為 $scoreFormatted 分（已取得 $creditsStr 學分）。"
                         } else {
-                            "📊 成績已更新：${c.name}" to "「${c.name}」成績已登記為 $scoreFormatted 分（未達及格標準 ${plan.minPassingScore.toInt()} 分）。"
+                            "📊 $verb：${c.name}" to "「${c.name}」已${verb}為 $scoreFormatted 分（未達及格標準 ${plan.minPassingScore.toInt()} 分）。"
                         }
                     }
                     c.letterGrade in listOf("抵免", "通過", "免修") -> {
-                        "📋 成績狀態更新：${c.name}" to "「${c.name}」已設定為「${c.letterGrade}」（已獲得 $creditsStr 學分，不採計 GPA）。"
+                        "📋 $verb：${c.name}" to "「${c.name}」已設定為「${c.letterGrade}」（已獲得 $creditsStr 學分，不採計 GPA）。"
                     }
                     c.letterGrade == "不通過" -> {
-                        "📋 成績狀態更新：${c.name}" to "「${c.name}」已設定為「不通過」（未取得學分）。"
+                        "📋 $verb：${c.name}" to "「${c.name}」已設定為「不通過」（未取得學分）。"
                     }
                     else -> {
                         "🔄 成績已清除：${c.name}" to "已清除「${c.name}」之成績與修課狀態紀錄。"
@@ -1329,7 +1351,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                     title = title,
                     message = message,
                     type = NotificationType.COURSE,
-                    actionRoute = "timetable",
+                    actionRoute = "grade_entry",
                     sendSystemPush = true
                 )
             } else {
@@ -1337,11 +1359,17 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                 val namesPreview = changedCourses.take(3).joinToString("、") { it.name }
                 val moreSuffix = if (count > 3) " 等 $count 門課程" else ""
 
+                val verbPrefix = when {
+                    isAllAdded -> "加入成績"
+                    isAllUpdated -> "更動成績"
+                    else -> "成績登錄與更動"
+                }
+
                 sendNotification(
-                    title = "📊 學期成績批次儲存：$semStr（共 $count 門）",
-                    message = "已更新「$namesPreview」$moreSuffix 之成績與修課狀態，學期平均與獲得學分已同步更新。",
+                    title = "📊 $verbPrefix：$semStr（$actionName）",
+                    message = "已為「$namesPreview」$moreSuffix 完成成績儲存，學期平均與獲得學分已同步計算。",
                     type = NotificationType.COURSE,
-                    actionRoute = "timetable",
+                    actionRoute = "grade_entry",
                     sendSystemPush = true
                 )
             }

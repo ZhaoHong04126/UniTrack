@@ -157,7 +157,11 @@ fun GradeEntryScreen(
                     Button(
                         onClick = {
                             if (hasChanges) {
-                                viewModel.saveCourseGradesBatch(changedCourses, semester = selectedSemester)
+                                viewModel.saveCourseGradesBatch(
+                                    changedCourses = changedCourses,
+                                    semester = selectedSemester,
+                                    originalCourses = courses
+                                )
                                 focusManager.clearFocus()
                             }
                         },
