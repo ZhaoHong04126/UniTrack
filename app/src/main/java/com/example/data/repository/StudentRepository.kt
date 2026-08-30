@@ -15,6 +15,7 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
+@Suppress("unused")
 class StudentRepository(
     private val context: Context,
     private val courseDao: CourseDao,
@@ -62,6 +63,10 @@ class StudentRepository(
         } else {
             courseDao.deleteCourse(course)
         }
+    }
+
+    suspend fun deleteCoursesBySemester(semester: String) = withContext(Dispatchers.IO) {
+        courseDao.deleteCoursesBySemester(semester)
     }
 
     // Graduation Plan & Thresholds

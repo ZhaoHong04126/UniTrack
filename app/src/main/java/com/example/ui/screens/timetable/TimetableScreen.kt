@@ -590,6 +590,9 @@ fun TimetableScreen(
             onSetPrimarySemester = { sem ->
                 viewModel.setPrimarySemester(sem)
             },
+            onDeleteSemester = { sem ->
+                viewModel.deleteSemester(sem)
+            },
             onDismiss = { showSemesterManageDialog = false }
         )
     }
@@ -1240,7 +1243,12 @@ private fun CourseListItemCard(
 private fun formatSemesterHeaderLabel(sem: String, admissionSemester: String): String {
     val startYear = admissionSemester.substringBefore("-").filter { it.isDigit() }.toIntOrNull()
     val year = sem.substringBefore("-").filter { it.isDigit() }.toIntOrNull()
-    val term = sem.substringAfter("-").filter { it.isDigit() }.toIntOrNull() ?: 1
+    val rawTerm = sem.substringAfter("-")
+    val termStr = when {
+        rawTerm.contains("暑") || rawTerm == "3" -> "暑"
+        rawTerm.contains("2") || rawTerm == "下" -> "下"
+        else -> "上"
+    }
     if (startYear != null && year != null) {
         val grade = when (val diff = year - startYear) {
             0 -> "大一"
@@ -1249,7 +1257,6 @@ private fun formatSemesterHeaderLabel(sem: String, admissionSemester: String): S
             3 -> "大四"
             else -> if (diff > 3) "延畢" else ""
         }
-        val termStr = if (term == 1) "上" else "下"
         if (grade.isNotEmpty()) {
             return "$grade$termStr"
         }

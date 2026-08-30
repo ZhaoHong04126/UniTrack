@@ -40,6 +40,9 @@ interface CourseDao {
     @Query("DELETE FROM courses WHERE id = :id")
     suspend fun deleteCourseById(id: Long)
 
+    @Query("DELETE FROM courses WHERE semester = :semester")
+    suspend fun deleteCoursesBySemester(semester: String)
+
     @Query("DELETE FROM courses")
     suspend fun deleteAllCourses()
 }

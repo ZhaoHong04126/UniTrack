@@ -418,14 +418,20 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     val allCourses: StateFlow<List<Course>> = repository.allCourses
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    private val _customSemesters = MutableStateFlow<Set<String>>(emptySet())
+    private val _customSemesters = MutableStateFlow(
+        prefs.getStringSet("pref_custom_semesters", emptySet()) ?: emptySet()
+    )
+    private val _deletedSemesters = MutableStateFlow(
+        prefs.getStringSet("pref_deleted_semesters", emptySet()) ?: emptySet()
+    )
 
     val allSemesters: StateFlow<List<String>> = combine(
         repository.allSemesters,
         repository.graduationPlan,
         _selectedSemester,
-        _customSemesters
-    ) { dbSemesters, plan, currentSem, customSemesters ->
+        _customSemesters,
+        _deletedSemesters
+    ) { dbSemesters, plan, currentSem, customSemesters, deletedSemesters ->
         val set = dbSemesters.toMutableSet()
         val rawAdmission = plan?.admissionSemester ?: DefaultData.getCurrentAcademicSemester()
         val startYear = rawAdmission.substringBefore("-").filter { it.isDigit() }.toIntOrNull()
@@ -444,7 +450,21 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         }
         if (currentSem.isNotBlank()) set.add(currentSem)
         set.addAll(customSemesters)
-        set.toList().sorted()
+        set.removeAll(deletedSemesters)
+
+        fun parseSemesterWeight(sem: String): Double {
+            val year = sem.substringBefore("-").filter { it.isDigit() }.toDoubleOrNull() ?: 0.0
+            val rawTerm = sem.substringAfter("-")
+            val termWeight = when {
+                rawTerm == "1" || rawTerm.contains("上") -> 0.1
+                rawTerm == "2" || rawTerm.contains("下") -> 0.2
+                rawTerm == "暑" || rawTerm == "3" -> 0.3
+                else -> 0.4
+            }
+            return year + termWeight
+        }
+
+        set.toList().sortedBy { parseSemesterWeight(it) }
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
@@ -1075,6 +1095,11 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     fun setSelectedSemester(semester: String) {
         _selectedSemester.value = semester
         _customSemesters.update { it + semester }
+        prefs.edit { putStringSet("pref_custom_semesters", _customSemesters.value) }
+        if (_deletedSemesters.value.contains(semester)) {
+            _deletedSemesters.update { it - semester }
+            prefs.edit { putStringSet("pref_deleted_semesters", _deletedSemesters.value) }
+        }
     }
 
     fun setSelectedExpenseMonth(yearMonth: String) {
@@ -1121,23 +1146,45 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             firestoreSyncRepository.uploadAllToCloud(user.uid)
         }
         WidgetUpdateHelper.updateAllWidgets(getApplication())
+
         val firstCourse = courses.first()
-        _userMessage.value = "已成功新增課程：${firstCourse.name}"
+        val isSingleMultiSlotCourse = courses.all { it.name == firstCourse.name }
 
-        val dayNames = courses.map { c ->
-            val dayName = listOf("星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日")
-                .getOrElse(c.dayOfWeek - 1) { "星期一" }
-            if (c.startTime.isNotBlank()) "$dayName ${c.startTime}" else dayName
-        }.distinct().joinToString("、")
+        if (isSingleMultiSlotCourse) {
+            // 同一門課程的多個時段新增
+            _userMessage.value = "已成功新增課程：${firstCourse.name}"
+            val dayNames = courses.map { c ->
+                val dayName = listOf("星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日")
+                    .getOrElse(c.dayOfWeek - 1) { "星期一" }
+                if (c.startTime.isNotBlank()) "$dayName ${c.startTime}" else dayName
+            }.distinct().joinToString("、")
 
-        val locationInfo = if (firstCourse.location.isNotBlank()) "，教室：${firstCourse.location}" else ""
-        sendNotification(
-            title = "📚 新增課程成功：${firstCourse.name}",
-            message = "已將「${firstCourse.name}」(${firstCourse.credits.toInt()} 學分) 加入課表，上課時間：$dayNames$locationInfo。",
-            type = NotificationType.COURSE,
-            actionRoute = "timetable",
-            sendSystemPush = true
-        )
+            val locationInfo = if (firstCourse.location.isNotBlank()) "，教室：${firstCourse.location}" else ""
+            sendNotification(
+                title = "📚 新增課程成功：${firstCourse.name}",
+                message = "已將「${firstCourse.name}」(${firstCourse.credits.toInt()} 學分) 加入課表，上課時間：$dayNames$locationInfo。",
+                type = NotificationType.COURSE,
+                actionRoute = "timetable",
+                sendSystemPush = true
+            )
+        } else {
+            // AI 圖片 / 批次課表導入（多門不同課程）
+            val totalCredits = courses.sumOf { it.credits.toInt() }
+            val semester = firstCourse.semester
+            val count = courses.size
+            val coursePreview = courses.take(3).joinToString("」、「") { it.name }
+            val moreSuffix = if (courses.size > 3) "等 $count 門課程" else "共 $count 門課程"
+
+            _userMessage.value = "✨ 已成功導入 $count 門課程（共 $totalCredits 學分）"
+
+            sendNotification(
+                title = "✨ AI 課表智慧導入：$semester（共 $count 門課）",
+                message = "已將「$coursePreview」$moreSuffix 加入課表（共計 $totalCredits 學分），已自動同步至雲端與桌面小工具。",
+                type = NotificationType.COURSE,
+                actionRoute = "timetable",
+                sendSystemPush = true
+            )
+        }
     }
 
     fun updateCourse(course: Course, sendNotify: Boolean = true) = viewModelScope.launch {
@@ -1164,7 +1211,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun deleteCourse(course: Course) = viewModelScope.launch {
+    fun deleteCourse(course: Course, sendNotify: Boolean = true) = viewModelScope.launch {
         repository.deleteCourse(course)
         val user = currentUser.value
         if (user != null) {
@@ -1172,6 +1219,17 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         }
         WidgetUpdateHelper.updateAllWidgets(getApplication())
         _userMessage.value = "已刪除課程：${course.name}"
+
+        if (sendNotify) {
+            val semesterInfo = if (course.semester.isNotBlank()) " ${course.semester}" else ""
+            sendNotification(
+                title = "🗑️ 課程已刪除：${course.name}",
+                message = "已自${semesterInfo}課表移除「${course.name}」(${course.credits.toInt()} 學分)。",
+                type = NotificationType.COURSE,
+                actionRoute = "timetable",
+                sendSystemPush = true
+            )
+        }
     }
 
     fun updateGraduationPlan(plan: GraduationPlan, onComplete: (() -> Unit)? = null) = viewModelScope.launch {
@@ -1194,6 +1252,45 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         }
         WidgetUpdateHelper.updateAllWidgets(getApplication())
         _userMessage.value = "已將 $semester 設定為主要學期"
+    }
+
+    fun deleteSemester(semester: String) = viewModelScope.launch {
+        repository.deleteCoursesBySemester(semester)
+        _customSemesters.update { it - semester }
+        _deletedSemesters.update { it + semester }
+        prefs.edit {
+            putStringSet("pref_custom_semesters", _customSemesters.value)
+            putStringSet("pref_deleted_semesters", _deletedSemesters.value)
+        }
+
+        val user = currentUser.value
+        if (user != null) {
+            firestoreSyncRepository.uploadAllToCloud(user.uid)
+        }
+        WidgetUpdateHelper.updateAllWidgets(getApplication())
+
+        val remainingSemesters = allSemesters.value.filter { it != semester }
+        val fallbackSemester = remainingSemesters.firstOrNull() ?: DefaultData.getCurrentAcademicSemester()
+
+        if (_selectedSemester.value == semester) {
+            _selectedSemester.value = fallbackSemester
+        }
+
+        val plan = repository.getGraduationPlanOnce()
+        if (plan != null && plan.currentSemester == semester) {
+            val updated = plan.copy(currentSemester = fallbackSemester)
+            repository.updateGraduationPlan(updated)
+        }
+
+        _userMessage.value = "已刪除學期：$semester"
+
+        sendNotification(
+            title = "🗑️ 學期已刪除：$semester",
+            message = "已刪除「$semester」學期紀錄及其所有課程。",
+            type = NotificationType.COURSE,
+            actionRoute = "timetable",
+            sendSystemPush = true
+        )
     }
 
     fun addThreshold(threshold: GraduationThreshold) = viewModelScope.launch {

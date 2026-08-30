@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.*
@@ -31,8 +32,11 @@ fun SemesterManageDialog(
     admissionSemester: String,
     onSelectSemester: (String) -> Unit,
     onSetPrimarySemester: (String) -> Unit,
+    onDeleteSemester: (String) -> Unit = {},
     onDismiss: () -> Unit
 ) {
+    var isEditMode by remember { mutableStateOf(false) }
+    var semesterToDelete by remember { mutableStateOf<String?>(null) }
     var showAddSection by remember { mutableStateOf(false) }
     var newYearInput by remember {
         mutableStateOf((java.util.Calendar.getInstance().get(java.util.Calendar.YEAR) - 1911).toString())
@@ -45,7 +49,12 @@ fun SemesterManageDialog(
     fun formatSemesterLabel(sem: String): String {
         val startYear = admissionSemester.substringBefore("-").filter { it.isDigit() }.toIntOrNull()
         val year = sem.substringBefore("-").filter { it.isDigit() }.toIntOrNull()
-        val term = sem.substringAfter("-").filter { it.isDigit() }.toIntOrNull() ?: 1
+        val rawTerm = sem.substringAfter("-")
+        val termStr = when {
+            rawTerm.contains("暑") || rawTerm == "3" -> "暑"
+            rawTerm.contains("2") || rawTerm == "下" -> "下"
+            else -> "上"
+        }
         if (startYear != null && year != null) {
             val grade = when (val diff = year - startYear) {
                 0 -> "大一"
@@ -54,12 +63,36 @@ fun SemesterManageDialog(
                 3 -> "大四"
                 else -> if (diff > 3) "延畢" else ""
             }
-            val termStr = if (term == 1) "上" else "下"
             if (grade.isNotEmpty()) {
                 return "$sem 學期 ($grade$termStr)"
             }
         }
         return "$sem 學期"
+    }
+
+    if (semesterToDelete != null) {
+        val targetSem = semesterToDelete!!
+        AlertDialog(
+            onDismissRequest = { semesterToDelete = null },
+            title = { Text("確認刪除學期", fontWeight = FontWeight.Bold) },
+            text = { Text("確定要刪除「${formatSemesterLabel(targetSem)}」嗎？此動作將一併清除該學期的所有排課與出席筆記紀錄。") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onDeleteSemester(targetSem)
+                        semesterToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("確定刪除")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { semesterToDelete = null }) {
+                    Text("取消")
+                }
+            }
+        )
     }
 
     AlertDialog(
@@ -84,6 +117,19 @@ fun SemesterManageDialog(
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isEditMode) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                        modifier = Modifier.clickable { isEditMode = !isEditMode }
+                    ) {
+                        Text(
+                            text = if (isEditMode) "完成" else "編輯",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isEditMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
+                    }
                 }
                 Text(
                     text = "共 ${allSemesters.size} 個學期",
@@ -158,8 +204,20 @@ fun SemesterManageDialog(
                                     }
                                 }
 
-                                // Right action area: either "主要" badge or "設為主要" button
-                                if (isPrimary) {
+                                // Right action area: Delete in Edit Mode, or "主要" badge / "設為主要" button
+                                if (isEditMode) {
+                                    IconButton(
+                                        onClick = { semesterToDelete = sem },
+                                        modifier = Modifier.size(30.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.DeleteOutline,
+                                            contentDescription = "刪除學期",
+                                            tint = MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                } else if (isPrimary) {
                                     Surface(
                                         shape = RoundedCornerShape(8.dp),
                                         color = MaterialTheme.colorScheme.primaryContainer,

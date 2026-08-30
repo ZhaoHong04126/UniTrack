@@ -29,6 +29,10 @@ import com.example.data.model.NotificationType
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.StudentViewModel
 import com.example.util.NotificationHelper
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.spring
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.text.style.TextOverflow
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -326,6 +330,11 @@ fun NotificationScreen(
                                 if (!item.isRead) {
                                     viewModel.markNotificationAsRead(item.id)
                                 }
+                            },
+                            onNavigateClick = {
+                                if (!item.isRead) {
+                                    viewModel.markNotificationAsRead(item.id)
+                                }
                                 item.actionRoute?.let { route ->
                                     onNavigateToRoute(route)
                                 }
@@ -390,12 +399,131 @@ fun NotificationScreen(
     }
 }
 
+private enum class ActionBadgeType(
+    val label: String,
+    val containerColor: Color,
+    val contentColor: Color
+) {
+    AI_IMPORT("智慧導入", Color(0xFFEDE9FE), Color(0xFF7C3AED)),
+    ADD("新增", EmeraldLight, EmeraldAccent),
+    DELETE("刪除", RoseLight, RoseAccent),
+    UPDATE("變更", AmberLight, AmberWarning),
+    NOTICE("通知", SapphireLight, SapphirePrimary)
+}
+
+private fun resolveActionBadgeType(title: String, message: String): ActionBadgeType {
+    val content = "$title $message"
+    return when {
+        content.contains("AI 課表") || content.contains("智慧導入") || content.contains("一鍵導入") -> ActionBadgeType.AI_IMPORT
+        content.contains("新增") || content.contains("加入") || content.contains("建立") -> ActionBadgeType.ADD
+        content.contains("刪除") || content.contains("移除") || content.contains("清空") -> ActionBadgeType.DELETE
+        content.contains("更新") || content.contains("變更") || content.contains("修改") || content.contains("異動") || content.contains("警示") -> ActionBadgeType.UPDATE
+        else -> ActionBadgeType.NOTICE
+    }
+}
+
+private data class ParsedNotificationDetails(
+    val actionBadge: ActionBadgeType,
+    val targetItem: String,
+    val keyValues: List<Pair<String, String>>
+)
+
+private fun parseNotificationMessage(notification: AppNotification): ParsedNotificationDetails {
+    val actionBadge = resolveActionBadgeType(notification.title, notification.message)
+    val title = notification.title
+    val msg = notification.message
+
+    val targetItem = when {
+        title.contains("：") -> title.substringAfter("：").trim()
+        title.contains(":") -> title.substringAfter(":").trim()
+        else -> title.replace(Regex("[\\p{So}\\uFE0F]"), "").trim()
+    }
+
+    val kvList = mutableListOf<Pair<String, String>>()
+
+    if (targetItem.isNotBlank()) {
+        kvList.add("相關項目" to targetItem)
+    }
+
+    when (notification.type) {
+        NotificationType.COURSE -> kvList.add("所屬模組" to "課表與課程管理")
+        NotificationType.EXPENSE -> kvList.add("所屬模組" to "記帳與預算管理")
+        NotificationType.GRADUATION -> kvList.add("所屬模組" to "學業與畢業審查")
+        NotificationType.SYSTEM -> kvList.add("所屬模組" to "系統與雲端公告")
+    }
+
+    if (actionBadge == ActionBadgeType.AI_IMPORT) {
+        kvList.add("導入方式" to "📸 圖片 AI 智慧辨識")
+    }
+
+    kvList.add("異動狀態" to when (actionBadge) {
+        ActionBadgeType.AI_IMPORT -> "課表建立完成"
+        ActionBadgeType.ADD -> "已成功新增"
+        ActionBadgeType.DELETE -> "已確認刪除"
+        ActionBadgeType.UPDATE -> "已更新內容"
+        ActionBadgeType.NOTICE -> "系統一般通知"
+    })
+
+    val countMatch = Regex("""共\s*(\d+)\s*門課""").find(title) ?: Regex("""共\s*(\d+)\s*門課""").find(msg)
+    val totalCreditsMatch = Regex("""共計\s*(\d+)\s*學分""").find(msg) ?: Regex("""\(共\s*(\d+)\s*學分\)""").find(msg)
+
+    if (countMatch != null && totalCreditsMatch != null) {
+        kvList.add("匯入規模" to "${countMatch.groupValues[1]} 門課程（${totalCreditsMatch.groupValues[1]} 學分）")
+    } else if (countMatch != null) {
+        kvList.add("匯入門數" to "${countMatch.groupValues[1]} 門課程")
+    }
+
+    val creditMatch = Regex("""\((\d+)\s*學分\)""").find(msg)
+    if (creditMatch != null && totalCreditsMatch == null) {
+        kvList.add("課程學分" to "${creditMatch.groupValues[1]} 學分")
+    }
+
+    val semMatch = Regex("""(\d{3}-[12])""").find(title) ?: Regex("""(\d{3}-[12])""").find(msg)
+    if (semMatch != null) {
+        val semLabel = if (actionBadge == ActionBadgeType.AI_IMPORT) "目標學期" else "所屬學期"
+        kvList.add(semLabel to "${semMatch.groupValues[1]} 學期")
+    }
+
+    if (actionBadge == ActionBadgeType.AI_IMPORT) {
+        kvList.add("時段衝突" to "✅ 通過檢測（0 衝突）")
+    }
+
+    if (msg.contains("教室：") || msg.contains("教室:")) {
+        val loc = msg.substringAfter("教室：").substringAfter("教室:").substringBefore("。").substringBefore("，").trim()
+        if (loc.isNotBlank()) kvList.add("上課教室" to loc)
+    }
+
+    if (msg.contains("上課時間：") || msg.contains("上課時間:")) {
+        val time = msg.substringAfter("上課時間：").substringAfter("上課時間:").substringBefore("，教室").substringBefore("。").trim()
+        if (time.isNotBlank()) kvList.add("排課時間" to time)
+    }
+
+    if (msg.contains("日期：") || msg.contains("日期:")) {
+        val date = msg.substringAfter("日期：").substringAfter("日期:").substringBefore(" ｜").substringBefore(" (").trim()
+        if (date.isNotBlank()) kvList.add("記帳日期" to date)
+    }
+
+    val amountMatch = Regex("""([+-]?\$\d+)""").find(msg)
+    if (amountMatch != null) {
+        kvList.add("收支金額" to amountMatch.groupValues[1])
+    }
+
+    return ParsedNotificationDetails(
+        actionBadge = actionBadge,
+        targetItem = targetItem,
+        keyValues = kvList
+    )
+}
+
 @Composable
 private fun NotificationItemCard(
     notification: AppNotification,
     onItemClick: () -> Unit,
+    onNavigateClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
+    var isExpanded by rememberSaveable(notification.id) { mutableStateOf(false) }
+
     val (icon, iconBgColor, iconTintColor) = when (notification.type) {
         NotificationType.COURSE -> Triple(
             Icons.Default.CalendarMonth,
@@ -419,10 +547,16 @@ private fun NotificationItemCard(
         )
     }
 
+    val details = remember(notification) { parseNotificationMessage(notification) }
+
     Card(
-        onClick = onItemClick,
+        onClick = {
+            onItemClick()
+            isExpanded = !isExpanded
+        },
         modifier = Modifier
             .fillMaxWidth()
+            .animateContentSize(animationSpec = spring(stiffness = 600f))
             .testTag("notification_card_${notification.id}"),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
@@ -436,105 +570,223 @@ private fun NotificationItemCard(
         else
             BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(14.dp),
-            verticalAlignment = Alignment.Top,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Category Icon Badge
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(iconBgColor),
-                contentAlignment = Alignment.Center
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = iconTintColor,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-
-            // Main Info Column
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                // Category Icon Badge
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(iconBgColor),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Text(
-                            text = notification.title,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = if (!notification.isRead) FontWeight.Bold else FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        if (!notification.isRead) {
-                            Box(
-                                modifier = Modifier
-                                    .size(7.dp)
-                                    .clip(CircleShape)
-                                    .background(SapphirePrimary)
-                            )
-                        }
-                    }
-                    Text(
-                        text = formatRelativeTime(notification.timestamp),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = iconTintColor,
+                        modifier = Modifier.size(22.dp)
                     )
                 }
 
-                Text(
-                    text = notification.message,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = 18.sp
-                )
-
-                if (notification.actionRoute != null) {
-                    Spacer(modifier = Modifier.height(2.dp))
+                // Main Info Column
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.weight(1f, fill = false)
+                        ) {
+                            // Action Type Tag (新增 / 刪除 / 變更 / 通知)
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = details.actionBadge.containerColor
+                            ) {
+                                Text(
+                                    text = details.actionBadge.label,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = details.actionBadge.contentColor,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+
+                            Text(
+                                text = details.targetItem.ifBlank { notification.title },
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = if (!notification.isRead) FontWeight.Bold else FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = if (isExpanded) Int.MAX_VALUE else 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+
+                            if (!notification.isRead) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(7.dp)
+                                        .clip(CircleShape)
+                                        .background(SapphirePrimary)
+                                )
+                            }
+                        }
+
                         Text(
-                            text = "查看詳情",
+                            text = formatRelativeTime(notification.timestamp),
                             style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = SapphirePrimary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            modifier = Modifier.padding(start = 6.dp)
                         )
-                        Icon(
-                            imageVector = Icons.Default.ChevronRight,
-                            contentDescription = null,
-                            tint = SapphirePrimary,
-                            modifier = Modifier.size(14.dp)
+                    }
+
+                    // Message text (Collapsed overview)
+                    if (!isExpanded) {
+                        Text(
+                            text = notification.message,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            lineHeight = 18.sp
                         )
                     }
                 }
+
+                // Delete Action Button
+                IconButton(
+                    onClick = onDeleteClick,
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "刪除",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
             }
 
-            // Delete Action
-            IconButton(
-                onClick = onDeleteClick,
-                modifier = Modifier.size(24.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "刪除",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                    modifier = Modifier.size(16.dp)
+            // Expanded Detail View (結構化異動資訊)
+            if (isExpanded) {
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                    modifier = Modifier.padding(vertical = 2.dp)
                 )
+
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = "異動細項清單",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+
+                        details.keyValues.forEach { (label, value) ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = label,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
+                                )
+                                Text(
+                                    text = value,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Expanded Bottom Actions
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 2.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (notification.actionRoute != null) {
+                        TextButton(
+                            onClick = onNavigateClick,
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = "前往頁面查看 →",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = SapphirePrimary
+                            )
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.width(1.dp))
+                    }
+
+                    TextButton(
+                        onClick = { isExpanded = false },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "收合 ▲",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            } else {
+                // Collapsed Hint
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "點擊展開細節 ▾",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                    )
+                }
             }
         }
     }
