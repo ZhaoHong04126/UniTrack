@@ -1,6 +1,5 @@
 package com.example.ui.screens.timetable
 
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -27,7 +26,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -63,7 +61,6 @@ fun AddEditCourseDialog(
     onSave: (Course) -> Unit,
     onSaveMultiple: ((List<Course>) -> Unit)? = null
 ) {
-    val context = LocalContext.current
     var name by remember { mutableStateOf(initialCourse?.name ?: "") }
     var teacher by remember { mutableStateOf(initialCourse?.teacher ?: "") }
     var code by remember { mutableStateOf(initialCourse?.code ?: "") }
@@ -181,7 +178,7 @@ fun AddEditCourseDialog(
     val allCategoryOptions = remember(plan, initialCourse) {
         val list = mutableListOf<CategoryOption>()
         val baseCategories = CourseCategory.entries.filter {
-            it != CourseCategory.REQUIRED && it != CourseCategory.ELECTIVE && it != CourseCategory.PE
+            it != CourseCategory.REQUIRED && it != CourseCategory.ELECTIVE && it != CourseCategory.PE && it != CourseCategory.UNSPECIFIED
         }
         baseCategories.forEach { cat ->
             list.add(CategoryOption(standardCat = cat, label = cat.label, shortLabel = cat.shortLabel))
@@ -195,13 +192,14 @@ fun AddEditCourseDialog(
     val selectedCategoryOption = remember(category, customCategoryName, allCategoryOptions) {
         if (customCategoryName.isNotBlank()) {
             allCategoryOptions.firstOrNull { it.customCat?.name == customCategoryName }
-        } else if (category != null) {
+        } else if (category != null && category != CourseCategory.UNSPECIFIED) {
             allCategoryOptions.firstOrNull { it.standardCat == category }
         } else null
     }
 
     val availableRequirementTypes = remember {
         listOf(
+            CourseRequirementType.UNSPECIFIED,
             CourseRequirementType.REQUIRED,
             CourseRequirementType.ELECTIVE,
             CourseRequirementType.REQUIRED_ELECTIVE
@@ -368,7 +366,7 @@ fun AddEditCourseDialog(
                                         value = selectedCategoryOption?.label ?: "請選擇屬性",
                                         onValueChange = {},
                                         readOnly = true,
-                                        label = { Text("學分屬性 *") },
+                                        label = { Text("學分屬性") },
                                         singleLine = true,
                                         shape = RoundedCornerShape(10.dp),
                                         colors = if (selectedCategoryOption == null) {
@@ -386,6 +384,15 @@ fun AddEditCourseDialog(
                                         expanded = categoryDropdownExpanded,
                                         onDismissRequest = { categoryDropdownExpanded = false }
                                     ) {
+                                        DropdownMenuItem(
+                                            text = { Text("未指定 / 未劃分", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                            onClick = {
+                                                category = CourseCategory.UNSPECIFIED
+                                                customCategoryName = ""
+                                                subcategoryText = ""
+                                                categoryDropdownExpanded = false
+                                            }
+                                        )
                                         allCategoryOptions.forEach { opt ->
                                             DropdownMenuItem(
                                                 text = { Text(opt.label) },
@@ -405,14 +412,15 @@ fun AddEditCourseDialog(
                                     onExpandedChange = { requirementTypeDropdownExpanded = !requirementTypeDropdownExpanded },
                                     modifier = Modifier.weight(1f)
                                 ) {
+                                    val reqLabel = if (requirementType == null || requirementType == CourseRequirementType.UNSPECIFIED) "請選擇修別" else requirementType!!.label
                                     OutlinedTextField(
-                                        value = requirementType?.label ?: "請選擇修別",
+                                        value = reqLabel,
                                         onValueChange = {},
                                         readOnly = true,
-                                        label = { Text("修別 *") },
+                                        label = { Text("修別") },
                                         singleLine = true,
                                         shape = RoundedCornerShape(10.dp),
-                                        colors = if (requirementType == null) {
+                                        colors = if (requirementType == null || requirementType == CourseRequirementType.UNSPECIFIED) {
                                             OutlinedTextFieldDefaults.colors(
                                                 unfocusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                                                 focusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
@@ -429,7 +437,7 @@ fun AddEditCourseDialog(
                                     ) {
                                         availableRequirementTypes.forEach { req ->
                                             DropdownMenuItem(
-                                                text = { Text(req.label) },
+                                                text = { Text(if (req == CourseRequirementType.UNSPECIFIED) "未指定" else req.label) },
                                                 onClick = {
                                                     requirementType = req
                                                     requirementTypeDropdownExpanded = false
@@ -850,20 +858,10 @@ fun AddEditCourseDialog(
 
                 Button(
                     onClick = {
-                        val finalCategory = category
-                        val finalRequirementType = requirementType
+                        val finalCategory = category ?: CourseCategory.UNSPECIFIED
+                        val finalRequirementType = requirementType ?: CourseRequirementType.UNSPECIFIED
 
                         if (name.isBlank()) {
-                            return@Button
-                        }
-                        if (finalCategory == null) {
-                            Toast.makeText(context, "請選擇學分屬性", Toast.LENGTH_SHORT).show()
-                            otherInfoExpanded = true
-                            return@Button
-                        }
-                        if (finalRequirementType == null) {
-                            Toast.makeText(context, "請選擇修別", Toast.LENGTH_SHORT).show()
-                            otherInfoExpanded = true
                             return@Button
                         }
 

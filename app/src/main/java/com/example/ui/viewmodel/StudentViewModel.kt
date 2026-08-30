@@ -60,6 +60,8 @@ data class GraduationAuditSummary(
     val coreModuleSummary: CreditCategorySummary,
     val professionalModuleSummary: CreditCategorySummary,
     val freeSummary: CreditCategorySummary,
+    val unspecifiedSummary: CreditCategorySummary = CreditCategorySummary(CourseCategory.UNSPECIFIED, 0.0, 0.0, 0.0, 0f),
+    val unspecifiedCourses: List<Course> = emptyList(),
     val peCredits: Double,
     val thresholdsCompletedCount: Int,
     val thresholdsTotalCount: Int,
@@ -723,12 +725,21 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         var earnedFreeEle = 0.0
         var inProgressFreeEle = 0.0
 
+        var earnedUnspecified = 0.0
+        var inProgressUnspecified = 0.0
+        val unspecifiedCourses = mutableListOf<Course>()
+
         var peCredits = 0.0
 
         for (c in courses) {
             val isPassed = c.isCompleted || (c.score != null && c.score >= plan.minPassingScore)
             val isInProgress = !isPassed && (c.semester == plan.currentSemester || c.score == null)
             val isReq = c.requirementType == CourseRequirementType.REQUIRED || c.requirementType == CourseRequirementType.REQUIRED_ELECTIVE
+
+            val isUnspecified = c.category == CourseCategory.UNSPECIFIED || c.requirementType == CourseRequirementType.UNSPECIFIED
+            if (isUnspecified) {
+                unspecifiedCourses.add(c)
+            }
 
             when (c.category) {
                 CourseCategory.REQUIRED -> {
@@ -793,14 +804,18 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                         inProgressFreeEle += c.credits
                     }
                 }
+                CourseCategory.UNSPECIFIED -> {
+                    if (isPassed) earnedUnspecified += c.credits
+                    else if (isInProgress) inProgressUnspecified += c.credits
+                }
                 CourseCategory.PE -> {
                     if (isPassed) peCredits += c.credits
                 }
             }
         }
 
-        val totalEarned = earnedRequired + earnedElective + earnedGeneral + earnedCollegeCore + earnedBasicModule + earnedCoreModule + earnedProfessionalModule + earnedFree
-        val totalInProgress = inProgressRequired + inProgressElective + inProgressGeneral + inProgressCollegeCore + inProgressBasicModule + inProgressCoreModule + inProgressProfessionalModule + inProgressFree
+        val totalEarned = earnedRequired + earnedElective + earnedGeneral + earnedCollegeCore + earnedBasicModule + earnedCoreModule + earnedProfessionalModule + earnedFree + earnedUnspecified
+        val totalInProgress = inProgressRequired + inProgressElective + inProgressGeneral + inProgressCollegeCore + inProgressBasicModule + inProgressCoreModule + inProgressProfessionalModule + inProgressFree + inProgressUnspecified
         val targetTotal = plan.targetTotalCredits
 
         val overallPercentage = if (targetTotal > 0.0) ((totalEarned / targetTotal) * 100.0).coerceIn(0.0, 100.0).toFloat() else 0f
@@ -875,6 +890,10 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                 requiredSummary = null,
                 electiveSummary = subSummary("選修", earnedFreeEle, inProgressFreeEle, freeEleTarget)
             ),
+            unspecifiedSummary = CreditCategorySummary(
+                CourseCategory.UNSPECIFIED, earnedUnspecified, inProgressUnspecified, 0.0, 0f
+            ),
+            unspecifiedCourses = unspecifiedCourses,
             peCredits = peCredits,
             thresholdsCompletedCount = completedThresholds,
             thresholdsTotalCount = totalThresholds,

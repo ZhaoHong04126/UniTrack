@@ -18,8 +18,8 @@ data class Course(
     val startTime: String = "", // e.g. "09:00"
     val endTime: String = "",   // e.g. "10:00"
     val credits: Double = 3.0,
-    val category: CourseCategory = CourseCategory.GENERAL_EDU,
-    val requirementType: CourseRequirementType = CourseRequirementType.REQUIRED,
+    val category: CourseCategory = CourseCategory.UNSPECIFIED,
+    val requirementType: CourseRequirementType = CourseRequirementType.UNSPECIFIED,
     val generalEduSubtype: GeneralEduSubtype = GeneralEduSubtype.NONE,
     val subcategory: String = "", // 自訂子分類 / 領域 / 類別 (如：國語文、向度一、AI通識)
     val customCategory: String = "", // 自訂母體分類名稱 (若為自訂母體分類時使用)

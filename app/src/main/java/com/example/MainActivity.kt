@@ -345,15 +345,6 @@ class MainActivity : ComponentActivity() {
                         composable(AppDestination.Graduation.route) {
                             GraduationScreen(
                                 viewModel = studentViewModel,
-                                onNavigateToThresholds = {
-                                    navController.navigate("graduation_thresholds")
-                                },
-                                onNavigateToCourseAudit = {
-                                    navController.navigate("course_audit_list")
-                                },
-                                onNavigateToPlanSetting = {
-                                    navController.navigate("graduation_plan_setting")
-                                },
                                 onNavigateBack = { navController.popBackStack() }
                             )
                         }

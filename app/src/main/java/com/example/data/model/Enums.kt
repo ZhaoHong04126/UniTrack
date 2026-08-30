@@ -11,13 +11,15 @@ enum class CourseCategory(val label: String, val shortLabel: String, val badgeCo
     CORE_MODULE("核心模組", "核心", Color(0xFF8B5CF6)),
     PROFESSIONAL_MODULE("專業模組", "專業", Color(0xFFEF4444)),
     FREE_ELECTIVE("自由選修", "自選", Color(0xFFF59E0B)),
-    PE("體育課程", "體育", Color(0xFFEC4899))
+    PE("體育課程", "體育", Color(0xFFEC4899)),
+    UNSPECIFIED("未劃分模組", "未劃分", Color(0xFF64748B))
 }
 
 enum class CourseRequirementType(val label: String, val shortLabel: String) {
     REQUIRED("必修", "必修"),
     ELECTIVE("選修", "選修"),
-    REQUIRED_ELECTIVE("必選修", "必選")
+    REQUIRED_ELECTIVE("必選修", "必選"),
+    UNSPECIFIED("未指定", "未定")
 }
 
 enum class GeneralEduSubtype(val label: String) {

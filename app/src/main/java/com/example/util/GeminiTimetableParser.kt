@@ -27,12 +27,12 @@ import java.util.concurrent.TimeUnit
 @Suppress("SpellCheckingInspection")
 object GeminiTimetableParser {
     private const val TAG = "GeminiTimetableParser"
-    private const val MAX_IMAGE_DIMENSION = 1600
+    private const val MAX_IMAGE_DIMENSION = 1024
 
     private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS)
-        .writeTimeout(60, TimeUnit.SECONDS)
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
     private val PRESET_COLORS = listOf(
@@ -100,9 +100,9 @@ object GeminiTimetableParser {
         }
 
         try {
-            // 1. Compress bitmap to Base64 JPEG
+            // 1. Compress bitmap to Base64 JPEG (Quality 75 provides optimal OCR sharpness with minimal size)
             val outputStream = ByteArrayOutputStream()
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 85, outputStream)
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 75, outputStream)
             val imageBytes = outputStream.toByteArray()
             val base64Image = Base64.encodeToString(imageBytes, Base64.NO_WRAP)
 
@@ -110,20 +110,24 @@ object GeminiTimetableParser {
             val prompt = """
                 請分析這張課表照片/圖片，仔細辨識其中的所有課程與上課時間資訊，並以 JSON 陣列格式輸出。
                 
-                每門課程物件須包含以下欄位：
+                【重要原則】：
+                嚴格遵守「圖片中有提供的資訊才填寫，沒有提供的資訊絕對不要自行猜測或推斷填入」。
+                若圖片中未明確標記教師、教室、課程代碼、學分數、學分屬性或修別，請一律保持空白 ""、0.0 或 "UNSPECIFIED"，交由使用者日後自行選填。
+                
+                每門課程物件欄位規格：
                 - "name": 課程名稱 (字串, 必填)
-                - "code": 課程代碼 (字串, 若無則為 "")
-                - "teacher": 授課教師姓名 (字串, 若無則為 "")
-                - "location": 教室或上課地點 (字串, 若無則為 "")
+                - "code": 課程代碼 (字串, 若圖片未提供填 "")
+                - "teacher": 授課教師姓名 (字串, 若圖片未提供填 "")
+                - "location": 教室或上課地點 (字串, 若圖片未提供填 "")
                 - "dayOfWeek": 星期幾 (整數: 1=星期一, 2=星期二, 3=星期三, 4=星期四, 5=星期五, 6=星期六, 7=星期日)
-                - "startPeriod": 開始節次 (整數 0..14。例如：第1節/08:10填1，若為第0節/早八前填0，中午或第5節填5等)
-                - "endPeriod": 結束節次 (整數 0..14。若為單節課填相同節次，若為2節如3~4節則填4)
-                - "startTime": 上課開始時間 (字串格式 "HH:mm" 如 "08:10", "10:10" 等，可根據台灣大學節次推算)
+                - "startPeriod": 開始節次 (整數 0..14。例如：第1節填1，第3節填3)
+                - "endPeriod": 結束節次 (整數 0..14。單節課填相同節次，若連續2節如3~4節則填4)
+                - "startTime": 上課開始時間 (字串格式 "HH:mm" 如 "08:10", "10:10" 等，若圖片有標註請依圖片填寫，若無請依節次推算)
                 - "endTime": 上課結束時間 (字串格式 "HH:mm" 如 "10:00", "12:00" 等)
-                - "credits": 學分數 (浮點數，若未特別標明則根據節數或預設 2.0 或 3.0)
-                - "category": 課程分類 (字串，可為 "REQUIRED", "ELECTIVE", "GENERAL_EDU", "COLLEGE_CORE", "BASIC_MODULE", "CORE_MODULE", "PROFESSIONAL_MODULE", "FREE_ELECTIVE", "PE")
-                - "requirementType": 必修或選修 (字串: "REQUIRED" 或 "ELECTIVE")
-                - "subcategory": 通識或模組子分類 (字串, 若無則為 "")
+                - "credits": 學分數 (浮點數，若圖片有明確標記請依圖片填寫；若圖片未標記，請依該堂課的總節數 (endPeriod - startPeriod + 1) 自動推算填寫，例如 3~4 節為 2.0，6~8 節為 3.0)
+                - "category": 課程學分屬性 (字串，僅在圖片明確寫出通識/必修/選修/模組等屬性字眼時填寫，否則一律填 "UNSPECIFIED")
+                - "requirementType": 修別 (字串，僅在圖片明確寫出必修/選修/必選修時填寫，否則一律填 "UNSPECIFIED")
+                - "subcategory": 子分類 (字串, 若圖片未提供填 "")
                 
                 特別注意：
                 1. 若同一門課在同一天連續上課（例如 3, 4 節），請合併為一筆資料，startPeriod=3, endPeriod=4。
@@ -131,32 +135,8 @@ object GeminiTimetableParser {
                 3. 請只輸出合法的 JSON Array，不要包含任何額外的解釋文字或 Markdown 外框。
             """.trimIndent()
 
-            val requestJson = JSONObject().apply {
-                val contentsArray = JSONArray()
-                val contentObj = JSONObject().apply {
-                    val partsArray = JSONArray()
-                    partsArray.put(JSONObject().apply {
-                        put("text", prompt)
-                    })
-                    partsArray.put(JSONObject().apply {
-                        put("inlineData", JSONObject().apply {
-                            put("mimeType", "image/jpeg")
-                            put("data", base64Image)
-                        })
-                    })
-                    put("parts", partsArray)
-                }
-                contentsArray.put(contentObj)
-                put("contents", contentsArray)
-
-                put("generationConfig", JSONObject().apply {
-                    put("responseMimeType", "application/json")
-                    put("temperature", 0.2)
-                })
-            }
-
-            // 3. Request Gemini API (Try gemini-3.6-flash, fallback to gemini-3.5-flash)
-            val models = listOf("gemini-3.6-flash", "gemini-3.5-flash", "gemini-flash-latest")
+            // 3. Request Gemini API (Prioritize gemini-3.5-flash, fallback to gemini-3.6-flash)
+            val models = listOf("gemini-3.5-flash", "gemini-3.6-flash", "gemini-flash-latest")
             var responseText: String? = null
             var lastError: Exception? = null
 
@@ -164,6 +144,34 @@ object GeminiTimetableParser {
 
             for (model in models) {
                 try {
+                    val requestJson = JSONObject().apply {
+                        val contentsArray = JSONArray()
+                        val contentObj = JSONObject().apply {
+                            val partsArray = JSONArray()
+                            partsArray.put(JSONObject().apply {
+                                put("text", prompt)
+                            })
+                            partsArray.put(JSONObject().apply {
+                                put("inlineData", JSONObject().apply {
+                                    put("mimeType", "image/jpeg")
+                                    put("data", base64Image)
+                                })
+                            })
+                            put("parts", partsArray)
+                        }
+                        contentsArray.put(contentObj)
+                        put("contents", contentsArray)
+
+                        put("generationConfig", JSONObject().apply {
+                            put("responseMimeType", "application/json")
+                            put("temperature", 0.1)
+                            if (model.contains("3.5")) {
+                                put("thinkingConfig", JSONObject().apply {
+                                    put("thinkingBudget", 0)
+                                })
+                            }
+                        })
+                    }
                     val url = "https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$trimmedKey"
                     val requestBody = requestJson.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
                     val request = Request.Builder()
@@ -283,16 +291,23 @@ object GeminiTimetableParser {
                     getDefaultEndTimeForPeriod(endPeriod)
                 }
 
+                val parsedCredits = item.optDouble("credits", 0.0)
                 val calculatedCredits = (endPeriod - startPeriod + 1).toDouble().coerceAtLeast(1.0)
-                val credits = item.optDouble("credits", calculatedCredits).let {
-                    if (it <= 0.0) calculatedCredits else it
+                val credits = if (parsedCredits > 0.0) parsedCredits else calculatedCredits
+
+                val categoryStr = item.optString("category", "UNSPECIFIED").trim().uppercase()
+                val category = if (categoryStr.isBlank() || categoryStr == "UNSPECIFIED") {
+                    CourseCategory.UNSPECIFIED
+                } else {
+                    runCatching { CourseCategory.valueOf(categoryStr) }.getOrDefault(CourseCategory.UNSPECIFIED)
                 }
 
-                val categoryStr = item.optString("category", "REQUIRED").uppercase()
-                val category = runCatching { CourseCategory.valueOf(categoryStr) }.getOrDefault(CourseCategory.REQUIRED)
-
-                val reqTypeStr = item.optString("requirementType", "REQUIRED").uppercase()
-                val reqType = runCatching { CourseRequirementType.valueOf(reqTypeStr) }.getOrDefault(CourseRequirementType.REQUIRED)
+                val reqTypeStr = item.optString("requirementType", "UNSPECIFIED").trim().uppercase()
+                val reqType = if (reqTypeStr.isBlank() || reqTypeStr == "UNSPECIFIED") {
+                    CourseRequirementType.UNSPECIFIED
+                } else {
+                    runCatching { CourseRequirementType.valueOf(reqTypeStr) }.getOrDefault(CourseRequirementType.UNSPECIFIED)
+                }
 
                 val subcategory = item.optString("subcategory", "")
                 val colorHex = PRESET_COLORS[i % PRESET_COLORS.size]

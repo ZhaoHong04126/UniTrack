@@ -16,14 +16,14 @@ class Converters {
 
     @TypeConverter
     fun toCourseCategory(value: String?): CourseCategory? =
-        value?.let { enumValueOfOrDefault(it, CourseCategory.REQUIRED) }
+        value?.let { enumValueOfOrDefault(it, CourseCategory.UNSPECIFIED) }
 
     @TypeConverter
     fun fromCourseRequirementType(value: CourseRequirementType?): String? = value?.name
 
     @TypeConverter
     fun toCourseRequirementType(value: String?): CourseRequirementType? =
-        value?.let { enumValueOfOrDefault(it, CourseRequirementType.REQUIRED) }
+        value?.let { enumValueOfOrDefault(it, CourseRequirementType.UNSPECIFIED) }
 
     @TypeConverter
     fun fromGeneralEduSubtype(value: GeneralEduSubtype?): String? = value?.name
