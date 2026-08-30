@@ -17,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.EditCalendar
+import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -84,6 +85,7 @@ fun TimetableScreen(
     }
 
     var showAddDialog by remember { mutableStateOf(false) }
+    var showImageImportDialog by remember { mutableStateOf(false) }
     var editingCourse by remember { mutableStateOf<Course?>(null) }
     var selectedCourseDetail by remember { mutableStateOf<Course?>(null) }
     var showSemesterManageDialog by remember { mutableStateOf(false) }
@@ -397,39 +399,77 @@ fun TimetableScreen(
                 exit = fadeOut() + slideOutVertically { it / 2 } + scaleOut(transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 1f))
             ) {
                 Surface(
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(18.dp),
                     color = MaterialTheme.colorScheme.surface,
                     tonalElevation = 6.dp,
-                    shadowElevation = 8.dp,
+                    shadowElevation = 10.dp,
                     border = androidx.compose.foundation.BorderStroke(
                         1.dp,
                         MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
                     ),
-                    modifier = Modifier.clip(RoundedCornerShape(16.dp))
+                    modifier = Modifier.clip(RoundedCornerShape(18.dp))
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .clickable {
-                                isFabExpanded = false
-                                editingCourse = null
-                                showAddDialog = true
-                            }
-                            .padding(horizontal = 18.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    Column(
+                        modifier = Modifier.width(IntrinsicSize.Max)
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.EditCalendar,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.size(22.dp)
+                        // Option 1: 手動輸入 (Manual Input)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    isFabExpanded = false
+                                    editingCourse = null
+                                    showAddDialog = true
+                                }
+                                .padding(horizontal = 18.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.EditCalendar,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Text(
+                                text = "手動輸入",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f),
+                            thickness = 0.8.dp,
+                            modifier = Modifier.padding(horizontal = 12.dp)
                         )
-                        Text(
-                            text = "手動輸入",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+
+                        // Option 2: 拍照/圖片導入 (Photo/Image AI Import)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    isFabExpanded = false
+                                    showImageImportDialog = true
+                                }
+                                .padding(horizontal = 18.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.PhotoCamera,
+                                contentDescription = null,
+                                tint = SapphirePrimary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Text(
+                                text = "照片導入",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
                 }
             }
@@ -454,6 +494,19 @@ fun TimetableScreen(
     }
 
     // Dialogs & Bottom Sheet
+    if (showImageImportDialog) {
+        TimetableImageImportDialog(
+            initialSemester = selectedSemester,
+            allSemesters = allSemesters,
+            allCourses = allCoursesList,
+            onDismiss = { showImageImportDialog = false },
+            onConfirmImport = { importedCourses ->
+                viewModel.addCourses(importedCourses)
+                showImageImportDialog = false
+            }
+        )
+    }
+
     if (showAddDialog) {
         AddEditCourseDialog(
             initialCourse = editingCourse,
