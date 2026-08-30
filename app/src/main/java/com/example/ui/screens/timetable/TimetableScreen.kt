@@ -37,6 +37,13 @@ import com.example.data.model.Course
 import com.example.ui.theme.SapphirePrimary
 import com.example.ui.viewmodel.StudentViewModel
 import com.example.util.TimetableImageGenerator
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
@@ -86,6 +93,17 @@ fun TimetableScreen(
 
     var showAddDialog by remember { mutableStateOf(false) }
     var showImageImportDialog by remember { mutableStateOf(false) }
+
+    val photoPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            showImageImportDialog = true
+        } else {
+            Toast.makeText(context, "請允許相片權限以導入課表照片", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     var editingCourse by remember { mutableStateOf<Course?>(null) }
     var selectedCourseDetail by remember { mutableStateOf<Course?>(null) }
     var showSemesterManageDialog by remember { mutableStateOf(false) }
@@ -451,7 +469,16 @@ fun TimetableScreen(
                                 .fillMaxWidth()
                                 .clickable {
                                     isFabExpanded = false
-                                    showImageImportDialog = true
+                                    val perm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        Manifest.permission.READ_MEDIA_IMAGES
+                                    } else {
+                                        Manifest.permission.READ_EXTERNAL_STORAGE
+                                    }
+                                    if (ContextCompat.checkSelfPermission(context, perm) == PackageManager.PERMISSION_GRANTED) {
+                                        showImageImportDialog = true
+                                    } else {
+                                        photoPermissionLauncher.launch(perm)
+                                    }
                                 }
                                 .padding(horizontal = 18.dp, vertical = 14.dp),
                             verticalAlignment = Alignment.CenterVertically,

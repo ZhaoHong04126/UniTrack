@@ -1,8 +1,12 @@
 package com.example.ui.screens.settings
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.os.Build
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -63,8 +67,31 @@ fun SettingsScreen(
         mutableStateOf(NotificationHelper.hasNotificationPermission(context))
     }
 
+    fun checkPhotoPermission(): Boolean {
+        val perm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Manifest.permission.READ_MEDIA_IMAGES
+        } else {
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        }
+        return ContextCompat.checkSelfPermission(context, perm) == PackageManager.PERMISSION_GRANTED
+    }
+
+    var isPhotoPermissionGranted by remember { mutableStateOf(checkPhotoPermission()) }
+
+    val photoPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        isPhotoPermissionGranted = isGranted
+        if (isGranted) {
+            Toast.makeText(context, "已成功取得相片與照片存取權限", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(context, "未取得相片與照片權限，可至系統設定開啟", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     LifecycleResumeEffect(Unit) {
         isNotificationPermissionGranted = NotificationHelper.hasNotificationPermission(context)
+        isPhotoPermissionGranted = checkPhotoPermission()
         onPauseOrDispose { }
     }
 
@@ -162,6 +189,33 @@ fun SettingsScreen(
                 badgeContainerColor = if (isNotificationPermissionGranted && notificationPrefs.masterEnabled) EmeraldLight else AmberLight,
                 badgeContentColor = if (isNotificationPermissionGranted && notificationPrefs.masterEnabled) EmeraldAccent else AmberAccent,
                 onClick = onNavigateToNotificationSettings
+            )
+
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+
+            SettingTileRow(
+                icon = Icons.Default.PhotoLibrary,
+                title = "相片與照片",
+                subtitle = "自訂學生證大頭貼與個人大頭照選取存取權限",
+                iconTint = if (isPhotoPermissionGranted) TealSecondary else AmberWarning,
+                badgeText = if (isPhotoPermissionGranted) "已允許" else "未授權",
+                badgeContainerColor = if (isPhotoPermissionGranted) EmeraldLight else AmberLight,
+                badgeContentColor = if (isPhotoPermissionGranted) EmeraldAccent else AmberAccent,
+                onClick = {
+                    val perm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        Manifest.permission.READ_MEDIA_IMAGES
+                    } else {
+                        Manifest.permission.READ_EXTERNAL_STORAGE
+                    }
+                    if (checkPhotoPermission()) {
+                        Toast.makeText(context, "已取得相片與照片存取權限", Toast.LENGTH_SHORT).show()
+                    } else {
+                        photoPermissionLauncher.launch(perm)
+                    }
+                }
             )
         }
 
@@ -953,6 +1007,18 @@ private fun EditProfileDialog(
         }
     }
 
+    val photoPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            photoPickerLauncher.launch(
+                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+            )
+        } else {
+            Toast.makeText(context, "請允許相片存取權限以更換大頭照", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     val avatarBitmap = remember(selectedAvatarUri, avatarUpdateTrigger) {
         if (selectedAvatarUri != null) {
             try {
@@ -1007,9 +1073,18 @@ private fun EditProfileDialog(
                 // Option 1: Photo Picker (本機相簿)
                 Card(
                     onClick = {
-                        photoPickerLauncher.launch(
-                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                        )
+                        val perm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            Manifest.permission.READ_MEDIA_IMAGES
+                        } else {
+                            Manifest.permission.READ_EXTERNAL_STORAGE
+                        }
+                        if (ContextCompat.checkSelfPermission(context, perm) == PackageManager.PERMISSION_GRANTED) {
+                            photoPickerLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        } else {
+                            photoPermissionLauncher.launch(perm)
+                        }
                     },
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
