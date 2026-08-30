@@ -35,18 +35,8 @@ object GeminiTimetableParser {
         .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    private val PRESET_COLORS = listOf(
-        "#3B82F6", // Blue
-        "#10B981", // Emerald
-        "#8B5CF6", // Purple
-        "#F59E0B", // Amber
-        "#EC4899", // Pink
-        "#06B6D4", // Cyan
-        "#6366F1", // Indigo
-        "#14B8A6", // Teal
-        "#F97316", // Orange
-        "#84CC16"  // Lime
-    )
+    // Default color for imported courses (Grey from the palette)
+    private const val DEFAULT_IMPORT_COLOR = "#94A3B8"
 
     /**
      * Decode and downscale Uri to Bitmap
@@ -310,7 +300,7 @@ object GeminiTimetableParser {
                 }
 
                 val subcategory = item.optString("subcategory", "")
-                val colorHex = PRESET_COLORS[i % PRESET_COLORS.size]
+                val colorHex = DEFAULT_IMPORT_COLOR
 
                 courseList.add(
                     Course(
