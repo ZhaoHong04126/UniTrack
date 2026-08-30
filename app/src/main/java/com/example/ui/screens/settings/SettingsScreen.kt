@@ -54,7 +54,6 @@ fun SettingsScreen(
     viewModel: StudentViewModel,
     modifier: Modifier = Modifier,
     onNavigateToAuth: () -> Unit = {},
-    onNavigateToWidgetSettings: () -> Unit = {},
     onNavigateToNotificationSettings: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -67,31 +66,8 @@ fun SettingsScreen(
         mutableStateOf(NotificationHelper.hasNotificationPermission(context))
     }
 
-    fun checkPhotoPermission(): Boolean {
-        val perm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            Manifest.permission.READ_MEDIA_IMAGES
-        } else {
-            Manifest.permission.READ_EXTERNAL_STORAGE
-        }
-        return ContextCompat.checkSelfPermission(context, perm) == PackageManager.PERMISSION_GRANTED
-    }
-
-    var isPhotoPermissionGranted by remember { mutableStateOf(checkPhotoPermission()) }
-
-    val photoPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        isPhotoPermissionGranted = isGranted
-        if (isGranted) {
-            Toast.makeText(context, "已成功取得相片與照片存取權限", Toast.LENGTH_SHORT).show()
-        } else {
-            Toast.makeText(context, "未取得相片與照片權限，可至系統設定開啟", Toast.LENGTH_SHORT).show()
-        }
-    }
-
     LifecycleResumeEffect(Unit) {
         isNotificationPermissionGranted = NotificationHelper.hasNotificationPermission(context)
-        isPhotoPermissionGranted = checkPhotoPermission()
         onPauseOrDispose { }
     }
 
@@ -189,50 +165,6 @@ fun SettingsScreen(
                 badgeContainerColor = if (isNotificationPermissionGranted && notificationPrefs.masterEnabled) EmeraldLight else AmberLight,
                 badgeContentColor = if (isNotificationPermissionGranted && notificationPrefs.masterEnabled) EmeraldAccent else AmberAccent,
                 onClick = onNavigateToNotificationSettings
-            )
-
-            HorizontalDivider(
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-
-            SettingTileRow(
-                icon = Icons.Default.PhotoLibrary,
-                title = "相片與照片",
-                subtitle = "自訂學生證大頭貼與個人大頭照選取存取權限",
-                iconTint = if (isPhotoPermissionGranted) TealSecondary else AmberWarning,
-                badgeText = if (isPhotoPermissionGranted) "已允許" else "未授權",
-                badgeContainerColor = if (isPhotoPermissionGranted) EmeraldLight else AmberLight,
-                badgeContentColor = if (isPhotoPermissionGranted) EmeraldAccent else AmberAccent,
-                onClick = {
-                    val perm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        Manifest.permission.READ_MEDIA_IMAGES
-                    } else {
-                        Manifest.permission.READ_EXTERNAL_STORAGE
-                    }
-                    if (checkPhotoPermission()) {
-                        Toast.makeText(context, "已取得相片與照片存取權限", Toast.LENGTH_SHORT).show()
-                    } else {
-                        photoPermissionLauncher.launch(perm)
-                    }
-                }
-            )
-        }
-
-        // Section: Desktop Widgets (桌面小工具)
-        SectionHeader(title = "桌面小工具")
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-        ) {
-            SettingTileRow(
-                icon = Icons.Default.Widgets,
-                title = "桌面小工具管理",
-                subtitle = "即時預覽課表小工具、強制推播同步與安裝指南",
-                iconTint = SapphirePrimary,
-                onClick = onNavigateToWidgetSettings
             )
         }
 

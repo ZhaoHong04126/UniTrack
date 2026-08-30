@@ -381,9 +381,6 @@ class MainActivity : ComponentActivity() {
                                 onNavigateToAuth = {
                                     navController.navigate("auth")
                                 },
-                                onNavigateToWidgetSettings = {
-                                    navController.navigate("widget_settings")
-                                },
                                 onNavigateToNotificationSettings = {
                                     navController.navigate("notification_settings")
                                 }
