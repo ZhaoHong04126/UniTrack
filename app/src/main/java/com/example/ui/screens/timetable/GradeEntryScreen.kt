@@ -1,6 +1,7 @@
 package com.example.ui.screens.timetable
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -11,17 +12,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.Course
@@ -45,12 +48,17 @@ fun GradeEntryScreen(
     var showSemesterManageDialog by remember { mutableStateOf(false) }
 
     // Calculate semester average score & earned credits
-    val gradedCourses = courses.filter { it.score != null }
-    val totalGradedCredits = gradedCourses.sumOf { it.credits }
-    val weightedScoreSum = gradedCourses.sumOf { (it.score ?: 0.0) * it.credits }
+    val scoredCourses = courses.filter { it.score != null }
+    val totalGradedCredits = scoredCourses.sumOf { it.credits }
+    val weightedScoreSum = scoredCourses.sumOf { (it.score ?: 0.0) * it.credits }
     val semesterAverageScore = if (totalGradedCredits > 0) weightedScoreSum / totalGradedCredits else 0.0
     val totalSemesterCredits = courses.sumOf { it.credits }
-    val passedCredits = courses.filter { it.score != null && it.score >= plan.minPassingScore }.sumOf { it.credits }
+    val passedCredits = courses.filter {
+        (it.score != null && it.score >= plan.minPassingScore) ||
+        (it.letterGrade in listOf("抵免", "通過", "免修")) ||
+        (it.isCompleted && it.letterGrade != "不通過")
+    }.sumOf { it.credits }
+    val loggedCount = courses.count { it.score != null || it.letterGrade != null }
 
     Scaffold(
         topBar = {
@@ -169,7 +177,7 @@ fun GradeEntryScreen(
 
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = "${gradedCourses.size} / ${courses.size}",
+                                text = "$loggedCount / ${courses.size}",
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = EmeraldAccent
@@ -214,7 +222,27 @@ fun GradeEntryScreen(
                             viewModel.updateCourse(
                                 course.copy(
                                     score = newScore,
+                                    letterGrade = null,
                                     isCompleted = isCompleted
+                                )
+                            )
+                        },
+                        onSaveNonGraded = { status ->
+                            val isCompleted = status in listOf("抵免", "通過", "免修")
+                            viewModel.updateCourse(
+                                course.copy(
+                                    score = null,
+                                    letterGrade = status,
+                                    isCompleted = isCompleted
+                                )
+                            )
+                        },
+                        onClearGrade = {
+                            viewModel.updateCourse(
+                                course.copy(
+                                    score = null,
+                                    letterGrade = null,
+                                    isCompleted = false
                                 )
                             )
                         }
@@ -247,12 +275,16 @@ fun GradeEntryScreen(
 @Composable
 private fun GradeEntryCourseCard(
     course: Course,
-    onSaveScore: (Double?) -> Unit
+    onSaveScore: (Double?) -> Unit,
+    onSaveNonGraded: (String) -> Unit,
+    onClearGrade: () -> Unit
 ) {
+    var showMenu by remember { mutableStateOf(false) }
     var scoreInput by remember(course.score) {
         mutableStateOf(course.score?.let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() } ?: "")
     }
     val focusManager = LocalFocusManager.current
+    val isNonGraded = course.letterGrade in listOf("抵免", "通過", "不通過", "免修")
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -263,98 +295,230 @@ private fun GradeEntryCourseCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
+                .padding(horizontal = 14.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Course Info
+            // Course Info (Left)
             Column(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
+                Text(
+                    text = course.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Text(
-                        text = course.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Badge(
-                        containerColor = course.category.badgeColor.copy(alpha = 0.15f),
-                        contentColor = course.category.badgeColor
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = course.category.badgeColor.copy(alpha = 0.15f)
                     ) {
-                        Text(text = "${course.category.shortLabel}・${course.requirementType.shortLabel}")
+                        Text(
+                            text = "${course.category.shortLabel}・${course.requirementType.shortLabel}",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = course.category.badgeColor,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
                     }
+                    Text(
+                        text = "${course.credits} 學分" + if (course.teacher.isNotBlank()) "・${course.teacher}" else "",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
-                Text(
-                    text = "${course.credits} 學分" + if (course.teacher.isNotBlank()) "・${course.teacher}" else "",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
 
-            // Score Input & Action
+            // Grade Controls (Right)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                OutlinedTextField(
-                    value = scoreInput,
-                    onValueChange = { input ->
-                        if (input.isEmpty() || input.toDoubleOrNull() != null) {
-                            scoreInput = input
+                if (isNonGraded) {
+                    val currentStatus = course.letterGrade ?: "通過"
+                    val (bgColor, textColor) = when (currentStatus) {
+                        "通過" -> EmeraldAccent to Color.White
+                        "不通過" -> RoseAccent to Color.White
+                        "抵免" -> PurpleAccent to Color.White
+                        "免修" -> TealSecondary to Color.White
+                        else -> MaterialTheme.colorScheme.primary to Color.White
+                    }
+
+                    Box {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = bgColor,
+                            modifier = Modifier
+                                .height(38.dp)
+                                .clickable { showMenu = true }
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    text = currentStatus,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = textColor
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.ArrowDropDown,
+                                    contentDescription = "切換狀態",
+                                    tint = textColor,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         }
-                    },
-                    placeholder = { Text("0~100", style = MaterialTheme.typography.labelSmall) },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Number,
-                        imeAction = ImeAction.Done
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onDone = {
+
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            listOf("抵免", "通過", "不通過", "免修").forEach { opt ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = opt,
+                                            fontWeight = if (course.letterGrade == opt) FontWeight.Bold else FontWeight.Normal,
+                                            color = when (opt) {
+                                                "通過" -> EmeraldAccent
+                                                "不通過" -> RoseAccent
+                                                "抵免" -> PurpleAccent
+                                                "免修" -> TealSecondary
+                                                else -> MaterialTheme.colorScheme.onSurface
+                                            }
+                                        )
+                                    },
+                                    onClick = {
+                                        onSaveNonGraded(opt)
+                                        showMenu = false
+                                    }
+                                )
+                            }
+                            HorizontalDivider()
+                            DropdownMenuItem(
+                                text = { Text("🔢 改為填寫分數 (0~100)") },
+                                onClick = {
+                                    onClearGrade()
+                                    showMenu = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("✕ 清除紀錄", color = MaterialTheme.colorScheme.error) },
+                                onClick = {
+                                    onClearGrade()
+                                    showMenu = false
+                                }
+                            )
+                        }
+                    }
+                } else {
+                    OutlinedTextField(
+                        value = scoreInput,
+                        onValueChange = { input ->
+                            if (input.isEmpty() || input.toDoubleOrNull() != null) {
+                                scoreInput = input
+                            }
+                        },
+                        placeholder = { Text("0~100", style = MaterialTheme.typography.labelSmall) },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number,
+                            imeAction = ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                val parsed = scoreInput.toDoubleOrNull()
+                                onSaveScore(parsed)
+                                focusManager.clearFocus()
+                            }
+                        ),
+                        singleLine = true,
+                        modifier = Modifier.width(84.dp)
+                    )
+
+                    IconButton(
+                        onClick = {
                             val parsed = scoreInput.toDoubleOrNull()
                             onSaveScore(parsed)
                             focusManager.clearFocus()
-                        }
-                    ),
-                    singleLine = true,
-                    modifier = Modifier.width(84.dp)
-                )
-
-                // Save or Clear Button
-                IconButton(
-                    onClick = {
-                        val parsed = scoreInput.toDoubleOrNull()
-                        onSaveScore(parsed)
-                        focusManager.clearFocus()
-                    },
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = "儲存成績",
-                        tint = EmeraldAccent,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
-                if (course.score != null) {
-                    IconButton(
-                        onClick = {
-                            scoreInput = ""
-                            onSaveScore(null)
-                            focusManager.clearFocus()
                         },
-                        modifier = Modifier.size(28.dp)
+                        modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "清除成績",
-                            tint = MaterialTheme.colorScheme.outline,
-                            modifier = Modifier.size(16.dp)
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "儲存成績",
+                            tint = EmeraldAccent,
+                            modifier = Modifier.size(20.dp)
                         )
+                    }
+
+                    Box {
+                        IconButton(
+                            onClick = { showMenu = true },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "不採成績選項",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            Text(
+                                text = "不採計成績選項",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            )
+                            listOf("抵免", "通過", "不通過", "免修").forEach { opt ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = opt,
+                                            color = when (opt) {
+                                                "通過" -> EmeraldAccent
+                                                "不通過" -> RoseAccent
+                                                "抵免" -> PurpleAccent
+                                                "免修" -> TealSecondary
+                                                else -> MaterialTheme.colorScheme.onSurface
+                                            }
+                                        )
+                                    },
+                                    onClick = {
+                                        onSaveNonGraded(opt)
+                                        showMenu = false
+                                    }
+                                )
+                            }
+                            if (course.score != null) {
+                                HorizontalDivider()
+                                DropdownMenuItem(
+                                    text = { Text("✕ 清除成績", color = MaterialTheme.colorScheme.error) },
+                                    onClick = {
+                                        scoreInput = ""
+                                        onClearGrade()
+                                        showMenu = false
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }

@@ -633,24 +633,23 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
         for (sem in semList) {
             val semCourses = courses.filter { it.semester == sem }
-            val gradedCourses = semCourses.filter { it.score != null || it.letterGrade != null }
-            if (gradedCourses.isEmpty()) {
-                val totalCredits = semCourses.sumOf { it.credits }
-                result.add(SemesterGpa(sem, 0.0, 0.0, totalCredits, 0.0, semCourses.size))
-                continue
-            }
-
             var totalWeightedScore = 0.0
             var totalGradedCredits = 0.0
             var passedCredits = 0.0
 
-            for (c in gradedCourses) {
-                val scoreVal = c.score ?: scoreFromLetterGrade(c.letterGrade) ?: 0.0
+            for (c in semCourses) {
+                val scoreVal = c.score ?: scoreFromLetterGrade(c.letterGrade)
+                if (scoreVal != null) {
+                    totalWeightedScore += scoreVal * c.credits
+                    totalGradedCredits += c.credits
+                }
 
-                totalWeightedScore += scoreVal * c.credits
-                totalGradedCredits += c.credits
+                val isPassed = (c.score != null && c.score >= plan.minPassingScore) ||
+                    (c.letterGrade in listOf("抵免", "通過", "免修")) ||
+                    (c.isCompleted && c.letterGrade != "不通過") ||
+                    (c.letterGrade != null && c.letterGrade !in listOf("F", "E", "不通過") && scoreVal != null && scoreVal >= plan.minPassingScore)
 
-                if (c.isCompleted || (c.score != null && c.score >= plan.minPassingScore) || (c.letterGrade != null && c.letterGrade != "F" && c.letterGrade != "E")) {
+                if (isPassed) {
                     passedCredits += c.credits
                 }
             }
@@ -674,17 +673,15 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
     // Cumulative GPA & Average Score (百分制均分)
     val cumulativeAcademicSummary: StateFlow<Pair<Double, Double>> = combine(allCourses, graduationPlan) { courses, _ ->
-        val gradedCourses = courses.filter { it.score != null || it.letterGrade != null }
-        if (gradedCourses.isEmpty()) return@combine Pair(0.0, 0.0)
-
         var totalWeightedScore = 0.0
         var totalGradedCredits = 0.0
 
-        for (c in gradedCourses) {
-            val scoreVal = c.score ?: scoreFromLetterGrade(c.letterGrade) ?: 0.0
-
-            totalWeightedScore += scoreVal * c.credits
-            totalGradedCredits += c.credits
+        for (c in courses) {
+            val scoreVal = c.score ?: scoreFromLetterGrade(c.letterGrade)
+            if (scoreVal != null) {
+                totalWeightedScore += scoreVal * c.credits
+                totalGradedCredits += c.credits
+            }
         }
 
         val avg = if (totalGradedCredits > 0) totalWeightedScore / totalGradedCredits else 0.0
@@ -707,6 +704,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
         var earnedGeneral = 0.0
         var inProgressGeneral = 0.0
+
         var earnedGeneralReq = 0.0
         var inProgressGeneralReq = 0.0
         var earnedGeneralEle = 0.0
@@ -752,8 +750,11 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         var peCredits = 0.0
 
         for (c in courses) {
-            val isPassed = c.isCompleted || (c.score != null && c.score >= plan.minPassingScore)
-            val isInProgress = !isPassed && (c.semester == plan.currentSemester || c.score == null)
+            val isPassed = (c.score != null && c.score >= plan.minPassingScore) ||
+                (c.letterGrade in listOf("抵免", "通過", "免修")) ||
+                (c.isCompleted && c.letterGrade != "不通過")
+            val isFailed = c.letterGrade == "不通過" || (c.score != null && c.score < plan.minPassingScore)
+            val isInProgress = !isPassed && !isFailed && (c.semester == plan.currentSemester || (c.score == null && c.letterGrade == null))
             val isReq = c.requirementType == CourseRequirementType.REQUIRED || c.requirementType == CourseRequirementType.REQUIRED_ELECTIVE
 
             val isUnspecified = c.category == CourseCategory.UNSPECIFIED || c.requirementType == CourseRequirementType.UNSPECIFIED
