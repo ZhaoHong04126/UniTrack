@@ -178,7 +178,8 @@ fun AddEditCourseDialog(
     val allCategoryOptions = remember(plan, initialCourse) {
         val list = mutableListOf<CategoryOption>()
         val baseCategories = CourseCategory.entries.filter {
-            it != CourseCategory.REQUIRED && it != CourseCategory.ELECTIVE && it != CourseCategory.PE && it != CourseCategory.UNSPECIFIED
+            it != CourseCategory.REQUIRED && it != CourseCategory.ELECTIVE && it != CourseCategory.PE && it != CourseCategory.UNSPECIFIED &&
+            (plan == null || !plan.isCategoryDeleted(it) || initialCourse?.category == it)
         }
         baseCategories.forEach { cat ->
             list.add(CategoryOption(standardCat = cat, label = cat.label, shortLabel = cat.shortLabel))

@@ -89,6 +89,12 @@ fun GraduationPlanScreen(
         mutableStateOf<List<CustomCategoryUIState>>(emptyList())
     }
 
+    var deletedCategories by remember {
+        mutableStateOf<Set<CourseCategory>>(emptySet())
+    }
+
+    var categoryToDelete by remember { mutableStateOf<Pair<CourseCategory, String>?>(null) }
+
     LaunchedEffect(currentPlan) {
         if (!isInitialized) {
             totalTarget = currentPlan.targetTotalCredits.toString()
@@ -103,6 +109,7 @@ fun GraduationPlanScreen(
             proReqTarget = currentPlan.targetProfessionalModuleRequiredCredits.toString()
             proEleTarget = currentPlan.targetProfessionalModuleElectiveCredits.toString()
             freeEleTarget = currentPlan.targetFreeElectiveCredits.toString()
+            deletedCategories = currentPlan.getDeletedCategories()
             subcategoriesMap = CourseCategory.entries.associateWith { cat ->
                 currentPlan.getSubcategoryRules(cat).map {
                     SubcategoryRuleUIState(
@@ -132,6 +139,59 @@ fun GraduationPlanScreen(
             }
             isInitialized = true
         }
+    }
+
+    categoryToDelete?.let { (cat, catName) ->
+        AlertDialog(
+            onDismissRequest = { categoryToDelete = null },
+            title = { Text("刪除「$catName」模組？") },
+            text = {
+                Text("確定要刪除此模組嗎？此模組將從畢業審查標準中移除（目標學分將歸零）。日後若有需要，您隨時可在下方點擊加回。")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        deletedCategories = deletedCategories + cat
+                        when (cat) {
+                            CourseCategory.GENERAL_EDU -> {
+                                genReqTarget = "0.0"
+                                genEleTarget = "0.0"
+                            }
+                            CourseCategory.COLLEGE_CORE -> {
+                                colReqTarget = "0.0"
+                                colEleTarget = "0.0"
+                            }
+                            CourseCategory.BASIC_MODULE -> {
+                                basReqTarget = "0.0"
+                                basEleTarget = "0.0"
+                            }
+                            CourseCategory.CORE_MODULE -> {
+                                corReqTarget = "0.0"
+                                corEleTarget = "0.0"
+                            }
+                            CourseCategory.PROFESSIONAL_MODULE -> {
+                                proReqTarget = "0.0"
+                                proEleTarget = "0.0"
+                            }
+                            CourseCategory.FREE_ELECTIVE -> {
+                                freeEleTarget = "0.0"
+                            }
+                            else -> {}
+                        }
+                        categoryToDelete = null
+                        Toast.makeText(context, "已刪除「$catName」模組", Toast.LENGTH_SHORT).show()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("確認刪除")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { categoryToDelete = null }) {
+                    Text("取消")
+                }
+            }
+        )
     }
 
     var showAddCustomCategoryDialog by remember { mutableStateOf(false) }
@@ -247,30 +307,38 @@ fun GraduationPlanScreen(
         }
         val encodedCustomCategories = GraduationPlan.encodeCustomCategories(customCatsDomain)
 
+        val isGenDel = deletedCategories.contains(CourseCategory.GENERAL_EDU)
+        val isColDel = deletedCategories.contains(CourseCategory.COLLEGE_CORE)
+        val isBasDel = deletedCategories.contains(CourseCategory.BASIC_MODULE)
+        val isCorDel = deletedCategories.contains(CourseCategory.CORE_MODULE)
+        val isProDel = deletedCategories.contains(CourseCategory.PROFESSIONAL_MODULE)
+        val isFreeDel = deletedCategories.contains(CourseCategory.FREE_ELECTIVE)
+
         val updated = currentPlan.copy(
             targetTotalCredits = totalTarget.toDoubleOrNull() ?: 128.0,
             targetRequiredCredits = currentPlan.targetRequiredCredits,
             targetElectiveCredits = currentPlan.targetElectiveCredits,
-            targetGeneralCredits = genReq + genEle,
-            targetCollegeCoreCredits = colReq + colEle,
-            targetBasicModuleCredits = basReq + basEle,
-            targetCoreModuleCredits = corReq + corEle,
-            targetProfessionalModuleCredits = proReq + proEle,
-            targetFreeCredits = freeEle,
-            targetGeneralRequiredCredits = genReq,
-            targetGeneralElectiveCredits = genEle,
-            targetCollegeCoreRequiredCredits = colReq,
-            targetCollegeCoreElectiveCredits = colEle,
-            targetBasicModuleRequiredCredits = basReq,
-            targetBasicModuleElectiveCredits = basEle,
-            targetCoreModuleRequiredCredits = corReq,
-            targetCoreModuleElectiveCredits = corEle,
-            targetProfessionalModuleRequiredCredits = proReq,
-            targetProfessionalModuleElectiveCredits = proEle,
-            targetFreeElectiveCredits = freeEle,
+            targetGeneralCredits = if (isGenDel) 0.0 else genReq + genEle,
+            targetCollegeCoreCredits = if (isColDel) 0.0 else colReq + colEle,
+            targetBasicModuleCredits = if (isBasDel) 0.0 else basReq + basEle,
+            targetCoreModuleCredits = if (isCorDel) 0.0 else corReq + corEle,
+            targetProfessionalModuleCredits = if (isProDel) 0.0 else proReq + proEle,
+            targetFreeCredits = if (isFreeDel) 0.0 else freeEle,
+            targetGeneralRequiredCredits = if (isGenDel) 0.0 else genReq,
+            targetGeneralElectiveCredits = if (isGenDel) 0.0 else genEle,
+            targetCollegeCoreRequiredCredits = if (isColDel) 0.0 else colReq,
+            targetCollegeCoreElectiveCredits = if (isColDel) 0.0 else colEle,
+            targetBasicModuleRequiredCredits = if (isBasDel) 0.0 else basReq,
+            targetBasicModuleElectiveCredits = if (isBasDel) 0.0 else basEle,
+            targetCoreModuleRequiredCredits = if (isCorDel) 0.0 else corReq,
+            targetCoreModuleElectiveCredits = if (isCorDel) 0.0 else corEle,
+            targetProfessionalModuleRequiredCredits = if (isProDel) 0.0 else proReq,
+            targetProfessionalModuleElectiveCredits = if (isProDel) 0.0 else proEle,
+            targetFreeElectiveCredits = if (isFreeDel) 0.0 else freeEle,
             gpaScale = currentPlan.gpaScale,
             subcategoriesJson = encodedSubcategories,
-            customCategoriesJson = encodedCustomCategories
+            customCategoriesJson = encodedCustomCategories,
+            deletedCategories = deletedCategories.joinToString(",") { it.name }
         )
         viewModel.updateGraduationPlan(updated) {
             Toast.makeText(context, "畢業審查標準已儲存更新", Toast.LENGTH_SHORT).show()
@@ -381,83 +449,165 @@ fun GraduationPlanScreen(
             SectionHeader(title = "各模組與類別學分門檻")
 
             // 1. 通識教育課程
-            ModuleThresholdCard(
-                title = "通識教育課程",
-                badgeColor = CourseCategory.GENERAL_EDU.badgeColor,
-                reqValue = genReqTarget,
-                onReqChange = { genReqTarget = it },
-                eleValue = genEleTarget,
-                onEleChange = { genEleTarget = it },
-                subcategories = subcategoriesMap[CourseCategory.GENERAL_EDU] ?: emptyList(),
-                onSaveSubcategory = { addOrUpdateSubcategory(CourseCategory.GENERAL_EDU, it) },
-                onRemoveSubcategory = { removeSubcategory(CourseCategory.GENERAL_EDU, it.id) }
-            )
+            if (!deletedCategories.contains(CourseCategory.GENERAL_EDU)) {
+                ModuleThresholdCard(
+                    title = "通識教育課程",
+                    badgeColor = CourseCategory.GENERAL_EDU.badgeColor,
+                    reqValue = genReqTarget,
+                    onReqChange = { genReqTarget = it },
+                    eleValue = genEleTarget,
+                    onEleChange = { genEleTarget = it },
+                    subcategories = subcategoriesMap[CourseCategory.GENERAL_EDU] ?: emptyList(),
+                    onSaveSubcategory = { addOrUpdateSubcategory(CourseCategory.GENERAL_EDU, it) },
+                    onRemoveSubcategory = { removeSubcategory(CourseCategory.GENERAL_EDU, it.id) },
+                    onDelete = { categoryToDelete = CourseCategory.GENERAL_EDU to "通識教育課程" }
+                )
+            }
 
             // 2. 院共同課程
-            ModuleThresholdCard(
-                title = "院共同課程",
-                badgeColor = CourseCategory.COLLEGE_CORE.badgeColor,
-                reqValue = colReqTarget,
-                onReqChange = { colReqTarget = it },
-                eleValue = colEleTarget,
-                onEleChange = { colEleTarget = it },
-                subcategories = subcategoriesMap[CourseCategory.COLLEGE_CORE] ?: emptyList(),
-                onSaveSubcategory = { addOrUpdateSubcategory(CourseCategory.COLLEGE_CORE, it) },
-                onRemoveSubcategory = { removeSubcategory(CourseCategory.COLLEGE_CORE, it.id) }
-            )
+            if (!deletedCategories.contains(CourseCategory.COLLEGE_CORE)) {
+                ModuleThresholdCard(
+                    title = "院共同課程",
+                    badgeColor = CourseCategory.COLLEGE_CORE.badgeColor,
+                    reqValue = colReqTarget,
+                    onReqChange = { colReqTarget = it },
+                    eleValue = colEleTarget,
+                    onEleChange = { colEleTarget = it },
+                    subcategories = subcategoriesMap[CourseCategory.COLLEGE_CORE] ?: emptyList(),
+                    onSaveSubcategory = { addOrUpdateSubcategory(CourseCategory.COLLEGE_CORE, it) },
+                    onRemoveSubcategory = { removeSubcategory(CourseCategory.COLLEGE_CORE, it.id) },
+                    onDelete = { categoryToDelete = CourseCategory.COLLEGE_CORE to "院共同課程" }
+                )
+            }
 
             // 3. 基礎模組
-            ModuleThresholdCard(
-                title = "基礎模組",
-                badgeColor = CourseCategory.BASIC_MODULE.badgeColor,
-                reqValue = basReqTarget,
-                onReqChange = { basReqTarget = it },
-                eleValue = basEleTarget,
-                onEleChange = { basEleTarget = it },
-                subcategories = subcategoriesMap[CourseCategory.BASIC_MODULE] ?: emptyList(),
-                onSaveSubcategory = { addOrUpdateSubcategory(CourseCategory.BASIC_MODULE, it) },
-                onRemoveSubcategory = { removeSubcategory(CourseCategory.BASIC_MODULE, it.id) }
-            )
+            if (!deletedCategories.contains(CourseCategory.BASIC_MODULE)) {
+                ModuleThresholdCard(
+                    title = "基礎模組",
+                    badgeColor = CourseCategory.BASIC_MODULE.badgeColor,
+                    reqValue = basReqTarget,
+                    onReqChange = { basReqTarget = it },
+                    eleValue = basEleTarget,
+                    onEleChange = { basEleTarget = it },
+                    subcategories = subcategoriesMap[CourseCategory.BASIC_MODULE] ?: emptyList(),
+                    onSaveSubcategory = { addOrUpdateSubcategory(CourseCategory.BASIC_MODULE, it) },
+                    onRemoveSubcategory = { removeSubcategory(CourseCategory.BASIC_MODULE, it.id) },
+                    onDelete = { categoryToDelete = CourseCategory.BASIC_MODULE to "基礎模組" }
+                )
+            }
 
             // 4. 核心模組
-            ModuleThresholdCard(
-                title = "核心模組",
-                badgeColor = CourseCategory.CORE_MODULE.badgeColor,
-                reqValue = corReqTarget,
-                onReqChange = { corReqTarget = it },
-                eleValue = corEleTarget,
-                onEleChange = { corEleTarget = it },
-                subcategories = subcategoriesMap[CourseCategory.CORE_MODULE] ?: emptyList(),
-                onSaveSubcategory = { addOrUpdateSubcategory(CourseCategory.CORE_MODULE, it) },
-                onRemoveSubcategory = { removeSubcategory(CourseCategory.CORE_MODULE, it.id) }
-            )
+            if (!deletedCategories.contains(CourseCategory.CORE_MODULE)) {
+                ModuleThresholdCard(
+                    title = "核心模組",
+                    badgeColor = CourseCategory.CORE_MODULE.badgeColor,
+                    reqValue = corReqTarget,
+                    onReqChange = { corReqTarget = it },
+                    eleValue = corEleTarget,
+                    onEleChange = { corEleTarget = it },
+                    subcategories = subcategoriesMap[CourseCategory.CORE_MODULE] ?: emptyList(),
+                    onSaveSubcategory = { addOrUpdateSubcategory(CourseCategory.CORE_MODULE, it) },
+                    onRemoveSubcategory = { removeSubcategory(CourseCategory.CORE_MODULE, it.id) },
+                    onDelete = { categoryToDelete = CourseCategory.CORE_MODULE to "核心模組" }
+                )
+            }
 
             // 5. 專業模組
-            ModuleThresholdCard(
-                title = "專業模組",
-                badgeColor = CourseCategory.PROFESSIONAL_MODULE.badgeColor,
-                reqValue = proReqTarget,
-                onReqChange = { proReqTarget = it },
-                eleValue = proEleTarget,
-                onEleChange = { proEleTarget = it },
-                subcategories = subcategoriesMap[CourseCategory.PROFESSIONAL_MODULE] ?: emptyList(),
-                onSaveSubcategory = { addOrUpdateSubcategory(CourseCategory.PROFESSIONAL_MODULE, it) },
-                onRemoveSubcategory = { removeSubcategory(CourseCategory.PROFESSIONAL_MODULE, it.id) }
-            )
+            if (!deletedCategories.contains(CourseCategory.PROFESSIONAL_MODULE)) {
+                ModuleThresholdCard(
+                    title = "專業模組",
+                    badgeColor = CourseCategory.PROFESSIONAL_MODULE.badgeColor,
+                    reqValue = proReqTarget,
+                    onReqChange = { proReqTarget = it },
+                    eleValue = proEleTarget,
+                    onEleChange = { proEleTarget = it },
+                    subcategories = subcategoriesMap[CourseCategory.PROFESSIONAL_MODULE] ?: emptyList(),
+                    onSaveSubcategory = { addOrUpdateSubcategory(CourseCategory.PROFESSIONAL_MODULE, it) },
+                    onRemoveSubcategory = { removeSubcategory(CourseCategory.PROFESSIONAL_MODULE, it.id) },
+                    onDelete = { categoryToDelete = CourseCategory.PROFESSIONAL_MODULE to "專業模組" }
+                )
+            }
 
             // 6. 自由選修 (只有選修)
-            ModuleThresholdCard(
-                title = "自由選修",
-                badgeColor = CourseCategory.FREE_ELECTIVE.badgeColor,
-                reqValue = "",
-                onReqChange = {},
-                eleValue = freeEleTarget,
-                onEleChange = { freeEleTarget = it },
-                subcategories = subcategoriesMap[CourseCategory.FREE_ELECTIVE] ?: emptyList(),
-                onSaveSubcategory = { addOrUpdateSubcategory(CourseCategory.FREE_ELECTIVE, it) },
-                onRemoveSubcategory = { removeSubcategory(CourseCategory.FREE_ELECTIVE, it.id) },
-                showElectiveOnly = true
-            )
+            if (!deletedCategories.contains(CourseCategory.FREE_ELECTIVE)) {
+                ModuleThresholdCard(
+                    title = "自由選修",
+                    badgeColor = CourseCategory.FREE_ELECTIVE.badgeColor,
+                    reqValue = "",
+                    onReqChange = {},
+                    eleValue = freeEleTarget,
+                    onEleChange = { freeEleTarget = it },
+                    subcategories = subcategoriesMap[CourseCategory.FREE_ELECTIVE] ?: emptyList(),
+                    onSaveSubcategory = { addOrUpdateSubcategory(CourseCategory.FREE_ELECTIVE, it) },
+                    onRemoveSubcategory = { removeSubcategory(CourseCategory.FREE_ELECTIVE, it.id) },
+                    onDelete = { categoryToDelete = CourseCategory.FREE_ELECTIVE to "自由選修" },
+                    showElectiveOnly = true
+                )
+            }
+
+            // 恢復已刪除的預設模組區塊
+            if (deletedCategories.isNotEmpty()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                    ),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "已刪除的預設模組 (點擊加回)",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
+                        @OptIn(ExperimentalLayoutApi::class)
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            deletedCategories.forEach { cat ->
+                                AssistChip(
+                                    onClick = {
+                                        deletedCategories = deletedCategories - cat
+                                        Toast.makeText(context, "已重新加回「${cat.label}」模組", Toast.LENGTH_SHORT).show()
+                                    },
+                                    label = { Text("＋ ${cat.label}") },
+                                    colors = AssistChipDefaults.assistChipColors(
+                                        containerColor = MaterialTheme.colorScheme.surface,
+                                        labelColor = MaterialTheme.colorScheme.onSurface
+                                    ),
+                                    border = BorderStroke(1.dp, cat.badgeColor.copy(alpha = 0.7f)),
+                                    leadingIcon = {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(8.dp)
+                                                .clip(CircleShape)
+                                                .background(cat.badgeColor)
+                                        )
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
 
             // Custom Parent Categories (自訂母體分類)
             if (customCategories.isNotEmpty()) {
@@ -739,7 +889,7 @@ private fun ModuleThresholdCard(
                     ) {
                         Icon(
                             imageVector = Icons.Default.DeleteOutline,
-                            contentDescription = "刪除母體分類",
+                            contentDescription = "刪除模組",
                             tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
                             modifier = Modifier.size(18.dp)
                         )

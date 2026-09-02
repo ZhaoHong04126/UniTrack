@@ -124,11 +124,14 @@ fun SettingsScreen(
             }
         }
 
+        val firstLoginDate = remember(currentUser) { viewModel.getFirstLoginDateString() }
+
         // Student ID Card Widget (學生證風格卡片)
         StudentIdCard(
             plan = plan,
             currentUser = currentUser,
             avatarBitmap = currentAvatarBitmap,
+            firstLoginDate = firstLoginDate,
             onEditClick = { showEditProfileDialog = true }
         )
 
@@ -709,6 +712,7 @@ private fun StudentIdCard(
     plan: GraduationPlan,
     currentUser: UserProfile?,
     avatarBitmap: androidx.compose.ui.graphics.ImageBitmap? = null,
+    firstLoginDate: String = "",
     onEditClick: () -> Unit = {}
 ) {
     val isLoggedIn = currentUser != null
@@ -870,14 +874,14 @@ private fun StudentIdCard(
                             verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
                             Text(
-                                text = plan.admissionSemester.ifBlank { "未設定" },
-                                style = MaterialTheme.typography.labelLarge,
+                                text = firstLoginDate.ifBlank { plan.admissionSemester.ifBlank { "未設定" } },
+                                style = MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp),
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
                                 maxLines = 1
                             )
                             Text(
-                                text = "入學學期",
+                                text = "首次登入日期",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Color.White.copy(alpha = 0.75f),
                                 fontSize = 10.sp,

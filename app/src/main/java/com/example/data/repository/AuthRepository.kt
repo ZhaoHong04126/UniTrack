@@ -3,6 +3,7 @@ package com.example.data.repository
 import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
+import androidx.core.content.edit
 import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
@@ -98,7 +99,8 @@ class AuthRepository(private val context: Context) {
                     email = "student@gmail.com",
                     photoUrl = null,
                     isAnonymous = false,
-                    provider = AuthProvider.GOOGLE
+                    provider = AuthProvider.GOOGLE,
+                    createdAt = getOrSetLocalFirstLoginTime("google_demo_user")
                 )
                 _currentUser.value = demoUser
                 _authState.value = AuthState.Authenticated(demoUser)
@@ -161,7 +163,8 @@ class AuthRepository(private val context: Context) {
                     displayName = email.substringBefore("@"),
                     email = email,
                     isAnonymous = false,
-                    provider = AuthProvider.EMAIL
+                    provider = AuthProvider.EMAIL,
+                    createdAt = getOrSetLocalFirstLoginTime(email)
                 )
                 _currentUser.value = demoUser
                 _authState.value = AuthState.Authenticated(demoUser)
@@ -194,7 +197,8 @@ class AuthRepository(private val context: Context) {
                     displayName = name.ifBlank { email.substringBefore("@") },
                     email = email,
                     isAnonymous = false,
-                    provider = AuthProvider.EMAIL
+                    provider = AuthProvider.EMAIL,
+                    createdAt = getOrSetLocalFirstLoginTime(email)
                 )
                 _currentUser.value = demoUser
                 _authState.value = AuthState.Authenticated(demoUser)
@@ -211,13 +215,17 @@ class AuthRepository(private val context: Context) {
                 fbUser.updateProfile(profileUpdates).await()
             }
 
+            val fbCreationTimestamp = fbUser.metadata?.creationTimestamp ?: System.currentTimeMillis()
+            val firstLoginTime = getOrSetLocalFirstLoginTime(fbUser.uid, fbCreationTimestamp)
             val profile = UserProfile(
                 uid = fbUser.uid,
                 displayName = name.ifBlank { fbUser.displayName ?: email.substringBefore("@") },
                 email = fbUser.email,
                 photoUrl = fbUser.photoUrl?.toString(),
                 isAnonymous = false,
-                provider = AuthProvider.EMAIL
+                provider = AuthProvider.EMAIL,
+                isNewUser = true,
+                createdAt = firstLoginTime
             )
             _currentUser.value = profile
             _authState.value = AuthState.Authenticated(profile)
@@ -342,7 +350,34 @@ class AuthRepository(private val context: Context) {
         }
     }
 
+    fun getOrSetLocalFirstLoginTime(keyId: String, preferredTimestamp: Long = 0L): Long {
+        val prefs = context.getSharedPreferences("unitrack_prefs", Context.MODE_PRIVATE)
+        val safeKey = "first_login_time_${keyId.replace("[^a-zA-Z0-9_]".toRegex(), "_")}"
+        val existing = prefs.getLong(safeKey, 0L)
+        if (existing > 0L && preferredTimestamp <= 0L) {
+            return existing
+        }
+        val targetTime = when {
+            preferredTimestamp > 0L -> preferredTimestamp
+            existing > 0L -> existing
+            else -> {
+                val global = prefs.getLong("pref_first_login_time", 0L)
+                if (global > 0L) global else System.currentTimeMillis()
+            }
+        }
+        prefs.edit {
+            putLong(safeKey, targetTime)
+            val global = prefs.getLong("pref_first_login_time", 0L)
+            if (global == 0L || preferredTimestamp > 0L) {
+                putLong("pref_first_login_time", targetTime)
+            }
+        }
+        return targetTime
+    }
+
     private fun FirebaseUser.toUserProfile(provider: AuthProvider = AuthProvider.EMAIL, isNewUser: Boolean = false): UserProfile {
+        val fbCreationTimestamp = this.metadata?.creationTimestamp ?: 0L
+        val firstLoginTime = getOrSetLocalFirstLoginTime(this.uid, fbCreationTimestamp)
         return UserProfile(
             uid = this.uid,
             displayName = this.displayName ?: this.email?.substringBefore("@") ?: "同學",
@@ -350,7 +385,8 @@ class AuthRepository(private val context: Context) {
             photoUrl = this.photoUrl?.toString(),
             isAnonymous = false,
             provider = provider,
-            isNewUser = isNewUser
+            isNewUser = isNewUser,
+            createdAt = firstLoginTime
         )
     }
 

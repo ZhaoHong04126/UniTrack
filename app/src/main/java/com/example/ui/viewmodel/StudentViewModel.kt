@@ -94,6 +94,30 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     @Suppress("SpellCheckingInspection")
     private val prefs = application.getSharedPreferences("unitrack_prefs", Context.MODE_PRIVATE)
 
+    fun getFirstLoginTimestamp(): Long {
+        val user = currentUser.value
+        if (user != null && user.createdAt > 0L) {
+            return user.createdAt
+        }
+        val userSpecific = if (user != null) prefs.getLong("first_login_time_${user.uid.replace("[^a-zA-Z0-9_]".toRegex(), "_")}", 0L) else 0L
+        if (userSpecific > 0L) return userSpecific
+        val global = prefs.getLong("pref_first_login_time", 0L)
+        if (global > 0L) return global
+        val now = System.currentTimeMillis()
+        prefs.edit { putLong("pref_first_login_time", now) }
+        return now
+    }
+
+    fun getFirstLoginDateString(): String {
+        val ts = getFirstLoginTimestamp()
+        return dateFormat.format(Date(ts))
+    }
+
+    fun getFirstLoginYearMonth(): String {
+        val ts = getFirstLoginTimestamp()
+        return monthFormat.format(Date(ts))
+    }
+
     // Theme Mode setting (深色模式 / 淺色模式 / 手機)
     private val _themeMode = MutableStateFlow(
         try {
@@ -414,7 +438,13 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                     firestoreSyncRepository.downloadAllFromCloud(profile.uid)
 
                     // 2. 下載後立即更新記憶體中的帳戶與自訂學期 StateFlow（修復餘額顯示 $0 問題）
-                    _customAccounts.value = loadAccounts()
+                    val loaded = loadAccounts()
+                    val firstLoginYm = getFirstLoginYearMonth()
+                    val normalized = if (loaded.any { it.startYearMonth.isBlank() || it.startYearMonth == "2026-08" }) {
+                        loaded.map { if (it.startYearMonth.isBlank() || it.startYearMonth == "2026-08") it.copy(startYearMonth = firstLoginYm) else it }
+                    } else loaded
+                    _customAccounts.value = normalized
+                    saveAccounts(normalized)
                     _customSemesters.value = prefs.getStringSet("pref_custom_semesters", emptySet()) ?: emptySet()
                     _deletedSemesters.value = prefs.getStringSet("pref_deleted_semesters", emptySet()) ?: emptySet()
 
@@ -947,11 +977,11 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         val totalThresholds = thresholds.size
 
         val isEligible = totalEarned >= plan.targetTotalCredits &&
-                earnedGeneral >= plan.targetGeneralCredits &&
-                earnedCollegeCore >= plan.targetCollegeCoreCredits &&
-                earnedBasicModule >= plan.targetBasicModuleCredits &&
-                earnedCoreModule >= plan.targetCoreModuleCredits &&
-                earnedProfessionalModule >= plan.targetProfessionalModuleCredits &&
+                (plan.isCategoryDeleted(CourseCategory.GENERAL_EDU) || earnedGeneral >= plan.targetGeneralCredits) &&
+                (plan.isCategoryDeleted(CourseCategory.COLLEGE_CORE) || earnedCollegeCore >= plan.targetCollegeCoreCredits) &&
+                (plan.isCategoryDeleted(CourseCategory.BASIC_MODULE) || earnedBasicModule >= plan.targetBasicModuleCredits) &&
+                (plan.isCategoryDeleted(CourseCategory.CORE_MODULE) || earnedCoreModule >= plan.targetCoreModuleCredits) &&
+                (plan.isCategoryDeleted(CourseCategory.PROFESSIONAL_MODULE) || earnedProfessionalModule >= plan.targetProfessionalModuleCredits) &&
                 (totalThresholds == 0 || completedThresholds == totalThresholds)
 
         val genReqTarget = if (plan.targetGeneralRequiredCredits == 0.0 && plan.targetGeneralElectiveCredits == 0.0 && plan.targetGeneralCredits > 0.0) plan.targetGeneralCredits else plan.targetGeneralRequiredCredits
@@ -1033,10 +1063,11 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     )
 
     private fun loadAccounts(): List<PaymentAccount> {
+        val firstLoginYearMonth = getFirstLoginYearMonth()
         val defaultList = listOf(
-            PaymentAccount(id = "default_cash", name = "現金", method = PaymentMethod.CASH),
-            PaymentAccount(id = "default_student_card", name = "學生證", method = PaymentMethod.IC_CARD),
-            PaymentAccount(id = "default_post_office", name = "郵局", method = PaymentMethod.TRANSFER)
+            PaymentAccount(id = "default_cash", name = "現金", method = PaymentMethod.CASH, startYearMonth = firstLoginYearMonth),
+            PaymentAccount(id = "default_student_card", name = "學生證", method = PaymentMethod.IC_CARD, startYearMonth = firstLoginYearMonth),
+            PaymentAccount(id = "default_post_office", name = "郵局", method = PaymentMethod.TRANSFER, startYearMonth = firstLoginYearMonth)
         )
         val json = prefs.getString("pref_custom_accounts", null)
         if (json.isNullOrBlank()) {
@@ -1055,6 +1086,8 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                 }
                 val mName = obj.optString("method", PaymentMethod.CASH.name)
                 val m = runCatching { PaymentMethod.valueOf(mName) }.getOrDefault(PaymentMethod.CASH)
+                val rawYm = obj.optString("startYearMonth", "").ifBlank { firstLoginYearMonth }
+                val startYearMonth = if (rawYm == "2026-08") firstLoginYearMonth else rawYm
                 list.add(
                     PaymentAccount(
                         id = id,
@@ -1062,12 +1095,15 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                         method = m,
                         initialBalance = obj.optDouble("initialBalance", 0.0),
                         note = obj.optString("note", ""),
-                        startYearMonth = obj.optString("startYearMonth", "2026-08")
+                        startYearMonth = startYearMonth
                     )
                 )
             }
             if (containsOldDefaults) {
-                val cashAccount = list.firstOrNull { it.id == "default_cash" } ?: defaultList[0]
+                val rawCash = list.firstOrNull { it.id == "default_cash" } ?: defaultList[0]
+                val cashAccount = if (rawCash.startYearMonth.isBlank() || rawCash.startYearMonth == "2026-08") {
+                    rawCash.copy(startYearMonth = firstLoginYearMonth)
+                } else rawCash
                 val customAccountsOnly = list.filterNot { it.id.startsWith("default_") }
                 val migrated = listOf(
                     cashAccount,
@@ -1144,7 +1180,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             }
         }
 
-        val activeAccounts = accounts.filter { it.startYearMonth <= month }
+        val activeAccounts = accounts.filter { it.startYearMonth.isBlank() || it.startYearMonth <= month }
         val totalInitialBalance = activeAccounts.sumOf { it.initialBalance }
         val cumulativeExpenses = expenses.filter { it.dateString.substringBeforeLast("-") <= month }
         val cumExp = cumulativeExpenses.filter { it.type == ExpenseType.EXPENSE }.sumOf { it.amount }

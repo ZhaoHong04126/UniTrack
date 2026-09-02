@@ -94,6 +94,7 @@ class FirestoreSyncRepository(
                         "currentSemester" to plan.currentSemester,
                         "subcategoriesJson" to plan.subcategoriesJson,
                         "customCategoriesJson" to plan.customCategoriesJson,
+                        "deletedCategories" to plan.deletedCategories,
                         "lastUpdated" to System.currentTimeMillis()
                     )
                     planDocRef.set(planMap, SetOptions.merge()).await()
@@ -270,7 +271,8 @@ class FirestoreSyncRepository(
                         admissionSemester = planSnapshot.getString("admissionSemester") ?: defaultPlan.admissionSemester,
                         currentSemester = planSnapshot.getString("currentSemester") ?: defaultPlan.currentSemester,
                         subcategoriesJson = planSnapshot.getString("subcategoriesJson") ?: "",
-                        customCategoriesJson = planSnapshot.getString("customCategoriesJson") ?: ""
+                        customCategoriesJson = planSnapshot.getString("customCategoriesJson") ?: "",
+                        deletedCategories = planSnapshot.getString("deletedCategories") ?: ""
                     )
                     graduationDao.insertOrUpdatePlan(plan)
                 } else {

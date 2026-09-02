@@ -233,52 +233,64 @@ fun GraduationScreen(
                     }
 
                     // 1. General Education
-                    ModuleProgressItem(
-                        categoryName = "通識教育課程",
-                        summary = auditSummary.generalSummary,
-                        accentColor = CourseCategory.GENERAL_EDU.badgeColor,
-                        showSubcategories = showSubcategories
-                    )
+                    if (!auditSummary.plan.isCategoryDeleted(CourseCategory.GENERAL_EDU)) {
+                        ModuleProgressItem(
+                            categoryName = "通識教育課程",
+                            summary = auditSummary.generalSummary,
+                            accentColor = CourseCategory.GENERAL_EDU.badgeColor,
+                            showSubcategories = showSubcategories
+                        )
+                    }
 
                     // 2. College Core
-                    ModuleProgressItem(
-                        categoryName = "院共同課程",
-                        summary = auditSummary.collegeCoreSummary,
-                        accentColor = CourseCategory.COLLEGE_CORE.badgeColor,
-                        showSubcategories = showSubcategories
-                    )
+                    if (!auditSummary.plan.isCategoryDeleted(CourseCategory.COLLEGE_CORE)) {
+                        ModuleProgressItem(
+                            categoryName = "院共同課程",
+                            summary = auditSummary.collegeCoreSummary,
+                            accentColor = CourseCategory.COLLEGE_CORE.badgeColor,
+                            showSubcategories = showSubcategories
+                        )
+                    }
 
                     // 3. Basic Module
-                    ModuleProgressItem(
-                        categoryName = "基礎模組",
-                        summary = auditSummary.basicModuleSummary,
-                        accentColor = CourseCategory.BASIC_MODULE.badgeColor,
-                        showSubcategories = showSubcategories
-                    )
+                    if (!auditSummary.plan.isCategoryDeleted(CourseCategory.BASIC_MODULE)) {
+                        ModuleProgressItem(
+                            categoryName = "基礎模組",
+                            summary = auditSummary.basicModuleSummary,
+                            accentColor = CourseCategory.BASIC_MODULE.badgeColor,
+                            showSubcategories = showSubcategories
+                        )
+                    }
 
                     // 4. Core Module
-                    ModuleProgressItem(
-                        categoryName = "核心模組",
-                        summary = auditSummary.coreModuleSummary,
-                        accentColor = CourseCategory.CORE_MODULE.badgeColor,
-                        showSubcategories = showSubcategories
-                    )
+                    if (!auditSummary.plan.isCategoryDeleted(CourseCategory.CORE_MODULE)) {
+                        ModuleProgressItem(
+                            categoryName = "核心模組",
+                            summary = auditSummary.coreModuleSummary,
+                            accentColor = CourseCategory.CORE_MODULE.badgeColor,
+                            showSubcategories = showSubcategories
+                        )
+                    }
 
                     // 5. Professional Module
-                    ModuleProgressItem(
-                        categoryName = "專業模組",
-                        summary = auditSummary.professionalModuleSummary,
-                        accentColor = CourseCategory.PROFESSIONAL_MODULE.badgeColor,
-                        showSubcategories = showSubcategories
-                    )
+                    if (!auditSummary.plan.isCategoryDeleted(CourseCategory.PROFESSIONAL_MODULE)) {
+                        ModuleProgressItem(
+                            categoryName = "專業模組",
+                            summary = auditSummary.professionalModuleSummary,
+                            accentColor = CourseCategory.PROFESSIONAL_MODULE.badgeColor,
+                            showSubcategories = showSubcategories
+                        )
+                    }
 
                     // 6. Free Elective
-                    ModuleProgressItem(
-                        categoryName = "自由選修",
-                        summary = auditSummary.freeSummary,
-                        accentColor = CourseCategory.FREE_ELECTIVE.badgeColor,
-                        showSubcategories = showSubcategories
-                    )
+                    if (!auditSummary.plan.isCategoryDeleted(CourseCategory.FREE_ELECTIVE)) {
+                        ModuleProgressItem(
+                            categoryName = "自由選修",
+                            summary = auditSummary.freeSummary,
+                            accentColor = CourseCategory.FREE_ELECTIVE.badgeColor,
+                            showSubcategories = showSubcategories
+                        )
+                    }
                 }
             }
         }

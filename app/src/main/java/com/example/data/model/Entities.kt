@@ -73,8 +73,21 @@ data class GraduationPlan(
     val admissionSemester: String = "",
     val currentSemester: String = "",
     val subcategoriesJson: String = "", // JSON map of Category -> List<SubcategoryRule>
-    val customCategoriesJson: String = "" // JSON list of CustomParentCategory
+    val customCategoriesJson: String = "", // JSON list of CustomParentCategory
+    val deletedCategories: String = "" // Comma-separated CourseCategory names, e.g. "GENERAL_EDU,COLLEGE_CORE"
 ) {
+    fun getDeletedCategories(): Set<CourseCategory> {
+        if (deletedCategories.isBlank()) return emptySet()
+        return deletedCategories.split(",")
+            .mapNotNull { name ->
+                runCatching { CourseCategory.valueOf(name.trim()) }.getOrNull()
+            }.toSet()
+    }
+
+    fun isCategoryDeleted(category: CourseCategory): Boolean {
+        return getDeletedCategories().contains(category)
+    }
+
     fun getSubcategoryRules(category: CourseCategory): List<SubcategoryRule> {
         if (subcategoriesJson.isBlank()) {
             return if (category == CourseCategory.GENERAL_EDU) {
@@ -332,7 +345,7 @@ data class PaymentAccount(
     val method: PaymentMethod,
     val initialBalance: Double = 0.0,
     val note: String = "",
-    val startYearMonth: String = "2026-08"
+    val startYearMonth: String = ""
 )
 
 sealed class SemesterScheduleStatus {

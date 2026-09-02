@@ -640,7 +640,7 @@ fun ExpenseScreen(
                         val totalExp = methodExpenses.filter { it.type == ExpenseType.EXPENSE }.sumOf { it.amount }
                         val totalInc = methodExpenses.filter { it.type == ExpenseType.INCOME }.sumOf { it.amount }
 
-                        val isBeforeStart = selectedMonth < account.startYearMonth
+                        val isBeforeStart = if (account.startYearMonth.isNotBlank()) selectedMonth < account.startYearMonth else false
                         val cumulativeExpenses = allExpenses.filter {
                             it.paymentMethod == account.method && it.dateString.substringBeforeLast("-") <= selectedMonth
                         }
@@ -955,6 +955,7 @@ fun ExpenseScreen(
 
     if (showAddAccountDialog) {
         AddEditAccountBottomSheet(
+            defaultStartYearMonth = selectedMonth,
             onDismiss = { showAddAccountDialog = false },
             onSave = { newAccount ->
                 viewModel.addAccount(newAccount)
@@ -1447,7 +1448,7 @@ private fun AccountDetailBottomSheet(
     val totalIncome = methodExpenses.filter { it.type == ExpenseType.INCOME }.sumOf { it.amount }
     val net = totalIncome - totalExpense
 
-    val isBeforeStart = selectedMonth < account.startYearMonth
+    val isBeforeStart = if (account.startYearMonth.isNotBlank()) selectedMonth < account.startYearMonth else false
     val cumulativeExpenses = remember(allExpenses, account, selectedMonth) {
         allExpenses.filter {
             it.paymentMethod == account.method && it.dateString.substringBeforeLast("-") <= selectedMonth
@@ -1668,6 +1669,7 @@ private fun AccountDetailBottomSheet(
     if (showEditAccountBottomSheet) {
         AddEditAccountBottomSheet(
             initialAccount = account,
+            defaultStartYearMonth = selectedMonth,
             onDismiss = { showEditAccountBottomSheet = false },
             onSave = { updated ->
                 onUpdateAccount(updated)
@@ -1681,6 +1683,7 @@ private fun AccountDetailBottomSheet(
 @Composable
 private fun AddEditAccountBottomSheet(
     initialAccount: PaymentAccount? = null,
+    defaultStartYearMonth: String = "",
     onDismiss: () -> Unit,
     onSave: (PaymentAccount) -> Unit
 ) {
@@ -1845,7 +1848,8 @@ private fun AddEditAccountBottomSheet(
                                 name = name.trim(),
                                 method = inferredMethod,
                                 initialBalance = initBal,
-                                note = note.trim()
+                                note = note.trim(),
+                                startYearMonth = defaultStartYearMonth
                             )
                             val account = base.copy(
                                 name = name.trim(),
