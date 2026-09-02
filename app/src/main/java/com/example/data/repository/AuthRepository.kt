@@ -350,25 +350,24 @@ class AuthRepository(private val context: Context) {
         }
     }
 
+    @Suppress("SpellCheckingInspection")
     fun getOrSetLocalFirstLoginTime(keyId: String, preferredTimestamp: Long = 0L): Long {
         val prefs = context.getSharedPreferences("unitrack_prefs", Context.MODE_PRIVATE)
         val safeKey = "first_login_time_${keyId.replace("[^a-zA-Z0-9_]".toRegex(), "_")}"
         val existing = prefs.getLong(safeKey, 0L)
-        if (existing > 0L && preferredTimestamp <= 0L) {
+        if (existing > 0L) {
             return existing
         }
-        val targetTime = when {
-            preferredTimestamp > 0L -> preferredTimestamp
-            existing > 0L -> existing
-            else -> {
-                val global = prefs.getLong("pref_first_login_time", 0L)
-                if (global > 0L) global else System.currentTimeMillis()
-            }
+        val targetTime = if (preferredTimestamp > 0L) {
+            preferredTimestamp
+        } else {
+            val global = prefs.getLong("pref_first_login_time", 0L)
+            if (global > 0L) global else System.currentTimeMillis()
         }
         prefs.edit {
             putLong(safeKey, targetTime)
             val global = prefs.getLong("pref_first_login_time", 0L)
-            if (global == 0L || preferredTimestamp > 0L) {
+            if (global == 0L) {
                 putLong("pref_first_login_time", targetTime)
             }
         }
