@@ -379,7 +379,10 @@ class MainActivity : ComponentActivity() {
                             SettingsScreen(
                                 viewModel = studentViewModel,
                                 onNavigateToAuth = {
-                                    navController.navigate("auth")
+                                    navController.navigate("auth") {
+                                        popUpTo(0) { inclusive = true }
+                                        launchSingleTop = true
+                                    }
                                 },
                                 onNavigateToNotificationSettings = {
                                     navController.navigate("notification_settings")

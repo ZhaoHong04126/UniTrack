@@ -45,6 +45,10 @@ class StudentRepository(
     val allCourses: Flow<List<Course>> = courseDao.getAllCourses()
     val allSemesters: Flow<List<String>> = courseDao.getAllSemesters()
 
+    suspend fun getAllCoursesOnce(): List<Course> = withContext(Dispatchers.IO) {
+        courseDao.getAllCoursesOnce()
+    }
+
     suspend fun insertCourse(course: Course): Long = withContext(Dispatchers.IO) {
         courseDao.insertCourse(course)
     }
@@ -179,6 +183,8 @@ class StudentRepository(
         graduationDao.deleteAllThresholds()
         expenseDao.deleteAllExpenses()
         expenseDao.deleteAllBudgets()
+        notificationDao.clearAll()
+        prefs.edit { clear() }
         graduationDao.insertOrUpdatePlan(DefaultData.getDefaultGraduationPlan())
     }
 

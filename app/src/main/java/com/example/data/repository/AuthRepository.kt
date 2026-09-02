@@ -245,15 +245,14 @@ class AuthRepository(private val context: Context) {
      * Sign Out
      */
     suspend fun signOut() = withContext(Dispatchers.IO) {
+        _currentUser.value = null
+        _authState.value = AuthState.Unauthenticated
         try {
             firebaseAuth?.signOut()
             val credentialManager = CredentialManager.create(context)
             credentialManager.clearCredentialState(ClearCredentialStateRequest())
         } catch (e: Exception) {
             Log.w(tag, "Clear credential state failed: ${e.message}")
-        } finally {
-            _currentUser.value = null
-            _authState.value = AuthState.Unauthenticated
         }
     }
 

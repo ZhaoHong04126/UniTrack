@@ -167,4 +167,11 @@ object NotificationHelper {
         } catch (_: Exception) {
         }
     }
+
+    fun cancelAllNotifications(context: Context) {
+        try {
+            NotificationManagerCompat.from(context).cancelAll()
+        } catch (_: Exception) {
+        }
+    }
 }

@@ -7,6 +7,7 @@ import com.example.data.local.CourseDao
 import com.example.data.local.DefaultData
 import com.example.data.local.ExpenseDao
 import com.example.data.local.GraduationDao
+import com.example.data.local.NotificationDao
 import com.example.data.model.*
 import com.google.firebase.FirebaseApp
 import com.google.firebase.firestore.FirebaseFirestore
@@ -19,7 +20,8 @@ class FirestoreSyncRepository(
     private val context: Context,
     private val courseDao: CourseDao,
     private val graduationDao: GraduationDao,
-    private val expenseDao: ExpenseDao
+    private val expenseDao: ExpenseDao,
+    private val notificationDao: NotificationDao
 ) {
     private val tag = "FirestoreSync"
 
@@ -217,6 +219,29 @@ class FirestoreSyncRepository(
                     .set(hashMapOf("accountsJson" to accountsJson, "lastUpdated" to System.currentTimeMillis()), SetOptions.merge()).await()
             }
 
+            // 7. 上傳 Notifications (通知中心歷史記錄)
+            val notifications = notificationDao.getAllNotificationsOnce()
+            val notifsCol = userDocRef.collection("notifications")
+            val remoteNotifs = notifsCol.get().await()
+            val localNotifIds = notifications.map { it.id.toString() }.toSet()
+            for (doc in remoteNotifs.documents) {
+                if (doc.id !in localNotifIds) {
+                    doc.reference.delete().await()
+                }
+            }
+            for (notif in notifications) {
+                val notifMap = hashMapOf(
+                    "id" to notif.id,
+                    "title" to notif.title,
+                    "message" to notif.message,
+                    "type" to notif.type.name,
+                    "timestamp" to notif.timestamp,
+                    "isRead" to notif.isRead,
+                    "actionRoute" to (notif.actionRoute ?: "")
+                )
+                notifsCol.document(notif.id.toString()).set(notifMap, SetOptions.merge()).await()
+            }
+
             Log.i(tag, "Upload all data to Firestore completed successfully for user: $userId")
             Result.success(Unit)
         } catch (e: Exception) {
@@ -237,106 +262,65 @@ class FirestoreSyncRepository(
 
             // 1. 下載 Graduation Plan
             val planSnapshot = userDocRef.collection("profile").document("graduation_plan").get().await()
+            val defaultPlan = DefaultData.getDefaultGraduationPlan()
             if (planSnapshot.exists()) {
-                val localPlan = graduationDao.getGraduationPlanOnce()
                 val remoteDepartment = planSnapshot.getString("department")?.trim()
                 val remoteStudentName = planSnapshot.getString("studentName")?.trim()
 
-                // Resolution logic:
-                // If local plan has a valid department, KEEP local department!
-                // Else if remote department is valid, use remote.
-                val resolvedDept = if (localPlan != null && localPlan.department.isNotBlank() && localPlan.department != "尚未設定系所") {
-                    localPlan.department
-                } else if (!remoteDepartment.isNullOrBlank() && remoteDepartment != "尚未設定系所") {
+                val resolvedDept = if (!remoteDepartment.isNullOrBlank() && remoteDepartment != "尚未設定系所") {
                     remoteDepartment
                 } else {
-                    localPlan?.department ?: remoteDepartment ?: "尚未設定系所"
+                    defaultPlan.department
                 }
 
-                val isDefaultName = { n: String? -> n.isNullOrBlank() || n == "同學" || n == "王大明" || n == "大學生" }
-                val resolvedName = if (!isDefaultName(remoteStudentName)) {
-                    remoteStudentName!!
-                } else if (localPlan != null && !isDefaultName(localPlan.studentName)) {
-                    localPlan.studentName
+                val resolvedName = if (!remoteStudentName.isNullOrBlank() && remoteStudentName != "同學" && remoteStudentName != "王大明" && remoteStudentName != "大學生") {
+                    remoteStudentName
                 } else {
-                    remoteStudentName ?: localPlan?.studentName ?: "同學"
+                    remoteStudentName ?: defaultPlan.studentName
                 }
 
                 val plan = GraduationPlan(
                     id = 1,
                     department = resolvedDept,
                     studentName = resolvedName,
-                    targetTotalCredits = planSnapshot.getDouble("targetTotalCredits") ?: (localPlan?.targetTotalCredits ?: 128.0),
-                    targetRequiredCredits = planSnapshot.getDouble("targetRequiredCredits") ?: (localPlan?.targetRequiredCredits ?: 58.0),
-                    targetElectiveCredits = planSnapshot.getDouble("targetElectiveCredits") ?: (localPlan?.targetElectiveCredits ?: 36.0),
-                    targetGeneralCredits = planSnapshot.getDouble("targetGeneralCredits") ?: (localPlan?.targetGeneralCredits ?: 28.0),
-                    targetCollegeCoreCredits = planSnapshot.getDouble("targetCollegeCoreCredits") ?: (localPlan?.targetCollegeCoreCredits ?: 9.0),
-                    targetBasicModuleCredits = planSnapshot.getDouble("targetBasicModuleCredits") ?: (localPlan?.targetBasicModuleCredits ?: 24.0),
-                    targetCoreModuleCredits = planSnapshot.getDouble("targetCoreModuleCredits") ?: (localPlan?.targetCoreModuleCredits ?: 24.0),
-                    targetProfessionalModuleCredits = planSnapshot.getDouble("targetProfessionalModuleCredits") ?: (localPlan?.targetProfessionalModuleCredits ?: 23.0),
-                    targetFreeCredits = planSnapshot.getDouble("targetFreeCredits") ?: (localPlan?.targetFreeCredits ?: 20.0),
-                    targetGeneralRequiredCredits = planSnapshot.getDouble("targetGeneralRequiredCredits") ?: (localPlan?.targetGeneralRequiredCredits ?: 28.0),
-                    targetGeneralElectiveCredits = planSnapshot.getDouble("targetGeneralElectiveCredits") ?: (localPlan?.targetGeneralElectiveCredits ?: 0.0),
-                    targetCollegeCoreRequiredCredits = planSnapshot.getDouble("targetCollegeCoreRequiredCredits") ?: (localPlan?.targetCollegeCoreRequiredCredits ?: 9.0),
-                    targetCollegeCoreElectiveCredits = planSnapshot.getDouble("targetCollegeCoreElectiveCredits") ?: (localPlan?.targetCollegeCoreElectiveCredits ?: 0.0),
-                    targetBasicModuleRequiredCredits = planSnapshot.getDouble("targetBasicModuleRequiredCredits") ?: (localPlan?.targetBasicModuleRequiredCredits ?: 24.0),
-                    targetBasicModuleElectiveCredits = planSnapshot.getDouble("targetBasicModuleElectiveCredits") ?: (localPlan?.targetBasicModuleElectiveCredits ?: 0.0),
-                    targetCoreModuleRequiredCredits = planSnapshot.getDouble("targetCoreModuleRequiredCredits") ?: (localPlan?.targetCoreModuleRequiredCredits ?: 24.0),
-                    targetCoreModuleElectiveCredits = planSnapshot.getDouble("targetCoreModuleElectiveCredits") ?: (localPlan?.targetCoreModuleElectiveCredits ?: 0.0),
-                    targetProfessionalModuleRequiredCredits = planSnapshot.getDouble("targetProfessionalModuleRequiredCredits") ?: (localPlan?.targetProfessionalModuleRequiredCredits ?: 23.0),
-                    targetProfessionalModuleElectiveCredits = planSnapshot.getDouble("targetProfessionalModuleElectiveCredits") ?: (localPlan?.targetProfessionalModuleElectiveCredits ?: 0.0),
-                    targetFreeElectiveCredits = planSnapshot.getDouble("targetFreeElectiveCredits") ?: (localPlan?.targetFreeElectiveCredits ?: 20.0),
-                    minPassingScore = planSnapshot.getDouble("minPassingScore") ?: (localPlan?.minPassingScore ?: 60.0),
+                    targetTotalCredits = planSnapshot.getDouble("targetTotalCredits") ?: defaultPlan.targetTotalCredits,
+                    targetRequiredCredits = planSnapshot.getDouble("targetRequiredCredits") ?: defaultPlan.targetRequiredCredits,
+                    targetElectiveCredits = planSnapshot.getDouble("targetElectiveCredits") ?: defaultPlan.targetElectiveCredits,
+                    targetGeneralCredits = planSnapshot.getDouble("targetGeneralCredits") ?: defaultPlan.targetGeneralCredits,
+                    targetCollegeCoreCredits = planSnapshot.getDouble("targetCollegeCoreCredits") ?: defaultPlan.targetCollegeCoreCredits,
+                    targetBasicModuleCredits = planSnapshot.getDouble("targetBasicModuleCredits") ?: defaultPlan.targetBasicModuleCredits,
+                    targetCoreModuleCredits = planSnapshot.getDouble("targetCoreModuleCredits") ?: defaultPlan.targetCoreModuleCredits,
+                    targetProfessionalModuleCredits = planSnapshot.getDouble("targetProfessionalModuleCredits") ?: defaultPlan.targetProfessionalModuleCredits,
+                    targetFreeCredits = planSnapshot.getDouble("targetFreeCredits") ?: defaultPlan.targetFreeCredits,
+                    targetGeneralRequiredCredits = planSnapshot.getDouble("targetGeneralRequiredCredits") ?: defaultPlan.targetGeneralRequiredCredits,
+                    targetGeneralElectiveCredits = planSnapshot.getDouble("targetGeneralElectiveCredits") ?: defaultPlan.targetGeneralElectiveCredits,
+                    targetCollegeCoreRequiredCredits = planSnapshot.getDouble("targetCollegeCoreRequiredCredits") ?: defaultPlan.targetCollegeCoreRequiredCredits,
+                    targetCollegeCoreElectiveCredits = planSnapshot.getDouble("targetCollegeCoreElectiveCredits") ?: defaultPlan.targetCollegeCoreElectiveCredits,
+                    targetBasicModuleRequiredCredits = planSnapshot.getDouble("targetBasicModuleRequiredCredits") ?: defaultPlan.targetBasicModuleRequiredCredits,
+                    targetBasicModuleElectiveCredits = planSnapshot.getDouble("targetBasicModuleElectiveCredits") ?: defaultPlan.targetBasicModuleElectiveCredits,
+                    targetCoreModuleRequiredCredits = planSnapshot.getDouble("targetCoreModuleRequiredCredits") ?: defaultPlan.targetCoreModuleRequiredCredits,
+                    targetCoreModuleElectiveCredits = planSnapshot.getDouble("targetCoreModuleElectiveCredits") ?: defaultPlan.targetCoreModuleElectiveCredits,
+                    targetProfessionalModuleRequiredCredits = planSnapshot.getDouble("targetProfessionalModuleRequiredCredits") ?: defaultPlan.targetProfessionalModuleRequiredCredits,
+                    targetProfessionalModuleElectiveCredits = planSnapshot.getDouble("targetProfessionalModuleElectiveCredits") ?: defaultPlan.targetProfessionalModuleElectiveCredits,
+                    targetFreeElectiveCredits = planSnapshot.getDouble("targetFreeElectiveCredits") ?: defaultPlan.targetFreeElectiveCredits,
+                    minPassingScore = planSnapshot.getDouble("minPassingScore") ?: defaultPlan.minPassingScore,
                     gpaScale = runCatching {
-                        GpaScale.valueOf(planSnapshot.getString("gpaScale") ?: (localPlan?.gpaScale?.name ?: GpaScale.PERCENTAGE.name))
-                    }.getOrDefault(localPlan?.gpaScale ?: GpaScale.PERCENTAGE),
-                    admissionSemester = planSnapshot.getString("admissionSemester") ?: (localPlan?.admissionSemester ?: DefaultData.getCurrentAcademicSemester()),
-                    currentSemester = planSnapshot.getString("currentSemester") ?: (localPlan?.currentSemester ?: DefaultData.getCurrentAcademicSemester())
+                        GpaScale.valueOf(planSnapshot.getString("gpaScale") ?: defaultPlan.gpaScale.name)
+                    }.getOrDefault(defaultPlan.gpaScale),
+                    admissionSemester = planSnapshot.getString("admissionSemester") ?: defaultPlan.admissionSemester,
+                    currentSemester = planSnapshot.getString("currentSemester") ?: defaultPlan.currentSemester,
+                    subcategoriesJson = planSnapshot.getString("subcategoriesJson") ?: "",
+                    customCategoriesJson = planSnapshot.getString("customCategoriesJson") ?: ""
                 )
                 graduationDao.insertOrUpdatePlan(plan)
-
-                // If local had a better department/name than cloud, update cloud as well so cloud is in sync!
-                if (resolvedDept != remoteDepartment || resolvedName != remoteStudentName) {
-                    val updateMap = mutableMapOf<String, Any>(
-                        "department" to resolvedDept,
-                        "studentName" to resolvedName,
-                        "lastUpdated" to System.currentTimeMillis()
-                    )
-                    userDocRef.collection("profile").document("graduation_plan")
-                        .set(updateMap, SetOptions.merge()).await()
-                }
             } else {
-                val localPlan = graduationDao.getGraduationPlanOnce()
-                if (localPlan != null) {
-                    val planMap = hashMapOf(
-                        "department" to localPlan.department,
-                        "studentName" to localPlan.studentName,
-                        "targetTotalCredits" to localPlan.targetTotalCredits,
-                        "targetRequiredCredits" to localPlan.targetRequiredCredits,
-                        "targetElectiveCredits" to localPlan.targetElectiveCredits,
-                        "targetGeneralCredits" to localPlan.targetGeneralCredits,
-                        "targetCollegeCoreCredits" to localPlan.targetCollegeCoreCredits,
-                        "targetBasicModuleCredits" to localPlan.targetBasicModuleCredits,
-                        "targetCoreModuleCredits" to localPlan.targetCoreModuleCredits,
-                        "targetProfessionalModuleCredits" to localPlan.targetProfessionalModuleCredits,
-                        "targetFreeCredits" to localPlan.targetFreeCredits,
-                        "minPassingScore" to localPlan.minPassingScore,
-                        "gpaScale" to localPlan.gpaScale.name,
-                        "admissionSemester" to localPlan.admissionSemester,
-                        "currentSemester" to localPlan.currentSemester,
-                        "subcategoriesJson" to localPlan.subcategoriesJson,
-                        "customCategoriesJson" to localPlan.customCategoriesJson,
-                        "lastUpdated" to System.currentTimeMillis()
-                    )
-                    userDocRef.collection("profile").document("graduation_plan")
-                        .set(planMap, SetOptions.merge()).await()
-                }
+                graduationDao.insertOrUpdatePlan(defaultPlan)
             }
 
-            // 2. 下載 Courses
+            // 2. 下載 Courses（先清空本機殘留課程，避免帳號切換或未同步刪除導致資料混合）
             val coursesSnapshot = userDocRef.collection("courses").get().await()
+            val downloadedCourses = mutableListOf<Course>()
             if (!coursesSnapshot.isEmpty) {
-                val downloadedCourses = mutableListOf<Course>()
                 for (doc in coursesSnapshot.documents) {
                     val id = doc.getLong("id") ?: continue
                     val name = doc.getString("name") ?: continue
@@ -368,19 +352,22 @@ class FirestoreSyncRepository(
                         letterGrade = doc.getString("letterGrade"),
                         isCompleted = doc.getBoolean("isCompleted") ?: false,
                         colorHex = doc.getString("colorHex") ?: "#3B82F6",
-                        notes = doc.getString("notes") ?: ""
+                        notes = doc.getString("notes") ?: "",
+                        repeatWeeks = doc.getString("repeatWeeks") ?: "1-18",
+                        repeatMode = doc.getString("repeatMode") ?: "每週"
                     )
                     downloadedCourses.add(course)
                 }
-                if (downloadedCourses.isNotEmpty()) {
-                    courseDao.insertCourses(downloadedCourses)
-                }
+            }
+            courseDao.deleteAllCourses()
+            if (downloadedCourses.isNotEmpty()) {
+                courseDao.insertCourses(downloadedCourses)
             }
 
-            // 3. 下載 Thresholds
+            // 3. 下載 Thresholds（先清空本機門檻）
             val thresholdsSnapshot = userDocRef.collection("thresholds").get().await()
+            val downloadedThresholds = mutableListOf<GraduationThreshold>()
             if (!thresholdsSnapshot.isEmpty) {
-                val downloadedThresholds = mutableListOf<GraduationThreshold>()
                 for (doc in thresholdsSnapshot.documents) {
                     val id = doc.getLong("id") ?: continue
                     val title = doc.getString("title") ?: continue
@@ -394,15 +381,16 @@ class FirestoreSyncRepository(
                     )
                     downloadedThresholds.add(t)
                 }
-                if (downloadedThresholds.isNotEmpty()) {
-                    graduationDao.insertThresholds(downloadedThresholds)
-                }
+            }
+            graduationDao.deleteAllThresholds()
+            if (downloadedThresholds.isNotEmpty()) {
+                graduationDao.insertThresholds(downloadedThresholds)
             }
 
-            // 4. 下載 Expenses
+            // 4. 下載 Expenses（先清空本機記帳明細）
             val expensesSnapshot = userDocRef.collection("expenses").get().await()
+            val downloadedExpenses = mutableListOf<ExpenseRecord>()
             if (!expensesSnapshot.isEmpty) {
-                val downloadedExpenses = mutableListOf<ExpenseRecord>()
                 for (doc in expensesSnapshot.documents) {
                     val id = doc.getLong("id") ?: continue
                     val title = doc.getString("title") ?: continue
@@ -425,13 +413,15 @@ class FirestoreSyncRepository(
                     )
                     downloadedExpenses.add(exp)
                 }
-                if (downloadedExpenses.isNotEmpty()) {
-                    expenseDao.insertExpenses(downloadedExpenses)
-                }
+            }
+            expenseDao.deleteAllExpenses()
+            if (downloadedExpenses.isNotEmpty()) {
+                expenseDao.insertExpenses(downloadedExpenses)
             }
 
-            // 5. 下載 Budgets
+            // 5. 下載 Budgets（先清空本機預算設定）
             val budgetsSnapshot = userDocRef.collection("budgets").get().await()
+            expenseDao.deleteAllBudgets()
             if (!budgetsSnapshot.isEmpty) {
                 for (doc in budgetsSnapshot.documents) {
                     val ym = doc.getString("yearMonth") ?: doc.id
@@ -446,7 +436,37 @@ class FirestoreSyncRepository(
                 val remoteAccountsJson = accountsSnapshot.getString("accountsJson")
                 if (!remoteAccountsJson.isNullOrBlank()) {
                     prefs.edit { putString("pref_custom_accounts", remoteAccountsJson) }
+                } else {
+                    prefs.edit { remove("pref_custom_accounts") }
                 }
+            } else {
+                prefs.edit { remove("pref_custom_accounts") }
+            }
+
+            // 7. 下載 Notifications（通知中心記錄）
+            val notifsSnapshot = userDocRef.collection("notifications").get().await()
+            val downloadedNotifs = mutableListOf<AppNotification>()
+            if (!notifsSnapshot.isEmpty) {
+                for (doc in notifsSnapshot.documents) {
+                    val id = doc.getLong("id") ?: continue
+                    val title = doc.getString("title") ?: continue
+                    val notif = AppNotification(
+                        id = id,
+                        title = title,
+                        message = doc.getString("message") ?: "",
+                        type = runCatching {
+                            NotificationType.valueOf(doc.getString("type") ?: NotificationType.SYSTEM.name)
+                        }.getOrDefault(NotificationType.SYSTEM),
+                        timestamp = doc.getLong("timestamp") ?: System.currentTimeMillis(),
+                        isRead = doc.getBoolean("isRead") ?: false,
+                        actionRoute = doc.getString("actionRoute")?.ifBlank { null }
+                    )
+                    downloadedNotifs.add(notif)
+                }
+            }
+            notificationDao.clearAll()
+            if (downloadedNotifs.isNotEmpty()) {
+                notificationDao.insertNotifications(downloadedNotifs)
             }
 
             Log.i(tag, "Download all data from Firestore completed successfully for user: $userId")
@@ -492,7 +512,7 @@ class FirestoreSyncRepository(
         try {
             val userDocRef = db.collection("users").document(userId)
 
-            val subcollections = listOf("profile", "courses", "thresholds", "expenses", "budgets")
+            val subcollections = listOf("profile", "courses", "thresholds", "expenses", "budgets", "notifications")
             for (sub in subcollections) {
                 try {
                     val snapshot = userDocRef.collection(sub).get().await()

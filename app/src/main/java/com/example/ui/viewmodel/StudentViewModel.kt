@@ -371,7 +371,8 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             application.applicationContext,
             db.courseDao(),
             db.graduationDao(),
-            db.expenseDao()
+            db.expenseDao(),
+            db.notificationDao()
         )
         viewModelScope.launch {
             repository.seedInitialDataIfEmpty()
@@ -380,6 +381,19 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             currentUser.collect { profile ->
                 if (profile != null) {
+                    val lastUid = prefs.getString("last_logged_in_uid", null)
+                    if (lastUid != null && lastUid != profile.uid) {
+                        repository.clearAllData()
+                        prefs.edit {
+                            remove("pref_custom_accounts")
+                            remove("pref_custom_semesters")
+                            remove("pref_deleted_semesters")
+                        }
+                        _customSemesters.value = emptySet()
+                        _deletedSemesters.value = emptySet()
+                    }
+                    prefs.edit { putString("last_logged_in_uid", profile.uid) }
+
                     // 1. 優先從雲端下載最新檔案（防止本機空資料覆蓋雲端）
                     firestoreSyncRepository.downloadAllFromCloud(profile.uid)
 
@@ -500,24 +514,30 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     fun markNotificationAsRead(id: Long) {
         viewModelScope.launch {
             repository.markNotificationAsRead(id)
+            currentUser.value?.let { firestoreSyncRepository.uploadAllToCloud(it.uid) }
         }
     }
 
     fun markAllNotificationsAsRead() {
         viewModelScope.launch {
             repository.markAllNotificationsAsRead()
+            currentUser.value?.let { firestoreSyncRepository.uploadAllToCloud(it.uid) }
         }
     }
 
     fun deleteNotification(id: Long) {
         viewModelScope.launch {
             repository.deleteNotification(id)
+            NotificationHelper.cancelNotification(getApplication(), (id % 100000).toInt())
+            currentUser.value?.let { firestoreSyncRepository.uploadAllToCloud(it.uid) }
         }
     }
 
     fun clearAllNotifications() {
         viewModelScope.launch {
             repository.clearAllNotifications()
+            NotificationHelper.cancelAllNotifications(getApplication())
+            currentUser.value?.let { firestoreSyncRepository.uploadAllToCloud(it.uid) }
         }
     }
 
@@ -557,7 +577,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         if (!isTypeEnabled) return
 
         viewModelScope.launch {
-            repository.insertNotification(
+            val notifId = repository.insertNotification(
                 AppNotification(
                     title = title,
                     message = message,
@@ -566,13 +586,17 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                     actionRoute = actionRoute
                 )
             )
+            currentUser.value?.let { user ->
+                firestoreSyncRepository.uploadAllToCloud(user.uid)
+            }
             if (sendSystemPush) {
                 NotificationHelper.sendSystemNotification(
                     context = getApplication(),
                     title = title,
                     message = message,
                     type = type,
-                    actionRoute = actionRoute
+                    actionRoute = actionRoute,
+                    notificationId = (notifId % 100000).toInt()
                 )
             }
         }
@@ -601,8 +625,46 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         )
     }
 
-    fun checkAndGenerateSmartNotifications() {
-        // Real notifications are generated on-demand by events (course changes, budget thresholds, etc.)
+    fun checkAndGenerateSmartNotifications() = viewModelScope.launch {
+        // 1. 記帳生活預算智能警示檢測
+        checkExpenseBudgetAlert(_selectedExpenseMonth.value)
+
+        // 2. 今日課表上課提醒檢測
+        val notifPrefs = _notificationPreferences.value
+        if (notifPrefs.masterEnabled && notifPrefs.courseReminderEnabled) {
+            val courses = repository.getAllCoursesOnce()
+            val plan = repository.getGraduationPlanOnce() ?: DefaultData.getDefaultGraduationPlan()
+            val calendar = Calendar.getInstance()
+            val dayOfWeekToday = when (calendar.get(Calendar.DAY_OF_WEEK)) {
+                Calendar.MONDAY -> 1
+                Calendar.TUESDAY -> 2
+                Calendar.WEDNESDAY -> 3
+                Calendar.THURSDAY -> 4
+                Calendar.FRIDAY -> 5
+                Calendar.SATURDAY -> 6
+                Calendar.SUNDAY -> 7
+                else -> 1
+            }
+            val todaySemCourses = courses.filter {
+                (it.semester == plan.currentSemester || it.semester.isBlank()) && it.dayOfWeek == dayOfWeekToday
+            }.sortedBy { it.startPeriod }
+
+            if (todaySemCourses.isNotEmpty()) {
+                val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+                val todayKey = "notified_today_courses_$todayStr"
+                if (!prefs.getBoolean(todayKey, false)) {
+                    prefs.edit { putBoolean(todayKey, true) }
+                    val summary = todaySemCourses.joinToString("、") { "${it.name}(第${it.startPeriod}節)" }
+                    sendNotification(
+                        title = "📅 今日上課提醒",
+                        message = "今日共有 ${todaySemCourses.size} 門課程：$summary",
+                        type = NotificationType.COURSE,
+                        actionRoute = "timetable",
+                        sendSystemPush = false
+                    )
+                }
+            }
+        }
     }
 
     // Filtered courses for currently selected semester
@@ -1718,6 +1780,14 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
     fun clearAllData() = viewModelScope.launch {
         repository.clearAllData()
+        prefs.edit {
+            remove("pref_custom_accounts")
+            remove("pref_custom_semesters")
+            remove("pref_deleted_semesters")
+            remove("last_logged_in_uid")
+        }
+        _customSemesters.value = emptySet()
+        _deletedSemesters.value = emptySet()
         _userMessage.value = "已清空所有本機資料"
     }
 
@@ -1834,12 +1904,23 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val result = authRepository.signUpWithEmail(name, email, pass)
             result.onSuccess { user ->
+                // 新帳號註冊前徹底清空可能殘留的本機資料庫與偏好設定
+                repository.clearAllData()
+                prefs.edit {
+                    remove("pref_custom_accounts")
+                    remove("pref_custom_semesters")
+                    remove("pref_deleted_semesters")
+                    putString("last_logged_in_uid", user.uid)
+                }
+                _customSemesters.value = emptySet()
+                _deletedSemesters.value = emptySet()
+
                 val nameToSet = user.displayName?.ifBlank { null } ?: name.ifBlank { email.substringBefore("@") }
-                val currentPlan = repository.getGraduationPlanOnce() ?: DefaultData.getDefaultGraduationPlan()
-                val updatedPlan = currentPlan.copy(
-                    studentName = nameToSet.ifBlank { currentPlan.studentName },
-                    department = department.ifBlank { currentPlan.department },
-                    admissionSemester = admissionSemester.ifBlank { currentPlan.admissionSemester }
+                val defaultPlan = DefaultData.getDefaultGraduationPlan()
+                val updatedPlan = defaultPlan.copy(
+                    studentName = nameToSet.ifBlank { defaultPlan.studentName },
+                    department = department.ifBlank { defaultPlan.department },
+                    admissionSemester = admissionSemester.ifBlank { defaultPlan.admissionSemester }
                 )
                 repository.updateGraduationPlan(updatedPlan)
 
@@ -1870,7 +1951,20 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
     fun signOut() {
         viewModelScope.launch {
+            // 1. 立即清除手機下拉通知列中所有由本 App 發出的系統推播通知
+            NotificationHelper.cancelAllNotifications(getApplication())
+            // 2. 登出 Auth（立即重設狀態）
             authRepository.signOut()
+            // 3. 徹底清空本機 Room 資料庫（課表、記帳、預算、門檻、通知、個人檔案）
+            repository.clearAllData()
+            prefs.edit {
+                remove("pref_custom_accounts")
+                remove("pref_custom_semesters")
+                remove("pref_deleted_semesters")
+                remove("last_logged_in_uid")
+            }
+            _customSemesters.value = emptySet()
+            _deletedSemesters.value = emptySet()
             showToast("已成功登出帳號")
         }
     }
@@ -1887,8 +1981,19 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                 firestoreSyncRepository.deleteAllCloudData(uid)
             }
 
-            // 2. 清除手機本機 Room 資料庫（課表、記帳、預算、門檻、學業檔案）
+            // 清除手機通知列
+            NotificationHelper.cancelAllNotifications(getApplication())
+
+            // 2. 清除手機本機 Room 資料庫（課表、記帳、預算、門檻、學業檔案）與使用者偏好
             repository.clearAllData()
+            prefs.edit {
+                remove("pref_custom_accounts")
+                remove("pref_custom_semesters")
+                remove("pref_deleted_semesters")
+                remove("last_logged_in_uid")
+            }
+            _customSemesters.value = emptySet()
+            _deletedSemesters.value = emptySet()
 
             // 3. 永久註銷並刪除 Firebase Auth 帳號與 Google 憑證
             val authDeleteResult = authRepository.deleteAccount(context)
