@@ -130,8 +130,10 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            MyApplicationTheme {
-                val studentViewModel: StudentViewModel = viewModel()
+            val studentViewModel: StudentViewModel = viewModel()
+            val themeMode by studentViewModel.themeMode.collectAsStateWithLifecycle()
+
+            MyApplicationTheme(themeMode = themeMode) {
                 val userMessage by studentViewModel.userMessage.collectAsStateWithLifecycle()
                 val snackbarHostState = remember { SnackbarHostState() }
 

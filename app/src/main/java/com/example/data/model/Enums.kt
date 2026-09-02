@@ -78,3 +78,9 @@ enum class NotificationType(val label: String) {
     GRADUATION("學業與畢業"),
     SYSTEM("系統公告")
 }
+
+enum class AppThemeMode(val label: String, val subtitle: String) {
+    SYSTEM("手機", "跟隨系統"),
+    LIGHT("淺色模式", "清晰明亮"),
+    DARK("深色模式", "柔和護眼")
+}

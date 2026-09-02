@@ -39,6 +39,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.data.model.AppThemeMode
 import com.example.data.model.AuthProvider
 import com.example.data.model.GraduationPlan
 import com.example.data.model.UserProfile
@@ -61,6 +62,7 @@ fun SettingsScreen(
     val plan by viewModel.graduationPlan.collectAsStateWithLifecycle()
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
     val notificationPrefs by viewModel.notificationPreferences.collectAsStateWithLifecycle()
+    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
 
     var isNotificationPermissionGranted by remember {
         mutableStateOf(NotificationHelper.hasNotificationPermission(context))
@@ -84,6 +86,7 @@ fun SettingsScreen(
     }
 
     var showEditProfileDialog by remember { mutableStateOf(false) }
+    var showThemeDialog by remember { mutableStateOf(false) }
     var showSignOutConfirmDialog by remember { mutableStateOf(false) }
     var showDeleteAccountConfirmDialog by remember { mutableStateOf(false) }
     var showFinalExecutionDialog by remember { mutableStateOf(false) }
@@ -146,7 +149,25 @@ fun SettingsScreen(
             )
         }
 
-
+        // Section: System Color / Theme (系統顏色：深色模式 / 淺色模式 / 手機)
+        SectionHeader(title = "系統顏色")
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        ) {
+            SettingTileRow(
+                icon = Icons.Default.Palette,
+                title = "系統顏色",
+                subtitle = "深色模式 / 淺色模式 / 手機",
+                iconTint = SapphirePrimary,
+                badgeText = themeMode.label,
+                badgeContainerColor = SapphirePrimary.copy(alpha = 0.12f),
+                badgeContentColor = SapphirePrimary,
+                onClick = { showThemeDialog = true }
+            )
+        }
 
         // Section 3: Permissions (系統權限)
         SectionHeader(title = "系統權限")
@@ -246,6 +267,91 @@ fun SettingsScreen(
         }
 
         Spacer(modifier = Modifier.height(72.dp))
+    }
+
+    // Theme Select Dialog (系統顏色切換)
+    if (showThemeDialog) {
+        AlertDialog(
+            onDismissRequest = { showThemeDialog = false },
+            icon = {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(SapphirePrimary.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Palette,
+                        contentDescription = null,
+                        tint = SapphirePrimary,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+            },
+            title = {
+                Text(
+                    text = "選擇系統顏色",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleLarge
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    val themeOptions = listOf(
+                        Triple(AppThemeMode.SYSTEM, Icons.Default.PhoneAndroid, "手機 (跟隨系統)"),
+                        Triple(AppThemeMode.LIGHT, Icons.Default.LightMode, "淺色模式"),
+                        Triple(AppThemeMode.DARK, Icons.Default.DarkMode, "深色模式")
+                    )
+
+                    themeOptions.forEach { (mode, icon, label) ->
+                        val isSelected = themeMode == mode
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable {
+                                    viewModel.setThemeMode(mode)
+                                    showThemeDialog = false
+                                }
+                                .padding(horizontal = 12.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = null,
+                                tint = if (isSelected) SapphirePrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) SapphirePrimary else MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f)
+                            )
+                            RadioButton(
+                                selected = isSelected,
+                                onClick = {
+                                    viewModel.setThemeMode(mode)
+                                    showThemeDialog = false
+                                },
+                                colors = RadioButtonDefaults.colors(selectedColor = SapphirePrimary)
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showThemeDialog = false }) {
+                    Text("取消")
+                }
+            }
+        )
     }
 
     // Edit Profile Dialog (帳號個人資料編輯頁面)

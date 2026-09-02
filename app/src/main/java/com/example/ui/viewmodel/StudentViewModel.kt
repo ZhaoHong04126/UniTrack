@@ -94,6 +94,21 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     @Suppress("SpellCheckingInspection")
     private val prefs = application.getSharedPreferences("unitrack_prefs", Context.MODE_PRIVATE)
 
+    // Theme Mode setting (深色模式 / 淺色模式 / 手機)
+    private val _themeMode = MutableStateFlow(
+        try {
+            AppThemeMode.valueOf(prefs.getString("pref_theme_mode", AppThemeMode.SYSTEM.name) ?: AppThemeMode.SYSTEM.name)
+        } catch (_: Exception) {
+            AppThemeMode.SYSTEM
+        }
+    )
+    val themeMode: StateFlow<AppThemeMode> = _themeMode.asStateFlow()
+
+    fun setThemeMode(mode: AppThemeMode) {
+        _themeMode.value = mode
+        prefs.edit { putString("pref_theme_mode", mode.name) }
+    }
+
     // Timetable display setting (true: 7 days / 一週, false: 5 days / 平日)
     private val _showWeekend = MutableStateFlow(prefs.getBoolean("pref_show_weekend", false))
     val showWeekend: StateFlow<Boolean> = _showWeekend.asStateFlow()
