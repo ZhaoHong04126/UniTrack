@@ -5,10 +5,10 @@
 [![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose%20%7C%20Material%203-4285F4?logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
 [![Room](https://img.shields.io/badge/Storage-Room%20(SQLite)-00599C?logo=sqlite&logoColor=white)](https://developer.android.com/training/data-storage/room)
 [![Firebase](https://img.shields.io/badge/Backend-Firebase%20(Auth%20%2B%20Firestore)-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com/)
-[![Version](https://img.shields.io/badge/Version-v1.5.0-3B82F6)](https://github.com/ZhaoHong04126/UniTrack)
+[![Version](https://img.shields.io/badge/Version-v1.7.3-3B82F6)](https://github.com/ZhaoHong04126/UniTrack)
 
 > **專為大學生量身打造的全方位學業與生活管理助理。**  
-> 集結「智慧週課表 & 考勤筆記」、「**Gemini AI 課表照片智慧導入**」、「畢業學分稽核與門檻檢核」、「GPA / 學業儀表板」、「個人記帳與月度預算」於一體，支援 100% 純本機離線隱私保護與 Firebase 雲端雙向同步。
+> 集結「智慧週課表 & 考勤筆記」、「畢業學分稽核與門檻檢核」、「GPA / 學業儀表板」、「個人記帳與月度預算（含自訂交易時間）」、「通知中心與本地資料庫持久化」於一體，支援 100% 純本機離線隱私保護與 Firebase 雲端雙向同步。經由 R8 深度修剪，安裝包極致輕量 (11.5MB)。
 
 ---
 
@@ -28,8 +28,8 @@
   - [2. 智慧週課表、考勤與課程筆記 (Timetable & Attendance)](#2-智慧週課表考勤與課程筆記-timetable--attendance)
   - [3. 成績登錄與 GPA 試算 (Grades & GPA)](#3-成績登錄與-gpa-試算-grades--gpa)
   - [4. 畢業審查與學分稽核 (Graduation Audit)](#4-畢業審查與學分稽核-graduation-audit)
-  - [5. 個人記帳、月曆視圖與多帳戶管理 (Expense & Budget)](#5-個人記帳月曆視圖與多帳戶管理-expense--budget)
-  - [6. 通知設定、帳號與雲端安全同步 (Auth, Notification & Sync)](#6-通知設定帳號與雲端安全同步-auth-notification--sync)
+  - [5. 個人記帳、精準時間與多帳戶管理 (Expense & Budget)](#5-個人記帳精準時間與多帳戶管理-expense--budget)
+  - [6. 通知中心、帳號與雲端安全同步 (Auth, Notification & Sync)](#6-通知中心帳號與雲端安全同步-auth-notification--sync)
 - [🧪 測試與品質保證](#-測試與品質保證)
 - [🗺️ 未來展望 (Phase 2 Roadmap)](#️-未來展望-phase-2-roadmap)
 
@@ -37,22 +37,27 @@
 
 ## ✨ 核心功能亮點
 
-* 📅 **智慧排課與多元顯示**：視覺化週課表排程、支援 **「顯示時間」與「顯示節次」雙模式一鍵切換**、1~14 節自訂節次、單雙週/自訂週次設定、開學與結束日期動態計算、週末顯示開關、支援批次排課與**課表分享（附帶週數與日期區間）**；展開式 FAB 支援快速手動輸入課程。
-* 🤖 **Gemini AI 課表照片智慧導入**：從手機相簿選取課表截圖，由 Gemini AI 自動解析課程名稱、教室、節次與學分，並批次建立課程，大幅降低手動建課門檻。
+* 📅 **智慧排課與多元顯示**：視覺化週課表排程、支援 **「顯示時間」與「顯示節次」雙模式一鍵切換**、1~14 節自訂節次、單雙週/自訂週次設定、開學與結束日期動態計算、週末顯示開關、支援批次排課與**課表分享（附帶週數與日期區間）**；卡片排版與手動新增課程抽屜全面精簡優化。
 * 📝 **課程考勤與隨堂筆記**：點選課表即刻展開詳情面板，支援每週出席點名登記（出席、遲到、曠課、請假）與統計圖表，並支援依週次與標籤（作業、考試、公告、重點）分類管理課程隨堂筆記。
 * 🎓 **深度學分審查與畢業稽核**：涵蓋校共同、院核心、系專業（基礎/核心/專業模組）、通識、自由選修等全方位分類，支援必修/選修獨立門檻目標設定與進度條即時計算。
 * 📋 **畢業門檻檢核清單**：支援外語檢定 (TOEIC/TOEFL)、服務學習、畢業專題、專業證照等項目狀態追蹤與佐證紀錄。
 * 📈 **成績登錄與多元 GPA 運算**：支援百分制、4.3 制與 4.0 制等計算標準，即時試算各學期平均分數與歷年累計 GPA；新增**不採計成績**選項與**批次儲存**功能，成績變更自動觸發推播通知。
 * 📅 **學期管理強化**：支援學期刪除（含課程連動清除）、自訂學期排序（依學年度/學期智慧排列）。
-* 💰 **生活記帳、月曆視圖與資產帳戶**：
+* 💰 **生活記帳、精準時間與多帳戶管理**：
   * **雙檢視模式**：支援「列表視圖」與「月曆視圖 (Calendar View)」。
+  * **自訂交易時間**：新增時間選擇器 (`TimePickerDialog`)，可精確指定消費時與分，記帳明細時間軸更清晰。
   * **年月選擇器**：任意跨月份查看歷史收支與月曆分佈。
   * **多支付帳戶管理**：支援自訂現金、銀行帳戶、電子支付，具備**啟用起始年月**設定與**歷史累積餘額精準運算**。
-  * **展開式 FAB 快速記帳**：浮動操作按鈕支援展開/收合動畫，快速呼叫「手動輸入」記帳入口。
   * **預算警戒機制**：月度預算動態消耗進度條、超支即時提醒與支出玫瑰色負號標記。
-* 🔔 **通知中心升級**：通知卡片支援展開/收合設計，顯示異動細項清單並提供頁面快速跳轉；整合課程提醒、記帳推播、成績變更、帳戶更新等全方位即時通知。
+* 🔔 **通知中心與本地資料庫持久化**：
+  * **本地 Room 資料庫整合**：所有通知完整落地儲存，支援**未讀計數**與紅點標示。
+  * **完整管理操作**：支援**依類型分類篩選**、**單則向左滑動刪除**、**一鍵全部標示為已讀**與**批次清空通知**。
+  * **全方位推播**：整合課堂上課提醒、記帳收支異動、成績變更通知、帳戶更新等即時通知，點擊卡片可直接跳轉對應功能頁面。
+* ⚡ **效能極致最佳化與安全強化**：
+  * **R8 / ProGuard 深度修剪**：全面啟用程式碼混淆與資源剪裁，安裝包體積由 32MB 降至 **11.5MB**（瘦身達 64%），兼具極速啟動與防逆向安全。
+  * **現代化 Credential Manager**：升級至 Google 官方推薦之最新憑證管理員與 Google ID Token 認證機制，登入過程快速流暢。
 * 🔒 **隱私至上 & 訪客模式 (Guest Mode)**：無須註冊登入即可 100% 離線使用，所有資料安全儲存於手機本機 SQLite (Room) 資料庫。
-* ☁️ **雲端雙向安全同步 (Cloud Sync)**：整合 Firebase Auth 與 Cloud Firestore，具備智慧防覆蓋保護機制（登入時自動拉取雲端最新學業與帳戶檔案），支援多裝置一鍵備份與還原。
+* ☁️ **雲端雙向安全同步 (Cloud Sync)**：整合 Firebase Auth 與 Cloud Firestore，具備智慧防覆蓋保護機制（登入時自動拉取雲端最新學業、帳戶與通知檔案），支援多裝置一鍵備份與還原。
 
 
 ---
@@ -75,7 +80,25 @@
 
 ### 🔖 版本歷程記錄
 
-#### 🌟 v1.5.0 (最新發布)
+#### 🌟 v1.7.3 (最新發布)
+- ⚡ **R8 / ProGuard 深度程式碼混淆與資源剪裁**：
+  - 啟用 `isMinifyEnabled` 與 `isShrinkResources`，配合完整的混淆保留規則（Room、Moshi、Firebase、Coroutines、Credential Manager 等）。
+  - APK 安裝包體積由原本 32MB 驟降至 **11.5MB**（大幅瘦身 64%），兼顧極速啟動與防逆向安全。
+- 🔑 **Google 登入機制現代化升級**：
+  - 全面遷移至 Android 現代化 **Credential Manager (憑證管理員)** 與 Google ID Token 授權架構。
+  - 配置 `res/raw/keep.xml` 防止 R8 最佳化誤刪憑證驗證關鍵類別，保障登入流程穩定。
+- 🔔 **通知中心本地資料庫持久化與管理強化**：
+  - 新增本地 Room `NotificationDao` 與通知實體，通知完整落地儲存，並支援 Firestore 雲端雙向同步。
+  - 支援**已讀/未讀狀態**、**未讀數量即時紅點**、**通知類型分類篩選**、**單筆向左滑動刪除**與**全部標記已讀/清空通知**功能。
+- ⏰ **記帳時間精準選取**：
+  - 記帳對話框新增 `TimePickerDialog`，支援自訂記帳時間（時:分），日期與時間分開獨立選取與呈現。
+
+#### 🌟 v1.5.1
+- 🧹 **課表模組重構與精簡**：
+  - 移除實驗性質的課表照片辨識導入流程，精簡 UI 架構，專注於手動排課與課表核心排程體驗。
+  - 優化課程卡片外觀（調整卡片圓角、高度陰影），並簡化學期標題顯示邏輯。
+
+#### 🌟 v1.5.0
 - 🤖 **Gemini AI 課表照片智慧導入**：從手機相簿選取課表截圖，由 Gemini AI 自動辨識並批次建立課程（含課程名稱、教室、節次、學分）。支援圖片前處理（縮放 + Base64 編碼）與完整錯誤處理機制。
 - 📷 **課表圖片匯入流程優化**：統一預設課程背景色為灰色，方便使用者匯入後自行標色；相簿選圖流程加入完整相片存取權限請求。
 - 📈 **成績系統大升級**：
@@ -150,9 +173,10 @@ graph TD
 | **程式語言** | Kotlin 2.0+ | 現代化、強型別、空安全保證之 Android 核心開發語言 |
 | **UI 介面** | Jetpack Compose + Material 3 | 現代化宣告式 UI 框架、動態 Material You 配色與 Edge-to-Edge 全螢幕適配 |
 | **非同步與狀態** | Kotlin Coroutines + Flow / StateFlow | 響應式資料流與生命週期感知之全域狀態管理 |
-| **本機資料庫** | Android Jetpack Room + KSP | 型別安全的 SQLite 物件關聯映射 (ORM) 與高效資料庫存取 |
-| **雲端認證** | Firebase Authentication + Credential Manager | 支援 Google 帳號授權登入與 Email/Password 帳號驗證體系 |
+| **本機資料庫** | Android Jetpack Room + KSP | 型別安全的 SQLite 物件關聯映射 (ORM) 與高效資料庫存取 (含課程、畢業、記帳、通知) |
+| **雲端認證** | Firebase Auth + Credential Manager | 現代化 Google ID Token 憑證授權與 Email/Password 帳號驗證體系 |
 | **雲端資料庫** | Cloud Firestore | 具備離線快取與跨設備即時雙向資料同步能力之 NoSQL 資料庫 |
+| **建置與混淆** | R8 + ProGuard | 程式碼與無效資源深度修剪 (APK 瘦身至 11.5MB)、型別安全與防逆向防護 |
 | **測試框架** | JUnit 4 + Robolectric + Roborazzi | 本機 JVM 單元測試與像素級 UI 截圖對比測試 (Screenshot Testing) |
 
 ---
@@ -167,23 +191,26 @@ UniTrack+/
 │   │   │   ├── java/com/example/
 │   │   │   │   ├── MainActivity.kt               # 主入口點與 Jetpack Compose Navigation 路由導航
 │   │   │   │   ├── data/
-│   │   │   │   │   ├── local/                    # Room Database, TypeConverters, DAOs (Course, Graduation, Expense)
-│   │   │   │   │   ├── model/                    # 資料實體 (Entities, Enums, AuthModels, CourseNote, CustomAccount)
-│   │   │   │   │   └── repository/               # StudentRepository, AuthRepository, FirestoreSyncRepository
+│   │   │   │   │   ├── local/                    # Room Database, TypeConverters, DAOs (Course, Graduation, Expense, Notification)
+│   │   │   │   │   ├── model/                    # 資料實體 (Entities, Enums, AuthModels, CourseNote, CustomAccount, AppNotification)
+│   │   │   │   │   └── repository/               # StudentRepository, AuthRepository (Credential Manager), FirestoreSyncRepository
 │   │   │   │   ├── ui/
 │   │   │   │   │   ├── components/               # 通用 UI 元件 (統計卡片、進度條、彈出對話框)
 │   │   │   │   │   ├── screens/
-│   │   │   │   │   │   ├── auth/                 # 登入與註冊介面 (Google Sign-In / Email / 訪客模式)
+│   │   │   │   │   │   ├── auth/                 # 登入與註冊介面 (Google 憑證管理員 / Email / 訪客模式)
 │   │   │   │   │   │   ├── dashboard/            # 學業進度與生活綜合儀表板
 │   │   │   │   │   │   ├── timetable/            # 課表視圖、時間/節次切換、考勤點名、隨堂筆記、成績登記
 │   │   │   │   │   │   ├── graduation/           # 畢業審查、學分分類檢核、學分設定、畢業門檻清單
-│   │   │   │   │   │   ├── expense/              # 個人記帳、月曆視圖、年月選擇、多帳戶管理、月預算控制
+│   │   │   │   │   │   ├── expense/              # 個人記帳、交易時間選取、月曆視圖、年月選擇、多帳戶管理
+│   │   │   │   │   │   ├── notification/         # 通知中心、分類篩選、未讀標記、滑動刪除、頁面跳轉
 │   │   │   │   │   │   └── settings/             # 帳號設定、通知偏好、版本顯示、雲端同步、JSON 檔案匯入/匯出
 │   │   │   │   │   ├── theme/                    # Material 3 色彩系統、字型排版與主題配置
 │   │   │   │   │   └── viewmodel/                # StudentViewModel (全域狀態與業務邏輯核心)
-│   │   │   │   └── res/                          # 應用程式資源 (圖標、字串、主題樣式)
+│   │   │   │   │   └── util/                     # NotificationHelper, DateTimeUtils 工具集
+│   │   │   │   └── res/                          # 應用程式資源 (圖標、字串、主題樣式、raw/keep.xml)
 │   │   └── test/                                 # Robolectric 單元測試與 Roborazzi 截圖測試
-│   └── build.gradle.kts                          # App 模組建置設定與依賴版本配置 (v1.2.0)
+│   ├── proguard-rules.pro                        # R8 / ProGuard 混淆與保留規則
+│   └── build.gradle.kts                          # App 模組建置設定 (R8 啟用、資源修剪、v1.7.3)
 ├── docs/
 │   └── images/                                   # README 相關螢幕截圖與展示資源
 ├── gradle/                                       # Gradle Wrapper 與 Version Catalog (libs.versions.toml)
@@ -253,11 +280,7 @@ UniTrack+/
 * **視覺化週課表排程**：支援週一至週日、第 1 至 14 節網格排課，自訂色彩標籤與週末顯示開關。
 * **學期與週次管理**：支援多學期動態切換、開學與結束日期精準設定、單雙週過濾與批次新增課程；支援**學期刪除**（連動清除課程並同步雲端）與**自訂學期排序**。
 * **課表分享增強**：分享課表時自動標記當前週數與精準日期區間。
-* **展開式 FAB 快速新增課程**：課表頁右下角浮動操作按鈕支援展開/收合動畫，點擊後顯示「手動輸入課程」快速入口。
-* **🤖 Gemini AI 課表照片智慧導入**：
-  * 從手機相簿選取課表截圖，AI 自動辨識課程名稱、授課教室、上課節次與學分。
-  * 支援圖片前處理（自動縮放 + Base64 編碼）與 JSON 解析錯誤處理，辨識完成後批次建立課程。
-  * 預設導入課程背景色統一為灰色，方便使用者後續手動標色。
+* **精簡課程輸入抽屜**：點擊新增按鈕展開課程編輯抽屜 (`AddEditCourseDialog`)，排版圓角與高度陰影全面優化，支援快速填寫課程、教室、節次、學分與分類屬性。
 * **考勤點名管理 (Attendance Tracking)**：
   * 提供每週課堂出席狀態登記（出席、遲到、曠課、請假）。
   * 自動統計出席率與各類考勤次數，隨時掌握出席狀況。
@@ -270,9 +293,6 @@ UniTrack+/
 
 <!-- 📸 [照片標記 2.2：考勤點名與筆記 BottomSheet 截圖] -->
 <!-- <p align="center"><img src="docs/images/attendance_bottomsheet.png" width="360" alt="Attendance & Notes BottomSheet" /></p> -->
-
-<!-- 📸 [照片標記 2.3：Gemini AI 課表照片匯入對話框截圖] -->
-<!-- <p align="center"><img src="docs/images/ai_import_dialog.png" width="360" alt="Gemini AI Timetable Import" /></p> -->
 
 ---
 
@@ -300,9 +320,9 @@ UniTrack+/
 
 ---
 
-### 5. 個人記帳、月曆視圖與多帳戶管理 (Expense & Budget)
+### 5. 個人記帳、精準時間與多帳戶管理 (Expense & Budget)
 * **雙檢視模式與年月選擇**：支援「列表視圖」與「月曆視圖 (Calendar View)」，搭配「年月選擇器」隨時回溯任意歷史月份之消費明細與月曆收支。
-* **展開式 FAB 快速記帳**：右下角浮動操作按鈕支援展開/收合動畫效果，展開後顯示「手動輸入」記帳入口，操作更流暢直覺。
+* **精準交易時間選取**：記帳對話框提供日期與時間 (`TimePickerDialog`) 獨立選取機制，可自訂消費發生時與分，收支時間軸更加精準。
 * **自訂多支付帳戶管理 (Multi-Account)**：
   * 支援自訂新增/編輯/刪除/排序支付帳戶（現金、各銀行帳戶、LINE Pay、街口、信用卡等）。
   * 支援設定**啟用起始年月 (Start Year-Month)**，精準計算歷史累積餘額。
@@ -314,19 +334,23 @@ UniTrack+/
 
 ---
 
-### 6. 通知設定、帳號與雲端安全同步 (Auth, Notification & Sync)
-* **通知中心升級 (Notification Center)**：
-  * 通知卡片支援**展開/收合**互動設計，清晰呈現每則異動的細項清單。
-  * 提供頁面快速跳轉，直接從通知跳至對應功能頁面（課表、記帳、成績等）。
-  * 整合課堂上課提醒、記帳收支即時推播、成績變更通知、帳戶資訊更新通知、學業審查提醒與首次登入歡迎通知。
-* **頭像、個人檔案與版本顯示**：支援使用者自訂頭像保存與暱稱展示；設定介面清晰標示 App 當前版本號 (`v1.5.0`)。
+### 6. 通知中心、帳號與雲端安全同步 (Auth, Notification & Sync)
+* **通知中心與本地資料庫持久化 (Notification Center)**：
+  * **Room 資料庫儲存**：通知完整落地於本機 SQLite 資料庫 (`NotificationDao`)，不因重啟 App 遺失。
+  * **已讀/未讀狀態管理**：提供未讀計數紅點，支援**一鍵標記全部已讀**與**清空所有通知**。
+  * **滑動刪除與分類篩選**：支援向左滑動刪除單則通知，並可依通知類型（課表、記帳、成績、系統等）進行標籤過濾。
+  * **頁面跳轉聯動**：點擊通知卡片可直接跳轉至對應功能頁面（如課表、記帳、成績等）。
+  * **全方位推播事件**：整合課堂上課提醒、記帳收支即時推播、成績變更通知、帳戶更新與雲端同步狀態。
+* **現代化 Google 登入 (Credential Manager)**：
+  * 升級至 Google 推薦之 Android 憑證管理員與 Google ID Token，登入流程迅速、無縫且具高資安強度。
+* **頭像、個人檔案與版本顯示**：支援使用者自訂頭像保存與暱稱展示；設定介面清晰標示 App 當前版本號 (`v1.7.3`)。
 * **免登入離線優先**：無需連網即可享受 100% 完整功能，保障個人隱私。
 * **雲端安全同步 (Cloud Sync)**：
   * 支援 Google / Email 帳號驗證。
-  * 具備防覆蓋安全機制：登入時自動同步最新學業、課表與自訂帳戶，避免本機空白資料誤蓋雲端。
+  * 具備防覆蓋安全機制：登入時自動同步最新學業、課表、記帳與自訂帳戶，避免本機空白資料誤蓋雲端。
 * **標準 JSON 檔案匯出/匯入**：提供純文字 JSON 匯出與匯入功能，方便本機備份、跨設備遷移或手動分析。
 
-<!-- 📸 [照片標記 6.1：通知中心展開卡片截圖] -->
+<!-- 📸 [照片標記 6.1：通知中心介面截圖] -->
 <!-- <p align="center"><img src="docs/images/notification_detail.png" width="360" alt="Notification Center" /></p> -->
 
 <!-- 📸 [照片標記 6.2：設定與雲端同步介面截圖] -->
@@ -355,8 +379,7 @@ UniTrack+/
 
 ## 🗺️ 未來展望 (Phase 2 Roadmap)
 
-* [x] 🤖 **Gemini AI 課表照片智慧導入**：已完成，支援從相簿選取課表截圖，AI 自動辨識並批次建課。
-* [ ] 🤖 **AI 課堂助理進階功能**：課程筆記智慧摘要、個人化學習建議與期末備考指南。
+* [ ] 🤖 **Gemini AI 智慧課表與隨堂助理**：重構課表截圖多模態解析流程，並支援課程筆記智慧摘要、個人化學習建議與期末備考指南。
 * [ ] 🧩 **桌面小工具 (App Widgets)**：今日課表速覽、快速記帳小工具。
 * [ ] 📸 **OCR / PDF 課表匯入**：支援上傳學校 PDF 課表或選課清單，自動解析並帶入課程資料。
 * [ ] 📊 **進階財務分析圖表**：月度/年度收支圓餅圖、趨勢折線圖與開銷排行榜。
