@@ -149,8 +149,18 @@ class StudentRepository(
         val existingPlan = graduationDao.getGraduationPlanOnce()
         if (existingPlan == null) {
             graduationDao.insertOrUpdatePlan(DefaultData.getDefaultGraduationPlan())
+        }
+        if (graduationDao.getAllThresholdsOnce().isEmpty()) {
             graduationDao.insertThresholds(DefaultData.getDefaultThresholds())
+        }
+        if (expenseDao.getAllBudgetsOnce().isEmpty()) {
             expenseDao.setBudget(DefaultData.getDefaultBudget())
+        }
+        if (courseDao.getAllCoursesOnce().isEmpty()) {
+            courseDao.insertCourses(DefaultData.getDefaultCourses())
+        }
+        if (expenseDao.getAllExpensesOnce().isEmpty()) {
+            expenseDao.insertExpenses(DefaultData.getDefaultExpenses())
         }
     }
 

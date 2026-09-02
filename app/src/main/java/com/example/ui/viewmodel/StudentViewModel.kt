@@ -404,6 +404,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                             remove("pref_custom_semesters")
                             remove("pref_deleted_semesters")
                         }
+                        _customAccounts.value = loadAccounts()
                         _customSemesters.value = emptySet()
                         _deletedSemesters.value = emptySet()
                     }
@@ -412,7 +413,20 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                     // 1. 優先從雲端下載最新檔案（防止本機空資料覆蓋雲端）
                     firestoreSyncRepository.downloadAllFromCloud(profile.uid)
 
-                    // 2. 下載完成後，檢查使用者名稱是否需要填入
+                    // 2. 下載後立即更新記憶體中的帳戶與自訂學期 StateFlow（修復餘額顯示 $0 問題）
+                    _customAccounts.value = loadAccounts()
+                    _customSemesters.value = prefs.getStringSet("pref_custom_semesters", emptySet()) ?: emptySet()
+                    _deletedSemesters.value = prefs.getStringSet("pref_deleted_semesters", emptySet()) ?: emptySet()
+
+                    // 3. 若雲端與本機皆無課程與記帳資料，自動載入範本學業與生活資料並上傳
+                    val coursesNow = repository.getAllCoursesOnce()
+                    val expensesNow = repository.allExpenses.firstOrNull() ?: emptyList()
+                    if (coursesNow.isEmpty() && expensesNow.isEmpty()) {
+                        repository.seedInitialDataIfEmpty()
+                        firestoreSyncRepository.uploadAllToCloud(profile.uid)
+                    }
+
+                    // 4. 下載完成後，檢查使用者名稱是否需要填入
                     val nameToSet = profile.displayName?.ifBlank { null }
                         ?: profile.email?.substringBefore("@")
                     if (!nameToSet.isNullOrBlank()) {
@@ -420,11 +434,10 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                         if (currentPlan.studentName == "同學" || currentPlan.studentName == "王大明" || currentPlan.studentName == "大學生" || currentPlan.studentName.isBlank()) {
                             val updatedPlan = currentPlan.copy(studentName = nameToSet)
                             repository.updateGraduationPlan(updatedPlan)
-                            firestoreSyncRepository.uploadAllToCloud(profile.uid)
                         }
                     }
 
-                    // 3. 首次登入發送歡迎通知（僅發送一次）
+                    // 5. 首次登入發送歡迎通知（僅發送一次）
                     val welcomeKey = "has_welcomed_user_${profile.uid}"
                     if (!prefs.getBoolean(welcomeKey, false)) {
                         prefs.edit { putBoolean(welcomeKey, true) }
@@ -542,7 +555,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             repository.deleteNotification(id)
             NotificationHelper.cancelNotification(getApplication(), (id % 100000).toInt())
-            currentUser.value?.let { firestoreSyncRepository.uploadAllToCloud(it.uid) }
+            currentUser.value?.let { firestoreSyncRepository.deleteNotificationFromCloud(it.uid, id) }
         }
     }
 
@@ -1455,7 +1468,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         repository.deleteCourse(course)
         val user = currentUser.value
         if (user != null) {
-            firestoreSyncRepository.uploadAllToCloud(user.uid)
+            firestoreSyncRepository.deleteCourseFromCloud(user.uid, course.id)
         }
         WidgetUpdateHelper.updateAllWidgets(getApplication())
         _userMessage.value = "已刪除課程：${course.name}"
@@ -1556,7 +1569,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
     fun deleteThreshold(threshold: GraduationThreshold) = viewModelScope.launch {
         repository.deleteThreshold(threshold)
-        currentUser.value?.let { firestoreSyncRepository.uploadAllToCloud(it.uid) }
+        currentUser.value?.let { firestoreSyncRepository.deleteThresholdFromCloud(it.uid, threshold.id) }
         _userMessage.value = "已刪除門檻項目"
     }
 
@@ -1627,7 +1640,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
     fun deleteExpense(expense: ExpenseRecord) = viewModelScope.launch {
         repository.deleteExpense(expense)
-        currentUser.value?.let { firestoreSyncRepository.uploadAllToCloud(it.uid) }
+        currentUser.value?.let { firestoreSyncRepository.deleteExpenseFromCloud(it.uid, expense.id) }
         _userMessage.value = "已刪除記錄"
 
         val isExpense = expense.type == ExpenseType.EXPENSE
@@ -1643,7 +1656,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
     fun clearAllExpenses() = viewModelScope.launch {
         repository.deleteAllExpenses()
-        currentUser.value?.let { firestoreSyncRepository.uploadAllToCloud(it.uid) }
+        currentUser.value?.let { firestoreSyncRepository.deleteAllExpensesFromCloud(it.uid) }
         _userMessage.value = "已清空所有記帳記錄"
 
         sendNotification(
@@ -1854,19 +1867,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val result = authRepository.signInWithGoogle(context, webClientId)
             result.onSuccess { user ->
-                // 1. 先下載並同步雲端最新學業檔案
-                firestoreSyncRepository.downloadAllFromCloud(user.uid)
-
-                // 2. 檢查使用者姓名是否需要寫入本機
                 val nameToSet = user.displayName?.ifBlank { null } ?: user.email?.substringBefore("@")
-                val currentPlan = repository.getGraduationPlanOnce()
-                if (!nameToSet.isNullOrBlank()) {
-                    if (currentPlan.studentName == "同學" || currentPlan.studentName == "王大明" || currentPlan.studentName == "大學生" || currentPlan.studentName.isBlank()) {
-                        val updated = currentPlan.copy(studentName = nameToSet)
-                        repository.updateGraduationPlan(updated)
-                        firestoreSyncRepository.uploadAllToCloud(user.uid)
-                    }
-                }
                 showToast("歡迎，${user.displayName ?: nameToSet ?: "同學"}！")
                 onResult?.invoke(true, null)
             }.onFailure { e ->
@@ -1880,19 +1881,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val result = authRepository.signInWithEmail(email, pass)
             result.onSuccess { user ->
-                // 1. 先下載並同步雲端最新學業資料
-                firestoreSyncRepository.downloadAllFromCloud(user.uid)
-
-                // 2. 檢查使用者姓名是否需要寫入本機
                 val nameToSet = user.displayName?.ifBlank { null } ?: email.substringBefore("@")
-                val currentPlan = repository.getGraduationPlanOnce()
-                if (nameToSet.isNotBlank()) {
-                    if (currentPlan.studentName == "同學" || currentPlan.studentName == "王大明" || currentPlan.studentName == "大學生" || currentPlan.studentName.isBlank()) {
-                        val updated = currentPlan.copy(studentName = nameToSet)
-                        repository.updateGraduationPlan(updated)
-                        firestoreSyncRepository.uploadAllToCloud(user.uid)
-                    }
-                }
                 showToast("歡迎回來，${user.displayName ?: nameToSet}！")
                 onResult?.invoke(true, null)
             }.onFailure { e ->
@@ -1970,6 +1959,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                 remove("pref_deleted_semesters")
                 remove("last_logged_in_uid")
             }
+            _customAccounts.value = loadAccounts()
             _customSemesters.value = emptySet()
             _deletedSemesters.value = emptySet()
             showToast("已成功登出帳號")
