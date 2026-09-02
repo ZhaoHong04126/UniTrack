@@ -30,3 +30,11 @@
 # Glance / AppWidgets
 -keep class com.example.widget.** { *; }
 
+# AndroidX Credential Manager & Google ID
+-keep class androidx.credentials.Credential
+-keep class androidx.credentials.CustomCredential
+-keep class androidx.credentials.GetCredentialResponse
+-keep class com.google.android.libraries.identity.googleid.** { *; }
+-dontwarn androidx.credentials.**
+-dontwarn com.google.android.libraries.identity.googleid.**
+

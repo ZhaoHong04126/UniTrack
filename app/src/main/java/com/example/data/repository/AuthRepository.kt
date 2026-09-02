@@ -79,18 +79,19 @@ class AuthRepository(private val context: Context) {
 
             val auth = firebaseAuth
 
+            val defaultServerClientId = "742695547810-74oes8t8piajd7uctvobfbcc2ttg93d7.apps.googleusercontent.com"
             // Dynamically resolve default_web_client_id generated from google-services.json if not explicitly provided
             val resolvedClientId = webClientId.ifBlank {
                 try {
                     val resId = targetContext.resources.getIdentifier("default_web_client_id", "string", targetContext.packageName)
-                    if (resId != 0) targetContext.getString(resId) else ""
+                    if (resId != 0) targetContext.getString(resId) else defaultServerClientId
                 } catch (_: Exception) {
-                    ""
+                    defaultServerClientId
                 }
-            }
+            }.ifBlank { defaultServerClientId }
 
-            if (auth == null || resolvedClientId.isBlank()) {
-                // If Firebase / Web Client ID is not configured, supply simulated sign-in for preview/testing
+            if (auth == null) {
+                // If Firebase is not configured, supply simulated sign-in for preview/testing
                 val demoUser = UserProfile(
                     uid = "google_demo_${System.currentTimeMillis()}",
                     displayName = "Google 測試學員",
