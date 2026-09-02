@@ -1,6 +1,7 @@
 package com.example.ui.screens.expense
 
 import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -52,6 +53,7 @@ fun AddEditExpenseDialog(
     val context = LocalContext.current
     val locale = LocalConfiguration.current.locales[0]
     val dateFormat = remember(locale) { SimpleDateFormat("yyyy-MM-dd", locale) }
+    val timeFormat = remember(locale) { SimpleDateFormat("HH:mm", locale) }
 
     var title by remember { mutableStateOf(initialExpense?.title ?: "") }
     var amountText by remember { mutableStateOf(initialExpense?.amount?.toInt()?.toString() ?: "") }
@@ -63,6 +65,15 @@ fun AddEditExpenseDialog(
         )
     }
     var dateString by remember { mutableStateOf(initialExpense?.dateString ?: initialDateString ?: dateFormat.format(Date())) }
+    var timeString by remember {
+        mutableStateOf(
+            if (initialExpense != null) {
+                timeFormat.format(Date(initialExpense.timestamp))
+            } else {
+                timeFormat.format(Date())
+            }
+        )
+    }
     var note by remember { mutableStateOf(initialExpense?.note ?: "") }
 
     var showCategorySheet by remember { mutableStateOf(false) }
@@ -352,64 +363,138 @@ fun AddEditExpenseDialog(
                 }
             }
 
-            // Date Picker Card Field
-            Surface(
-                onClick = {
-                    val parts = dateString.split("-")
-                    val curYear = parts.getOrNull(0)?.toIntOrNull() ?: Calendar.getInstance().get(Calendar.YEAR)
-                    val curMonth = (parts.getOrNull(1)?.toIntOrNull() ?: (Calendar.getInstance().get(Calendar.MONTH) + 1)) - 1
-                    val curDay = parts.getOrNull(2)?.toIntOrNull() ?: Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
-
-                    DatePickerDialog(
-                        context,
-                        { _, y, m, d ->
-                            dateString = String.format(Locale.US, "%04d-%02d-%02d", y, m + 1, d)
-                        },
-                        curYear,
-                        curMonth,
-                        curDay
-                    ).show()
-                },
-                shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                color = MaterialTheme.colorScheme.surface,
-                modifier = Modifier.fillMaxWidth()
+            // Date & Time Picker Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                // Date Picker Card Field
+                Surface(
+                    onClick = {
+                        val parts = dateString.split("-")
+                        val curYear = parts.getOrNull(0)?.toIntOrNull() ?: Calendar.getInstance().get(Calendar.YEAR)
+                        val curMonth = (parts.getOrNull(1)?.toIntOrNull() ?: (Calendar.getInstance().get(Calendar.MONTH) + 1)) - 1
+                        val curDay = parts.getOrNull(2)?.toIntOrNull() ?: Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
+
+                        DatePickerDialog(
+                            context,
+                            { _, y, m, d ->
+                                dateString = String.format(Locale.US, "%04d-%02d-%02d", y, m + 1, d)
+                            },
+                            curYear,
+                            curMonth,
+                            curDay
+                        ).show()
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    color = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    Column(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.CalendarToday,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
+                        Text(
+                            text = "記帳日期",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Column {
-                            Text(
-                                text = "記帳日期",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = dateString,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.SemiBold
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier.weight(1f, fill = false)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CalendarToday,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = dateString,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1
+                                )
+                            }
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(16.dp)
                             )
                         }
                     }
-                    Text(
-                        text = "變更",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                }
+
+                // Time Picker Card Field
+                Surface(
+                    onClick = {
+                        val timeParts = timeString.split(":")
+                        val curHour = timeParts.getOrNull(0)?.toIntOrNull() ?: Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+                        val curMinute = timeParts.getOrNull(1)?.toIntOrNull() ?: Calendar.getInstance().get(Calendar.MINUTE)
+
+                        TimePickerDialog(
+                            context,
+                            { _, hourOfDay, minute ->
+                                timeString = String.format(Locale.US, "%02d:%02d", hourOfDay, minute)
+                            },
+                            curHour,
+                            curMinute,
+                            true
+                        ).show()
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    color = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "記帳時間",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier.weight(1f, fill = false)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Schedule,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = timeString,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1
+                                )
+                            }
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
                 }
             }
 
@@ -457,12 +542,19 @@ fun AddEditExpenseDialog(
                     onClick = {
                         val amt = amountText.toDoubleOrNull() ?: 0.0
                         if (title.isNotBlank() && amt > 0) {
+                            val parsedTimestamp = try {
+                                SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).parse("${dateString.trim()} ${timeString.trim()}")?.time
+                                    ?: (initialExpense?.timestamp ?: System.currentTimeMillis())
+                            } catch (_: Exception) {
+                                initialExpense?.timestamp ?: System.currentTimeMillis()
+                            }
                             val record = (initialExpense ?: ExpenseRecord(title = title, amount = amt)).copy(
                                 title = title.trim(),
                                 amount = amt,
                                 type = type,
                                 category = category,
                                 paymentMethod = paymentMethod,
+                                timestamp = parsedTimestamp,
                                 dateString = dateString.trim(),
                                 note = note.trim()
                             )

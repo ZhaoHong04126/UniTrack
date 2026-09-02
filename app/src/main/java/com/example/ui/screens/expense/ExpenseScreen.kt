@@ -111,12 +111,12 @@ fun ExpenseScreen(
     val monthExpenses = remember(allExpenses, selectedMonth, selectedCategoryFilter) {
         allExpenses.filter { it.dateString.startsWith(selectedMonth) }
             .filter { selectedCategoryFilter == null || it.category == selectedCategoryFilter }
-            .sortedByDescending { it.dateString }
+            .sortedWith(compareByDescending<ExpenseRecord> { it.dateString }.thenByDescending { it.timestamp })
     }
 
     val allMonthExpensesNoFilter = remember(allExpenses, selectedMonth) {
         allExpenses.filter { it.dateString.startsWith(selectedMonth) }
-            .sortedByDescending { it.dateString }
+            .sortedWith(compareByDescending<ExpenseRecord> { it.dateString }.thenByDescending { it.timestamp })
     }
 
     val animatedBudgetProgress by animateFloatAsState(
@@ -1231,8 +1231,10 @@ private fun ExpenseRecordItemCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
+                    val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
+                    val timeStr = remember(record.timestamp) { timeFormat.format(Date(record.timestamp)) }
                     Text(
-                        text = record.dateString,
+                        text = if (record.timestamp > 0) "${record.dateString} $timeStr" else record.dateString,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1438,7 +1440,8 @@ private fun AccountDetailBottomSheet(
     onDeleteAccount: (() -> Unit)? = null
 ) {
     val methodExpenses = remember(monthExpenses, account) {
-        monthExpenses.filter { it.paymentMethod == account.method }.sortedByDescending { it.dateString }
+        monthExpenses.filter { it.paymentMethod == account.method }
+            .sortedWith(compareByDescending<ExpenseRecord> { it.dateString }.thenByDescending { it.timestamp })
     }
     val totalExpense = methodExpenses.filter { it.type == ExpenseType.EXPENSE }.sumOf { it.amount }
     val totalIncome = methodExpenses.filter { it.type == ExpenseType.INCOME }.sumOf { it.amount }
