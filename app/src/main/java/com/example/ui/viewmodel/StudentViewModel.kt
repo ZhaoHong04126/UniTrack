@@ -416,13 +416,11 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                     val nameToSet = profile.displayName?.ifBlank { null }
                         ?: profile.email?.substringBefore("@")
                     if (!nameToSet.isNullOrBlank()) {
-                        val currentPlan = repository.getGraduationPlanOnce() ?: repository.getCachedGraduationPlan()
+                        val currentPlan = repository.getGraduationPlanOnce()
                         if (currentPlan.studentName == "同學" || currentPlan.studentName == "王大明" || currentPlan.studentName == "大學生" || currentPlan.studentName.isBlank()) {
                             val updatedPlan = currentPlan.copy(studentName = nameToSet)
                             repository.updateGraduationPlan(updatedPlan)
-                            if (updatedPlan.department.isNotBlank() && updatedPlan.department != "尚未設定系所") {
-                                firestoreSyncRepository.uploadAllToCloud(profile.uid)
-                            }
+                            firestoreSyncRepository.uploadAllToCloud(profile.uid)
                         }
                     }
 
@@ -648,7 +646,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         val notifPrefs = _notificationPreferences.value
         if (notifPrefs.masterEnabled && notifPrefs.courseReminderEnabled) {
             val courses = repository.getAllCoursesOnce()
-            val plan = repository.getGraduationPlanOnce() ?: DefaultData.getDefaultGraduationPlan()
+            val plan = repository.getGraduationPlanOnce()
             val calendar = Calendar.getInstance()
             val dayOfWeekToday = when (calendar.get(Calendar.DAY_OF_WEEK)) {
                 Calendar.MONDAY -> 1
@@ -1295,7 +1293,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         newLetterGrade: String? = null,
         sendNotify: Boolean = true
     ) = viewModelScope.launch {
-        val plan = repository.getGraduationPlanOnce() ?: DefaultData.getDefaultGraduationPlan()
+        val plan = repository.getGraduationPlanOnce()
         val isCompleted = when {
             newScore != null -> newScore >= plan.minPassingScore
             newLetterGrade in listOf("抵免", "通過", "免修") -> true
@@ -1397,7 +1395,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         _userMessage.value = "已成功$actionName"
 
         if (sendNotify) {
-            val plan = repository.getGraduationPlanOnce() ?: DefaultData.getDefaultGraduationPlan()
+            val plan = repository.getGraduationPlanOnce()
             if (count == 1) {
                 val c = changedCourses.first()
                 val orig = originalCourses.firstOrNull { it.id == c.id }
@@ -1485,7 +1483,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun setPrimarySemester(semester: String) = viewModelScope.launch {
-        val currentPlan = repository.getGraduationPlanOnce() ?: DefaultData.getDefaultGraduationPlan()
+        val currentPlan = repository.getGraduationPlanOnce()
         val updated = currentPlan.copy(currentSemester = semester)
         repository.updateGraduationPlan(updated)
         val user = currentUser.value
@@ -1519,7 +1517,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         }
 
         val plan = repository.getGraduationPlanOnce()
-        if (plan != null && plan.currentSemester == semester) {
+        if (plan.currentSemester == semester) {
             val updated = plan.copy(currentSemester = fallbackSemester)
             repository.updateGraduationPlan(updated)
         }
@@ -1856,19 +1854,17 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val result = authRepository.signInWithGoogle(context, webClientId)
             result.onSuccess { user ->
-                // 1. 先下載並同步雲端最新學業與系所檔案
+                // 1. 先下載並同步雲端最新學業檔案
                 firestoreSyncRepository.downloadAllFromCloud(user.uid)
 
                 // 2. 檢查使用者姓名是否需要寫入本機
                 val nameToSet = user.displayName?.ifBlank { null } ?: user.email?.substringBefore("@")
-                val currentPlan = repository.getGraduationPlanOnce() ?: DefaultData.getDefaultGraduationPlan()
+                val currentPlan = repository.getGraduationPlanOnce()
                 if (!nameToSet.isNullOrBlank()) {
                     if (currentPlan.studentName == "同學" || currentPlan.studentName == "王大明" || currentPlan.studentName == "大學生" || currentPlan.studentName.isBlank()) {
                         val updated = currentPlan.copy(studentName = nameToSet)
                         repository.updateGraduationPlan(updated)
-                        if (updated.department.isNotBlank() && updated.department != "尚未設定系所") {
-                            firestoreSyncRepository.uploadAllToCloud(user.uid)
-                        }
+                        firestoreSyncRepository.uploadAllToCloud(user.uid)
                     }
                 }
                 showToast("歡迎，${user.displayName ?: nameToSet ?: "同學"}！")
@@ -1884,19 +1880,17 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val result = authRepository.signInWithEmail(email, pass)
             result.onSuccess { user ->
-                // 1. 先下載並同步雲端最新學業與系所檔案
+                // 1. 先下載並同步雲端最新學業資料
                 firestoreSyncRepository.downloadAllFromCloud(user.uid)
 
                 // 2. 檢查使用者姓名是否需要寫入本機
                 val nameToSet = user.displayName?.ifBlank { null } ?: email.substringBefore("@")
-                val currentPlan = repository.getGraduationPlanOnce() ?: DefaultData.getDefaultGraduationPlan()
+                val currentPlan = repository.getGraduationPlanOnce()
                 if (nameToSet.isNotBlank()) {
                     if (currentPlan.studentName == "同學" || currentPlan.studentName == "王大明" || currentPlan.studentName == "大學生" || currentPlan.studentName.isBlank()) {
                         val updated = currentPlan.copy(studentName = nameToSet)
                         repository.updateGraduationPlan(updated)
-                        if (updated.department.isNotBlank() && updated.department != "尚未設定系所") {
-                            firestoreSyncRepository.uploadAllToCloud(user.uid)
-                        }
+                        firestoreSyncRepository.uploadAllToCloud(user.uid)
                     }
                 }
                 showToast("歡迎回來，${user.displayName ?: nameToSet}！")
@@ -1912,7 +1906,6 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         name: String,
         email: String,
         pass: String,
-        department: String = "",
         admissionSemester: String = "",
         onResult: ((Boolean, String?) -> Unit)? = null
     ) {
@@ -1934,12 +1927,11 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                 val defaultPlan = DefaultData.getDefaultGraduationPlan()
                 val updatedPlan = defaultPlan.copy(
                     studentName = nameToSet.ifBlank { defaultPlan.studentName },
-                    department = department.ifBlank { defaultPlan.department },
                     admissionSemester = admissionSemester.ifBlank { defaultPlan.admissionSemester }
                 )
                 repository.updateGraduationPlan(updatedPlan)
 
-                // 立即將包含正確學系與學生的檔案同步上傳至 Firestore 雲端
+                // 立即將包含學生檔案同步上傳至 Firestore 雲端
                 firestoreSyncRepository.uploadAllToCloud(user.uid)
 
                 showToast("註冊成功！歡迎加入 UniTrack+，${user.displayName ?: nameToSet}")

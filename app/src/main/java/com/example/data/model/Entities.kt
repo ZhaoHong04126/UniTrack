@@ -45,7 +45,7 @@ data class CourseNote(
 data class GraduationPlan(
     @PrimaryKey
     val id: Long = 1,
-    val department: String = "尚未設定系所",
+    val department: String = "",
     val studentName: String = "同學",
     val targetTotalCredits: Double = 128.0,
     val targetRequiredCredits: Double = 58.0,

@@ -29,12 +29,10 @@ class StudentRepository(
 
     fun getCachedGraduationPlan(): GraduationPlan {
         val defaultPlan = DefaultData.getDefaultGraduationPlan()
-        val dept = prefs.getString("department", null)
         val name = prefs.getString("studentName", null)
         val adm = prefs.getString("admissionSemester", null)
         val cur = prefs.getString("currentSemester", null)
         return defaultPlan.copy(
-            department = if (!dept.isNullOrBlank()) dept else defaultPlan.department,
             studentName = if (!name.isNullOrBlank()) name else defaultPlan.studentName,
             admissionSemester = if (!adm.isNullOrBlank()) adm else defaultPlan.admissionSemester,
             currentSemester = if (!cur.isNullOrBlank()) cur else defaultPlan.currentSemester
@@ -77,37 +75,27 @@ class StudentRepository(
     val graduationPlan: Flow<GraduationPlan?> = graduationDao.getGraduationPlan()
     val allThresholds: Flow<List<GraduationThreshold>> = graduationDao.getAllThresholds()
 
-    suspend fun getGraduationPlanOnce(): GraduationPlan? = withContext(Dispatchers.IO) {
+    suspend fun getGraduationPlanOnce(): GraduationPlan = withContext(Dispatchers.IO) {
         val plan = graduationDao.getGraduationPlanOnce()
         if (plan != null) {
-            if (plan.department.isNotBlank() && plan.department != "尚未設定系所") {
-                prefs.edit {
-                    putString("department", plan.department)
-                    putString("studentName", plan.studentName)
-                    putString("admissionSemester", plan.admissionSemester)
-                    putString("currentSemester", plan.currentSemester)
-                }
-            }
-            plan
-        } else {
-            val cached = getCachedGraduationPlan()
-            if (cached.department.isNotBlank() && cached.department != "尚未設定系所") {
-                graduationDao.insertOrUpdatePlan(cached)
-                cached
-            } else {
-                null
-            }
-        }
-    }
-
-    suspend fun updateGraduationPlan(plan: GraduationPlan) = withContext(Dispatchers.IO) {
-        if (plan.department.isNotBlank() && plan.department != "尚未設定系所") {
             prefs.edit {
-                putString("department", plan.department)
                 putString("studentName", plan.studentName)
                 putString("admissionSemester", plan.admissionSemester)
                 putString("currentSemester", plan.currentSemester)
             }
+            plan
+        } else {
+            val cached = getCachedGraduationPlan()
+            graduationDao.insertOrUpdatePlan(cached)
+            cached
+        }
+    }
+
+    suspend fun updateGraduationPlan(plan: GraduationPlan) = withContext(Dispatchers.IO) {
+        prefs.edit {
+            putString("studentName", plan.studentName)
+            putString("admissionSemester", plan.admissionSemester)
+            putString("currentSemester", plan.currentSemester)
         }
         graduationDao.insertOrUpdatePlan(plan)
     }
@@ -280,7 +268,7 @@ class StudentRepository(
                 val planObj = root.getJSONObject("graduationPlan")
                 val plan = GraduationPlan(
                     id = 1,
-                    department = planObj.optString("department", "尚未設定系所"),
+                    department = planObj.optString("department", ""),
                     studentName = planObj.optString("studentName", "同學"),
                     targetTotalCredits = planObj.optDouble("targetTotalCredits", 128.0),
                     targetRequiredCredits = planObj.optDouble("targetRequiredCredits", 58.0),

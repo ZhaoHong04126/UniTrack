@@ -173,8 +173,7 @@ class MainActivity : ComponentActivity() {
 
                 val showBottomBar = items.any { it.route == currentRoute } || currentRoute == AppDestination.Graduation.route
                 val currentUser by studentViewModel.currentUser.collectAsStateWithLifecycle()
-                val graduationPlan by studentViewModel.graduationPlan.collectAsStateWithLifecycle()
-                val isProfileReady = currentUser != null && graduationPlan.department.isNotBlank() && graduationPlan.department != "尚未設定系所"
+                val isProfileReady = currentUser != null
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),

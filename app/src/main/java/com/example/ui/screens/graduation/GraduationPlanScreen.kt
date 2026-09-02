@@ -340,7 +340,7 @@ fun GraduationPlanScreen(
                         )
                     }
                     Text(
-                        text = "請依據您所屬系所入學年度之修業規章，設定畢業總學分與各模組【必修】、【選修】之門檻要求，子分類亦可自訂個別學分目標。",
+                        text = "請依據入學年度之修業規章，設定畢業總學分與各模組【必修】、【選修】之門檻要求，子分類亦可自訂個別學分目標。",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

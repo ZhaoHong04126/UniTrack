@@ -81,7 +81,7 @@ object DefaultData {
         val currentAcademicSem = getCurrentAcademicSemester()
         return GraduationPlan(
             id = 1,
-            department = "尚未設定系所",
+            department = "",
             studentName = "大學生",
             targetTotalCredits = 128.0,
             targetRequiredCredits = 58.0,
@@ -126,56 +126,4 @@ object DefaultData {
         val currentMonth = monthFormat.format(Date())
         return MonthlyBudget(yearMonth = currentMonth, budgetAmount = 10000.0)
     }
-
-    data class CollegeDepartmentGroup(
-        val name: String,
-        val icon: String,
-        val departments: List<String>
-    )
-
-    @Suppress("SpellCheckingInspection")
-    val NTTU_COLLEGES = listOf(
-        CollegeDepartmentGroup(
-            name = "師範學院",
-            icon = "🎓",
-            departments = listOf(
-                "教育學系",
-                "體育學系",
-                "幼兒教育學系",
-                "特殊教育學系",
-                "數位媒體與文教產業學系",
-                "文化資源與休閒產業學系",
-                "競技與運動科學學系",
-                "幼兒教育學系原住民專班"
-            )
-        ),
-        CollegeDepartmentGroup(
-            name = "人文學院",
-            icon = "🎨",
-            departments = listOf(
-                "公共與文化事務學系",
-                "英美語文學系",
-                "音樂學系",
-                "華語文學系",
-                "美術產業學系",
-                "身心整合與運動休閒產業學系"
-            )
-        ),
-        CollegeDepartmentGroup(
-            name = "理工學院",
-            icon = "🔬",
-            departments = listOf(
-                "資訊工程學系",
-                "資訊管理學系",
-                "應用科學系(化學及奈米組)",
-                "應用科學系(物理暨光電科學組)",
-                "生命科學系",
-                "應用數學系",
-                "綠能與資訊科技學系",
-                "護理學系",
-                "高齡健康與照護管理原住民專班"
-            )
-        )
-    )
 }
-
