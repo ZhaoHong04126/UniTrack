@@ -76,6 +76,13 @@ class Converters {
     fun toNotificationType(value: String?): com.example.data.model.NotificationType? =
         value?.let { enumValueOfOrDefault(it, com.example.data.model.NotificationType.SYSTEM) }
 
+    @TypeConverter
+    fun fromCalendarEventCategory(value: com.example.data.model.CalendarEventCategory?): String? = value?.name
+
+    @TypeConverter
+    fun toCalendarEventCategory(value: String?): com.example.data.model.CalendarEventCategory? =
+        value?.let { enumValueOfOrDefault(it, com.example.data.model.CalendarEventCategory.EXAM) }
+
     private inline fun <reified T : Enum<T>> enumValueOfOrDefault(name: String, defaultValue: T): T =
         runCatching { enumValueOf<T>(name) }.getOrDefault(defaultValue)
 }

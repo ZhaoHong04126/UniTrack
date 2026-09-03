@@ -353,3 +353,31 @@ sealed class SemesterScheduleStatus {
     data class InSession(val currentWeek: Int, val totalWeeks: Int) : SemesterScheduleStatus()
     data class Ended(val totalWeeks: Int) : SemesterScheduleStatus()
 }
+
+enum class CalendarEventCategory(val displayName: String, val defaultColorHex: String) {
+    STUDY("學習", "#2563EB"),
+    ASSIGNMENT("作業", "#F59E0B"),
+    EXAM("考試", "#EF4444"),
+    PERSONAL("個人", "#10B981"),
+    ACTIVITY("活動", "#EC4899"),
+    HOLIDAY("放假", "#8B5CF6")
+}
+
+@Entity(tableName = "calendar_events")
+data class CalendarEvent(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val title: String,
+    val date: String, // YYYY-MM-DD
+    val startTime: String = "", // HH:mm
+    val endTime: String = "",   // HH:mm
+    val isAllDay: Boolean = true,
+    val category: CalendarEventCategory = CalendarEventCategory.EXAM,
+    val location: String = "",
+    val notes: String = "",
+    val courseId: Long? = null,
+    val courseName: String = "",
+    val isCompleted: Boolean = false,
+    val reminderMinutesBefore: Int = 0,
+    val colorHex: String = "#EF4444"
+)

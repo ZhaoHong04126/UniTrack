@@ -16,9 +16,10 @@ import com.example.data.model.*
         GraduationThreshold::class,
         ExpenseRecord::class,
         MonthlyBudget::class,
-        AppNotification::class
+        AppNotification::class,
+        CalendarEvent::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -27,6 +28,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun graduationDao(): GraduationDao
     abstract fun expenseDao(): ExpenseDao
     abstract fun notificationDao(): NotificationDao
+    abstract fun calendarDao(): CalendarDao
 
     companion object {
         @Volatile
@@ -57,6 +59,31 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS calendar_events (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        title TEXT NOT NULL,
+                        date TEXT NOT NULL,
+                        startTime TEXT NOT NULL DEFAULT '',
+                        endTime TEXT NOT NULL DEFAULT '',
+                        isAllDay INTEGER NOT NULL DEFAULT 1,
+                        category TEXT NOT NULL DEFAULT 'EXAM',
+                        location TEXT NOT NULL DEFAULT '',
+                        notes TEXT NOT NULL DEFAULT '',
+                        courseId INTEGER,
+                        courseName TEXT NOT NULL DEFAULT '',
+                        isCompleted INTEGER NOT NULL DEFAULT 0,
+                        reminderMinutesBefore INTEGER NOT NULL DEFAULT 0,
+                        colorHex TEXT NOT NULL DEFAULT '#EF4444'
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -64,7 +91,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "student_life_db"
                 )
-                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                     .build()
                 INSTANCE = instance
                 instance

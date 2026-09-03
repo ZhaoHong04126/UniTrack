@@ -404,7 +404,8 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             db.courseDao(),
             db.graduationDao(),
             db.expenseDao(),
-            db.notificationDao()
+            db.notificationDao(),
+            db.calendarDao()
         )
         firestoreSyncRepository = FirestoreSyncRepository(
             application.applicationContext,
@@ -486,6 +487,9 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
     // Raw database flows
     val allCourses: StateFlow<List<Course>> = repository.allCourses
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val allCalendarEvents: StateFlow<List<CalendarEvent>> = repository.allCalendarEvents
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _customSemesters = MutableStateFlow(
@@ -2146,5 +2150,95 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         val deleted = if (file.exists()) file.delete() else true
         _avatarUpdateTrigger.value = System.currentTimeMillis()
         return deleted
+    }
+
+    // ==========================================
+    // Calendar Management (行事曆模組)
+    // ==========================================
+
+    fun insertCalendarEvent(event: CalendarEvent) {
+        viewModelScope.launch {
+            repository.insertCalendarEvent(event)
+            _userMessage.value = "已新增行程：「${event.title}」"
+        }
+    }
+
+    fun updateCalendarEvent(event: CalendarEvent) {
+        viewModelScope.launch {
+            repository.updateCalendarEvent(event)
+            _userMessage.value = "已更新行程：「${event.title}」"
+        }
+    }
+
+    fun deleteCalendarEvent(event: CalendarEvent) {
+        viewModelScope.launch {
+            repository.deleteCalendarEvent(event)
+            _userMessage.value = "已刪除行程：「${event.title}」"
+        }
+    }
+
+    fun toggleCalendarEventCompletion(event: CalendarEvent) {
+        viewModelScope.launch {
+            repository.updateCalendarEvent(event.copy(isCompleted = !event.isCompleted))
+        }
+    }
+
+    /**
+     * 依據指定的日期 (yyyy-MM-dd)，計算該日對應目標學期的週次與星期，
+     * 並過濾出當日排定的所有課程
+     */
+    fun getCoursesForDate(dateStr: String, targetSemester: String? = null): List<Course> {
+        return try {
+            val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")
+            val targetDate = java.time.LocalDate.parse(dateStr, formatter)
+            val dayOfWeek = targetDate.dayOfWeek.value // 1=Mon .. 7=Sun
+
+            val sem = targetSemester ?: graduationPlan.value.currentSemester.ifBlank { "114-1" }
+            val startDateStr = getSemesterStartDate(sem)
+            val startFormatter = java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd")
+            val startDate = java.time.LocalDate.parse(startDateStr, startFormatter)
+            val totalWeeks = getSemesterTotalWeeks(sem)
+
+            val daysDiff = java.time.temporal.ChronoUnit.DAYS.between(startDate, targetDate)
+            if (daysDiff < 0) {
+                return emptyList()
+            }
+            val weekNum = (daysDiff / 7).toInt() + 1
+            if (weekNum > totalWeeks) {
+                return emptyList()
+            }
+
+            val currentCourses = allCourses.value.filter { it.semester == sem && it.dayOfWeek == dayOfWeek }
+            currentCourses.filter { course ->
+                if (course.repeatMode == "每週" || course.repeatWeeks == "1-18" || course.repeatWeeks.isBlank()) {
+                    true
+                } else {
+                    val weeks = course.repeatWeeks.split(",").mapNotNull { it.trim().toIntOrNull() }
+                    weekNum in weeks
+                }
+            }.sortedWith(compareBy({ it.startPeriod }, { it.startTime }))
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    fun getWeekNumberForDate(dateStr: String, targetSemester: String? = null): Int? {
+        return try {
+            val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")
+            val targetDate = java.time.LocalDate.parse(dateStr, formatter)
+            val sem = targetSemester ?: graduationPlan.value.currentSemester.ifBlank { "114-1" }
+            val startDateStr = getSemesterStartDate(sem)
+            val startFormatter = java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd")
+            val startDate = java.time.LocalDate.parse(startDateStr, startFormatter)
+            val totalWeeks = getSemesterTotalWeeks(sem)
+            val daysDiff = java.time.temporal.ChronoUnit.DAYS.between(startDate, targetDate)
+            if (daysDiff < 0) null
+            else {
+                val week = (daysDiff / 7).toInt() + 1
+                if (week in 1..totalWeeks) week else null
+            }
+        } catch (_: Exception) {
+            null
+        }
     }
 }

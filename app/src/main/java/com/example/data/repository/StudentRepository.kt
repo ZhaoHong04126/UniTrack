@@ -2,6 +2,7 @@ package com.example.data.repository
 
 import android.content.Context
 import androidx.core.content.edit
+import com.example.data.local.CalendarDao
 import com.example.data.local.CourseDao
 import com.example.data.local.DefaultData
 import com.example.data.local.ExpenseDao
@@ -21,7 +22,8 @@ class StudentRepository(
     private val courseDao: CourseDao,
     private val graduationDao: GraduationDao,
     private val expenseDao: ExpenseDao,
-    private val notificationDao: NotificationDao
+    private val notificationDao: NotificationDao,
+    private val calendarDao: CalendarDao? = null
 ) {
     private val prefs by lazy {
         context.getSharedPreferences("unitrack_profile_prefs", Context.MODE_PRIVATE)
@@ -144,6 +146,41 @@ class StudentRepository(
         expenseDao.setBudget(budget)
     }
 
+    // Calendar Events
+    val allCalendarEvents: Flow<List<CalendarEvent>> = calendarDao?.getAllEvents() ?: kotlinx.coroutines.flow.flowOf(emptyList())
+
+    suspend fun getAllCalendarEventsOnce(): List<CalendarEvent> = withContext(Dispatchers.IO) {
+        calendarDao?.getAllEventsOnce() ?: emptyList()
+    }
+
+    fun getCalendarEventsByMonth(yearMonth: String): Flow<List<CalendarEvent>> {
+        return calendarDao?.getEventsByMonth(yearMonth) ?: kotlinx.coroutines.flow.flowOf(emptyList())
+    }
+
+    fun getCalendarEventsByDate(date: String): Flow<List<CalendarEvent>> {
+        return calendarDao?.getEventsByDate(date) ?: kotlinx.coroutines.flow.flowOf(emptyList())
+    }
+
+    suspend fun insertCalendarEvent(event: CalendarEvent): Long = withContext(Dispatchers.IO) {
+        calendarDao?.insertEvent(event) ?: 0L
+    }
+
+    suspend fun insertCalendarEvents(events: List<CalendarEvent>) = withContext(Dispatchers.IO) {
+        calendarDao?.insertEvents(events)
+    }
+
+    suspend fun updateCalendarEvent(event: CalendarEvent) = withContext(Dispatchers.IO) {
+        calendarDao?.updateEvent(event)
+    }
+
+    suspend fun deleteCalendarEvent(event: CalendarEvent) = withContext(Dispatchers.IO) {
+        calendarDao?.deleteEvent(event)
+    }
+
+    suspend fun deleteCalendarEventById(id: Long) = withContext(Dispatchers.IO) {
+        calendarDao?.deleteEventById(id)
+    }
+
     // Initialize Database with Default Data if empty
     suspend fun seedInitialDataIfEmpty() = withContext(Dispatchers.IO) {
         val existingPlan = graduationDao.getGraduationPlanOnce()
@@ -168,6 +205,7 @@ class StudentRepository(
         courseDao.deleteAllCourses()
         graduationDao.deleteAllThresholds()
         expenseDao.deleteAllExpenses()
+        calendarDao?.deleteAllEvents()
 
         graduationDao.insertOrUpdatePlan(DefaultData.getDefaultGraduationPlan())
         graduationDao.insertThresholds(DefaultData.getDefaultThresholds())
@@ -181,6 +219,7 @@ class StudentRepository(
         graduationDao.deleteAllThresholds()
         expenseDao.deleteAllExpenses()
         expenseDao.deleteAllBudgets()
+        calendarDao?.deleteAllEvents()
         notificationDao.clearAll()
         prefs.edit { clear() }
         graduationDao.insertOrUpdatePlan(DefaultData.getDefaultGraduationPlan())

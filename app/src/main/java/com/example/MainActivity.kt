@@ -32,6 +32,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.ui.screens.auth.AuthScreen
+import com.example.ui.screens.calendar.CalendarScreen
 import com.example.ui.screens.dashboard.DashboardScreen
 import com.example.ui.screens.expense.ExpenseScreen
 import com.example.ui.screens.graduation.AcademicMenuScreen
@@ -70,6 +71,14 @@ sealed class AppDestination(
         selectedIcon = Icons.Filled.CalendarMonth,
         unselectedIcon = Icons.Outlined.CalendarMonth,
         testTag = "nav_timetable"
+    )
+
+    object Calendar : AppDestination(
+        route = "calendar",
+        title = "行事曆",
+        selectedIcon = Icons.Filled.DateRange,
+        unselectedIcon = Icons.Outlined.DateRange,
+        testTag = "nav_calendar"
     )
 
     object Graduation : AppDestination(
@@ -167,6 +176,7 @@ class MainActivity : ComponentActivity() {
                 val items = listOf(
                     AppDestination.Dashboard,
                     AppDestination.Timetable,
+                    AppDestination.Calendar,
                     AppDestination.Expense,
                     AppDestination.Settings
                 )
@@ -322,6 +332,21 @@ class MainActivity : ComponentActivity() {
                                 viewModel = studentViewModel,
                                 onNavigateToGrades = {
                                     navController.navigate("academic_menu")
+                                }
+                            )
+                        }
+
+                        composable(AppDestination.Calendar.route) {
+                            CalendarScreen(
+                                viewModel = studentViewModel,
+                                onNavigateToTimetable = {
+                                    navController.navigate(AppDestination.Timetable.route) {
+                                        popUpTo(AppDestination.Dashboard.route) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
                                 }
                             )
                         }
