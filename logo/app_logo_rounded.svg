@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="108" height="108">
+  <defs>
+    <linearGradient id="bgGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563EB" />
+      <stop offset="50%" stop-color="#1E40AF" />
+      <stop offset="100%" stop-color="#0F172A" />
+    </linearGradient>
+    <clipPath id="squircle">
+      <rect width="108" height="108" rx="24" ry="24" />
+    </clipPath>
+  </defs>
+  <g clip-path="url(#squircle)">
+    <!-- Background -->
+    <rect width="108" height="108" fill="url(#bgGrad2)" />
+    <!-- Grid lines -->
+    <path d="M18,36 L90,36 M18,54 L90,54 M18,72 L90,72 M36,18 L36,90 M54,18 L54,90 M72,18 L72,90" stroke="rgba(255,255,255,0.145)" stroke-width="0.5" />
+    <!-- Foreground Logo -->
+    <g transform="translate(54, 54) scale(0.88) translate(-54, -54)">
+      <!-- Cap Top Diamond -->
+      <path fill="#60A5FA" d="M54,26 L84,39 L54,52 L24,39 Z" />
+      <!-- Cap Base / Skullcap -->
+      <path fill="#3B82F6" d="M34,44 L34,58 C34,67 74,67 74,58 L74,44 L54,53 Z" />
+      <!-- Cap Tassel -->
+      <path fill="#FBBF24" d="M81,40 L85,42 L83,62 C83,64 80,64 80,62 L81,40 Z" />
+      <!-- Book / Schedule Base -->
+      <path fill="#FFFFFF" d="M28,66 C38,62 50,65 54,68 C58,65 70,62 80,66 L80,82 C70,78 58,81 54,84 C50,81 38,78 28,82 Z" />
+      <!-- Coin / Budget Symbol -->
+      <path fill="#34D399" d="M54,63 C49.58,63 46,66.58 46,71 C46,75.42 49.58,79 54,79 C58.42,79 62,75.42 62,71 C62,66.58 58.42,63 54,63 Z" />
+      <!-- Coin inner dollar / text line -->
+      <path fill="#FFFFFF" d="M53,66 L55,66 L55,68 L56,68 C56.6,68 57,68.4 57,69 L57,70 C57,70.6 56.6,71 56,71 L53,71 L53,73 L57,73 L57,74 L55,74 L55,76 L53,76 L53,74 L52,74 C51.4,74 51,73.6 51,73 L51,72 C51,71.4 51.4,71 52,71 L55,71 L55,69 L51,69 L51,68 L53,68 Z" />
+    </g>
+  </g>
+</svg>
