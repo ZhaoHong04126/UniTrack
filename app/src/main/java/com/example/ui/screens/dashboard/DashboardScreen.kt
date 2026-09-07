@@ -495,8 +495,14 @@ fun DashboardScreen(
                                     ) {
                                         Text(text = semGpa.semester, modifier = Modifier.padding(horizontal = 4.dp))
                                     }
+                                    val displayCredits = if (semGpa.averageScore <= 0 && semGpa.passedCredits == 0.0) {
+                                        semGpa.totalCredits
+                                    } else {
+                                        semGpa.passedCredits
+                                    }
+                                    val creditsStr = if (displayCredits % 1.0 == 0.0) displayCredits.toInt().toString() else displayCredits.toString()
                                     Text(
-                                        text = "${semGpa.passedCredits.toInt()} 學分 (${semGpa.courseCount}門課)",
+                                        text = "$creditsStr 學分 (${semGpa.courseCount}門課)",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
