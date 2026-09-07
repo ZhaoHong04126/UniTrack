@@ -311,9 +311,6 @@ fun GradeEntryScreen(
             onSelectSemester = { sem ->
                 viewModel.setSelectedSemester(sem)
             },
-            onSetPrimarySemester = { sem ->
-                viewModel.setPrimarySemester(sem)
-            },
             onDeleteSemester = { sem ->
                 viewModel.deleteSemester(sem)
             },

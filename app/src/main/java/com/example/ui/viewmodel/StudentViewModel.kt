@@ -229,12 +229,42 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                 }
             }
         } catch (_: Exception) {
-            SemesterScheduleStatus.InSession(1, totalWeeks)
+            SemesterScheduleStatus.Ended(totalWeeks)
         }
     }
 
     fun isSemesterInSession(semester: String): Boolean {
         return getSemesterScheduleStatus(semester) is SemesterScheduleStatus.InSession
+    }
+
+    /**
+     * 依照「當前日期」動態判定主要學期：
+     * 1. 優先檢查使用者所建立的學期中是否有正在進行中 (InSession) 的學期
+     * 2. 依當前日期換算法定學期 (例如 9/7 落於 115-1)；若存在於清單中則為主要學期
+     * 3. 若無正在進行中且法定學期未在清單中，取已過或最接近當前日期的最晚學期
+     * 4. 若清單全在未來，取最接近當前日期的最早未來學期
+     * 確保使用者新增未來學期時，不會擅自將未來學期變成主要學期。
+     */
+    fun determinePrimarySemester(semesters: List<String>): String {
+        if (semesters.isEmpty()) return DefaultData.getCurrentAcademicSemester()
+
+        val inSessionSem = semesters.find { isSemesterInSession(it) }
+        if (inSessionSem != null) {
+            return inSessionSem
+        }
+
+        val todayAcademicSem = DefaultData.getCurrentAcademicSemester()
+        if (semesters.contains(todayAcademicSem)) {
+            return todayAcademicSem
+        }
+
+        val todayWeight = DefaultData.parseSemesterWeight(todayAcademicSem)
+        val pastOrCurrent = semesters.filter { DefaultData.parseSemesterWeight(it) <= todayWeight }
+        if (pastOrCurrent.isNotEmpty()) {
+            return pastOrCurrent.maxByOrNull { DefaultData.parseSemesterWeight(it) } ?: pastOrCurrent.last()
+        }
+
+        return semesters.minByOrNull { DefaultData.parseSemesterWeight(it) } ?: semesters.first()
     }
 
     fun parseCourseTimeToMinutes(timeStr: String, fallbackPeriod: Int, isStart: Boolean): Int {
@@ -526,19 +556,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         set.addAll(customSemesters)
         set.removeAll(deletedSemesters)
 
-        fun parseSemesterWeight(sem: String): Double {
-            val year = sem.substringBefore("-").filter { it.isDigit() }.toDoubleOrNull() ?: 0.0
-            val rawTerm = sem.substringAfter("-")
-            val termWeight = when {
-                rawTerm == "1" || rawTerm.contains("上") -> 0.1
-                rawTerm == "2" || rawTerm.contains("下") -> 0.2
-                rawTerm == "暑" || rawTerm == "3" -> 0.3
-                else -> 0.4
-            }
-            return year + termWeight
-        }
-
-        set.toList().sortedBy { parseSemesterWeight(it) }
+        set.toList().sortedBy { DefaultData.parseSemesterWeight(it) }
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
@@ -554,6 +572,27 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     val graduationPlan: StateFlow<GraduationPlan> = repository.graduationPlan
         .map { it ?: repository.getCachedGraduationPlan() }
         .stateIn(viewModelScope, SharingStarted.Eagerly, repository.getCachedGraduationPlan())
+
+    init {
+        // 自動依照當前日期動態判定主要學期，不給使用者手動設定，亦非直接取新增的最晚學期
+        viewModelScope.launch {
+            allSemesters.collect { list ->
+                val primary = determinePrimarySemester(list)
+                if (primary.isNotBlank()) {
+                    val currentPlan = repository.getGraduationPlanOnce()
+                    if (currentPlan.currentSemester != primary) {
+                        val updated = currentPlan.copy(currentSemester = primary)
+                        repository.updateGraduationPlan(updated)
+                        val user = currentUser.value
+                        if (user != null) {
+                            firestoreSyncRepository.uploadAllToCloud(user.uid)
+                        }
+                        WidgetUpdateHelper.updateAllWidgets(getApplication())
+                    }
+                }
+            }
+        }
+    }
 
     val graduationThresholds: StateFlow<List<GraduationThreshold>> = repository.allThresholds
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -1536,18 +1575,26 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun setPrimarySemester(semester: String) = viewModelScope.launch {
+        // 主要學期依照當前日期自動判定
+        val primary = determinePrimarySemester(allSemesters.value)
         val currentPlan = repository.getGraduationPlanOnce()
-        val updated = currentPlan.copy(currentSemester = semester)
+        val updated = currentPlan.copy(currentSemester = primary)
         repository.updateGraduationPlan(updated)
         val user = currentUser.value
         if (user != null) {
             firestoreSyncRepository.uploadAllToCloud(user.uid)
         }
         WidgetUpdateHelper.updateAllWidgets(getApplication())
-        _userMessage.value = "已將 $semester 設定為主要學期"
     }
 
     fun deleteSemester(semester: String) = viewModelScope.launch {
+        val remainingSemesters = allSemesters.value.filter { it != semester }
+        val fallbackSemester = determinePrimarySemester(remainingSemesters)
+
+        if (_selectedSemester.value == semester) {
+            _selectedSemester.value = fallbackSemester
+        }
+
         repository.deleteCoursesBySemester(semester)
         _customSemesters.update { it - semester }
         _deletedSemesters.update { it + semester }
@@ -1556,24 +1603,17 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             putStringSet("pref_deleted_semesters", _deletedSemesters.value)
         }
 
-        val user = currentUser.value
-        if (user != null) {
-            firestoreSyncRepository.uploadAllToCloud(user.uid)
-        }
-        WidgetUpdateHelper.updateAllWidgets(getApplication())
-
-        val remainingSemesters = allSemesters.value.filter { it != semester }
-        val fallbackSemester = remainingSemesters.firstOrNull() ?: DefaultData.getCurrentAcademicSemester()
-
-        if (_selectedSemester.value == semester) {
-            _selectedSemester.value = fallbackSemester
-        }
-
         val plan = repository.getGraduationPlanOnce()
         if (plan.currentSemester == semester) {
             val updated = plan.copy(currentSemester = fallbackSemester)
             repository.updateGraduationPlan(updated)
         }
+
+        val user = currentUser.value
+        if (user != null) {
+            firestoreSyncRepository.uploadAllToCloud(user.uid)
+        }
+        WidgetUpdateHelper.updateAllWidgets(getApplication())
 
         _userMessage.value = "已刪除學期：$semester"
 

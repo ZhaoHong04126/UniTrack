@@ -208,6 +208,19 @@ class FirestoreSyncRepository(
                     }
                 }
 
+                // 8. 上傳 自訂學期 與 隱藏學期設定
+                val customSemesters = prefs.getStringSet("pref_custom_semesters", emptySet())?.toList() ?: emptyList()
+                val deletedSemesters = prefs.getStringSet("pref_deleted_semesters", emptySet())?.toList() ?: emptyList()
+                userDocRef.collection("profile").document("semesters")
+                    .set(
+                        hashMapOf(
+                            "customSemesters" to customSemesters,
+                            "deletedSemesters" to deletedSemesters,
+                            "lastUpdated" to System.currentTimeMillis()
+                        ),
+                        SetOptions.merge()
+                    ).await()
+
                 Log.i(tag, "Upload all data to Firestore completed successfully for user: $userId")
                 Result.success(Unit)
             } catch (e: Exception) {

@@ -13,7 +13,6 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,7 +30,6 @@ fun SemesterManageDialog(
     allSemesters: List<String>,
     admissionSemester: String,
     onSelectSemester: (String) -> Unit,
-    onSetPrimarySemester: (String) -> Unit,
     onDeleteSemester: (String) -> Unit = {},
     onDismiss: () -> Unit
 ) {
@@ -42,7 +40,6 @@ fun SemesterManageDialog(
         mutableStateOf((java.util.Calendar.getInstance().get(java.util.Calendar.YEAR) - 1911).toString())
     }
     var selectedTerm by remember { mutableStateOf("上學期") }
-    var setAsPrimaryChecked by remember { mutableStateOf(false) }
     var termDropdownExpanded by remember { mutableStateOf(false) }
     val termOptions = listOf("上學期", "下學期", "暑期")
 
@@ -171,9 +168,13 @@ fun SemesterManageDialog(
                                         else MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
                                     )
                                     .clickable {
-                                        onSelectSemester(sem)
+                                        if (isEditMode) {
+                                            semesterToDelete = sem
+                                        } else {
+                                            onSelectSemester(sem)
+                                        }
                                     }
-                                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
@@ -204,17 +205,17 @@ fun SemesterManageDialog(
                                     }
                                 }
 
-                                // Right action area: Delete in Edit Mode, or "主要" badge / "設為主要" button
+                                // Right action area: Delete in Edit Mode, or "主要" badge
                                 if (isEditMode) {
                                     IconButton(
                                         onClick = { semesterToDelete = sem },
-                                        modifier = Modifier.size(30.dp)
+                                        modifier = Modifier.size(44.dp)
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.DeleteOutline,
                                             contentDescription = "刪除學期",
                                             tint = MaterialTheme.colorScheme.error,
-                                            modifier = Modifier.size(20.dp)
+                                            modifier = Modifier.size(22.dp)
                                         )
                                     }
                                 } else if (isPrimary) {
@@ -241,24 +242,6 @@ fun SemesterManageDialog(
                                                 color = MaterialTheme.colorScheme.primary
                                             )
                                         }
-                                    }
-                                } else {
-                                    FilledTonalButton(
-                                        onClick = { onSetPrimarySemester(sem) },
-                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                                        shape = RoundedCornerShape(8.dp),
-                                        modifier = Modifier.height(30.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Outlined.StarBorder,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(
-                                            text = "設為主要",
-                                            style = MaterialTheme.typography.labelSmall
-                                        )
                                     }
                                 }
                             }
@@ -344,23 +327,6 @@ fun SemesterManageDialog(
                             }
 
                             Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .clickable { setAsPrimaryChecked = !setAsPrimaryChecked }
-                                    .padding(vertical = 2.dp)
-                            ) {
-                                Checkbox(
-                                    checked = setAsPrimaryChecked,
-                                    onCheckedChange = { setAsPrimaryChecked = it }
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "同時設為主要學期",
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
-
-                            Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.End,
                                 verticalAlignment = Alignment.CenterVertically
@@ -380,9 +346,6 @@ fun SemesterManageDialog(
                                             }
                                             val semesterCode = "${newYearInput.trim()}-$termSuffix"
                                             onSelectSemester(semesterCode)
-                                            if (setAsPrimaryChecked) {
-                                                onSetPrimarySemester(semesterCode)
-                                            }
                                             showAddSection = false
                                         }
                                     },

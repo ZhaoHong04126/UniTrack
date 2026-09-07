@@ -61,6 +61,22 @@ object DefaultData {
     }
 
     /**
+     * 解析學期權重以利排序與時間比較
+     * 例如 114-1 -> 114.1, 114-2 -> 114.2
+     */
+    fun parseSemesterWeight(sem: String): Double {
+        val year = sem.substringBefore("-").filter { it.isDigit() }.toDoubleOrNull() ?: 0.0
+        val rawTerm = sem.substringAfter("-")
+        val termWeight = when {
+            rawTerm == "1" || rawTerm.contains("上") -> 0.1
+            rawTerm == "2" || rawTerm.contains("下") -> 0.2
+            rawTerm == "暑" || rawTerm == "3" -> 0.3
+            else -> 0.4
+        }
+        return year + termWeight
+    }
+
+    /**
      * 檢查指定日期是否落於該學期法定期間內
      */
     fun isDateInSemester(date: Date, semesterCode: String): Boolean {
