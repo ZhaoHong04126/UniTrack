@@ -172,11 +172,6 @@ fun CalendarScreen(
                             editingEvent = it
                             showAddEventDialog = true
                         },
-                        onAddEventForDate = {
-                            editingEvent = null
-                            eventCategoryToCreate = null
-                            showAddEventDialog = true
-                        },
                         onNavigateToTimetable = onNavigateToTimetable
                     )
                 } else {
@@ -386,7 +381,6 @@ private fun MonthCalendarView(
     dayEvents: List<CalendarEvent>,
     onToggleEventComplete: (CalendarEvent) -> Unit,
     onEditEvent: (CalendarEvent) -> Unit,
-    onAddEventForDate: () -> Unit,
     onNavigateToTimetable: () -> Unit
 ) {
     val firstDayOfMonth = yearMonth.atDay(1)
@@ -461,103 +455,82 @@ private fun MonthCalendarView(
             }
         }
 
-        // Selected Date Bottom Agenda Drawer
+        // Selected Date Bottom Agenda Section
         item(key = "selected_day_preview") {
-            Spacer(modifier = Modifier.height(12.dp))
-            Surface(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                shape = RoundedCornerShape(20.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                    .padding(top = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Column(
+                // Header of Selected Date
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                        .padding(horizontal = 20.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Header of Selected Date
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    Text(
+                        text = "${selectedDate.monthValue}月${selectedDate.dayOfMonth}日 行程概覽",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    if (selectedDate == today) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                         ) {
                             Text(
-                                text = "${selectedDate.monthValue}月${selectedDate.dayOfMonth}日 行程概覽",
-                                style = MaterialTheme.typography.titleMedium,
+                                text = "今天",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            if (selectedDate == today) {
-                                Surface(
-                                    shape = RoundedCornerShape(6.dp),
-                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                                ) {
-                                    Text(
-                                        text = "今天",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                    )
-                                }
-                            }
-                        }
-
-                        FilledTonalButton(
-                            onClick = onAddEventForDate,
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                            shape = RoundedCornerShape(10.dp)
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("新增", style = MaterialTheme.typography.labelSmall)
-                        }
-                    }
-
-                    // Classes for selected date
-                    if (dayCourses.isNotEmpty()) {
-                        Text(
-                            text = "當日課程 (${dayCourses.size})",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        dayCourses.forEach { course ->
-                            CalendarCourseCard(course = course, onClick = onNavigateToTimetable)
-                        }
-                    }
-
-                    // Events for selected date
-                    if (dayEvents.isNotEmpty()) {
-                        Text(
-                            text = "待辦事項 (${dayEvents.size})",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.secondary
-                        )
-                        dayEvents.forEach { event ->
-                            CalendarEventItemRow(
-                                event = event,
-                                onToggleComplete = { onToggleEventComplete(event) },
-                                onEdit = { onEditEvent(event) },
-                                onDelete = {}
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         }
-                    } else if (dayCourses.isEmpty()) {
-                        Text(
-                            text = "此日無安排課程或待辦事項 ✨",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                            modifier = Modifier.padding(vertical = 4.dp)
+                    }
+                }
+
+                // Classes for selected date
+                if (dayCourses.isNotEmpty()) {
+                    Text(
+                        text = "當日課程 (${dayCourses.size})",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 4.dp)
+                    )
+                    dayCourses.forEach { course ->
+                        CalendarCourseCard(course = course, onClick = onNavigateToTimetable)
+                    }
+                }
+
+                // Events for selected date
+                if (dayEvents.isNotEmpty()) {
+                    Text(
+                        text = "待辦事項 (${dayEvents.size})",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 4.dp)
+                    )
+                    dayEvents.forEach { event ->
+                        CalendarEventItemRow(
+                            event = event,
+                            onToggleComplete = { onToggleEventComplete(event) },
+                            onEdit = { onEditEvent(event) },
+                            onDelete = {}
                         )
                     }
+                } else if (dayCourses.isEmpty()) {
+                    Text(
+                        text = "此日無安排課程或待辦事項 ✨",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+                    )
                 }
             }
         }
@@ -937,9 +910,8 @@ private fun CalendarCourseCard(
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 3.dp),
         shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surface,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
         tonalElevation = 1.dp,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
         onClick = onClick
     ) {
         Row(
@@ -1025,9 +997,8 @@ private fun CalendarEventItemRow(
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 3.dp),
         shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surface,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
         tonalElevation = 1.dp,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
         onClick = onEdit
     ) {
         Row(
