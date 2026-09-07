@@ -508,6 +508,20 @@ class FirestoreSyncRepository(
         }
     }
 
+    suspend fun deleteAllNotificationsFromCloud(userId: String) = withContext(Dispatchers.IO) {
+        if (userId.isBlank()) return@withContext
+        try {
+            val col = firestore?.collection("users")?.document(userId)?.collection("notifications") ?: return@withContext
+            val snap = col.get().await()
+            for (doc in snap.documents) {
+                doc.reference.delete().await()
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Failed to delete all notifications from cloud", e)
+        }
+    }
+
+
     /**
      * 雙向智慧同步：若雲端已有資料則拉取合併；若雲端為空則將本機資料備份上傳至雲端
      */

@@ -597,7 +597,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             repository.clearAllNotifications()
             NotificationHelper.cancelAllNotifications(getApplication())
-            currentUser.value?.let { firestoreSyncRepository.uploadAllToCloud(it.uid) }
+            currentUser.value?.let { firestoreSyncRepository.deleteAllNotificationsFromCloud(it.uid) }
         }
     }
 

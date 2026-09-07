@@ -87,28 +87,9 @@ fun CalendarScreen(
         viewModel.getWeekNumberForDate(selectedDateStr, currentSemester)
     }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    editingEvent = null
-                    eventCategoryToCreate = null
-                    showAddEventDialog = true
-                },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                shape = CircleShape,
-                modifier = Modifier.testTag("fab_add_calendar_event")
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "新增行程")
-            }
-        }
-    ) { innerPadding ->
+    Box(modifier = modifier.fillMaxSize()) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
+            modifier = Modifier.fillMaxSize()
         ) {
             // Main Calendar Header: Title, [週 | 月] Switcher, < >, Today
             CalendarUnifiedHeader(
@@ -203,6 +184,23 @@ fun CalendarScreen(
                     )
                 }
             }
+        }
+
+        FloatingActionButton(
+            onClick = {
+                editingEvent = null
+                eventCategoryToCreate = null
+                showAddEventDialog = true
+            },
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+            shape = CircleShape,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+                .testTag("fab_add_calendar_event")
+        ) {
+            Icon(Icons.Default.Add, contentDescription = "新增行程")
         }
     }
 
@@ -414,7 +412,7 @@ private fun MonthCalendarView(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 88.dp)
+        contentPadding = PaddingValues(bottom = 16.dp)
     ) {
         // Month Grid Rows
         weeksList.forEachIndexed { row, weekCells ->
@@ -693,7 +691,7 @@ private fun WeekCalendarView(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 88.dp),
+        contentPadding = PaddingValues(bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         // Single Week Day Selector Strip

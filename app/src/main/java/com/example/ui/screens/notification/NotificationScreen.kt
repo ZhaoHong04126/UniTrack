@@ -11,8 +11,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,6 +60,8 @@ fun NotificationScreen(
     var selectedFilter by remember { mutableStateOf<NotificationType?>(null) }
     var showClearDialog by remember { mutableStateOf(false) }
     var notificationToDelete by remember { mutableStateOf<AppNotification?>(null) }
+    val hostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
 
     val filteredNotifications = remember(allNotifications, selectedFilter) {
         if (selectedFilter == null) allNotifications
@@ -66,6 +70,7 @@ fun NotificationScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(hostState) },
         contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             TopAppBar(
@@ -324,25 +329,41 @@ fun NotificationScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(filteredNotifications, key = { it.id }) { item ->
-                        NotificationItemCard(
-                            notification = item,
-                            onItemClick = {
-                                if (!item.isRead) {
-                                    viewModel.markNotificationAsRead(item.id)
-                                }
-                            },
-                            onNavigateClick = {
-                                if (!item.isRead) {
-                                    viewModel.markNotificationAsRead(item.id)
-                                }
-                                item.actionRoute?.let { route ->
-                                    onNavigateToRoute(route)
-                                }
-                            },
-                            onDeleteClick = {
+                        val dismissState = rememberSwipeToDismissBoxState()
+
+                        LaunchedEffect(dismissState.currentValue) {
+                            if (dismissState.currentValue != SwipeToDismissBoxValue.Settled) {
                                 notificationToDelete = item
+                                dismissState.snapTo(SwipeToDismissBoxValue.Settled)
                             }
-                        )
+                        }
+
+                        SwipeToDismissBox(
+                            state = dismissState,
+                            enableDismissFromStartToEnd = true,
+                            enableDismissFromEndToStart = true,
+                            backgroundContent = { DismissBackground(dismissState) }
+                        ) {
+                            NotificationItemCard(
+                                notification = item,
+                                onItemClick = {
+                                    if (!item.isRead) {
+                                        viewModel.markNotificationAsRead(item.id)
+                                    }
+                                },
+                                onNavigateClick = {
+                                    if (!item.isRead) {
+                                        viewModel.markNotificationAsRead(item.id)
+                                    }
+                                    item.actionRoute?.let { route ->
+                                        onNavigateToRoute(route)
+                                    }
+                                },
+                                onDeleteClick = {
+                                    notificationToDelete = item
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -358,8 +379,12 @@ fun NotificationScreen(
             confirmButton = {
                 Button(
                     onClick = {
+                        val title = notification.title
                         viewModel.deleteNotification(notification.id)
                         notificationToDelete = null
+                        coroutineScope.launch {
+                            hostState.showSnackbar("已刪除「$title」通知")
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = RoseAccent)
                 ) {
@@ -384,6 +409,9 @@ fun NotificationScreen(
                     onClick = {
                         viewModel.clearAllNotifications()
                         showClearDialog = false
+                        coroutineScope.launch {
+                            hostState.showSnackbar("已清空所有通知")
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = RoseAccent)
                 ) {
@@ -395,6 +423,34 @@ fun NotificationScreen(
                     Text("取消")
                 }
             }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DismissBackground(dismissState: SwipeToDismissBoxState) {
+    val direction = dismissState.dismissDirection
+    if (direction == SwipeToDismissBoxValue.Settled) return
+
+    val alignment = if (direction == SwipeToDismissBoxValue.StartToEnd) {
+        Alignment.CenterStart
+    } else {
+        Alignment.CenterEnd
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .clip(RoundedCornerShape(16.dp))
+            .background(RoseAccent)
+            .padding(horizontal = 24.dp),
+        contentAlignment = alignment
+    ) {
+        Icon(
+            imageVector = Icons.Default.Delete,
+            contentDescription = "刪除",
+            tint = Color.White,
+            modifier = Modifier.size(24.dp)
         )
     }
 }
@@ -565,12 +621,12 @@ private fun NotificationItemCard(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (!notification.isRead)
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                MaterialTheme.colorScheme.surfaceVariant
             else
                 MaterialTheme.colorScheme.surface
         ),
         border = if (!notification.isRead)
-            BorderStroke(1.dp, SapphirePrimary.copy(alpha = 0.3f))
+            BorderStroke(1.dp, SapphirePrimary.copy(alpha = 0.5f))
         else
             BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
     ) {
@@ -671,16 +727,22 @@ private fun NotificationItemCard(
                 }
 
                 // Delete Action Button
-                IconButton(
-                    onClick = onDeleteClick,
-                    modifier = Modifier.size(24.dp)
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.size(36.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "刪除",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.size(16.dp)
-                    )
+                    IconButton(
+                        onClick = onDeleteClick,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Delete,
+                            contentDescription = "刪除",
+                            tint = RoseAccent.copy(alpha = 0.85f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
 
@@ -767,15 +829,38 @@ private fun NotificationItemCard(
                         Spacer(modifier = Modifier.width(1.dp))
                     }
 
-                    TextButton(
-                        onClick = { isExpanded = false },
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Text(
-                            text = "收合 ▲",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        TextButton(
+                            onClick = onDeleteClick,
+                            colors = ButtonDefaults.textButtonColors(contentColor = RoseAccent),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Delete,
+                                contentDescription = "刪除",
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "刪除",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+
+                        TextButton(
+                            onClick = { isExpanded = false },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = "收合 ▲",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             } else {
