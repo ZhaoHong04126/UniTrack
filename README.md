@@ -5,10 +5,10 @@
 [![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose%20%7C%20Material%203-4285F4?logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
 [![Room](https://img.shields.io/badge/Storage-Room%20(SQLite)-00599C?logo=sqlite&logoColor=white)](https://developer.android.com/training/data-storage/room)
 [![Firebase](https://img.shields.io/badge/Backend-Firebase%20(Auth%20%2B%20Firestore)-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com/)
-[![Version](https://img.shields.io/badge/Version-v1.7.3-3B82F6)](https://github.com/ZhaoHong04126/UniTrack)
+[![Version](https://img.shields.io/badge/Version-v2.0.0-3B82F6)](https://github.com/ZhaoHong04126/UniTrack)
 
 > **專為大學生量身打造的全方位學業與生活管理助理。**  
-> 集結「智慧週課表 & 考勤筆記」、「畢業學分稽核與門檻檢核」、「GPA / 學業儀表板」、「個人記帳與月度預算（含自訂交易時間）」、「通知中心與本地資料庫持久化」於一體，支援 100% 純本機離線隱私保護與 Firebase 雲端雙向同步。經由 R8 深度修剪，安裝包極致輕量 (11.5MB)。
+> 集結「智慧週課表 & 考勤筆記」、「整合行事曆與待辦日程」、「畢業學分稽核與門檻檢核」、「GPA / 學業儀表板」、「個人記帳與月度預算（含自訂交易時間）」、「通知中心與雲端雙向同步」、「深淺色主題切換」於一體，支援 100% 純本機離線隱私保護與 Firebase 雲端雙向同步。經由 R8 深度修剪，安裝包極致輕量 (11.5MB)。
 
 ---
 
@@ -26,10 +26,12 @@
 - [📊 功能模組詳解](#-功能模組詳解)
   - [1. 儀表板 (Dashboard)](#1-儀表板-dashboard)
   - [2. 智慧週課表、考勤與課程筆記 (Timetable & Attendance)](#2-智慧週課表考勤與課程筆記-timetable--attendance)
-  - [3. 成績登錄與 GPA 試算 (Grades & GPA)](#3-成績登錄與-gpa-試算-grades--gpa)
-  - [4. 畢業審查與學分稽核 (Graduation Audit)](#4-畢業審查與學分稽核-graduation-audit)
-  - [5. 個人記帳、精準時間與多帳戶管理 (Expense & Budget)](#5-個人記帳精準時間與多帳戶管理-expense--budget)
-  - [6. 通知中心、帳號與雲端安全同步 (Auth, Notification & Sync)](#6-通知中心帳號與雲端安全同步-auth-notification--sync)
+  - [3. 整合行事曆與個人待辦日程 (Calendar & Tasks)](#3-整合行事曆與個人待辦日程-calendar--tasks)
+  - [4. 成績登錄與 GPA 試算 (Grades & GPA)](#4-成績登錄與-gpa-試算-grades--gpa)
+  - [5. 畢業審查與學分稽核 (Graduation Audit)](#5-畢業審查與學分稽核-graduation-audit)
+  - [6. 個人記帳、精準時間與多帳戶管理 (Expense & Budget)](#6-個人記帳精準時間與多帳戶管理-expense--budget)
+  - [7. 通知中心、帳號與雲端安全同步 (Auth, Notification & Sync)](#7-通知中心帳號與雲端安全同步-auth-notification--sync)
+  - [8. 外觀主題與個人化設定 (Theme & Appearance)](#8-外觀主題與個人化設定-theme--appearance)
 - [🧪 測試與品質保證](#-測試與品質保證)
 - [🗺️ 未來展望 (Phase 2 Roadmap)](#️-未來展望-phase-2-roadmap)
 
@@ -38,26 +40,34 @@
 ## ✨ 核心功能亮點
 
 * 📅 **智慧排課與多元顯示**：視覺化週課表排程、支援 **「顯示時間」與「顯示節次」雙模式一鍵切換**、1~14 節自訂節次、單雙週/自訂週次設定、開學與結束日期動態計算、週末顯示開關、支援批次排課與**課表分享（附帶週數與日期區間）**；卡片排版與手動新增課程抽屜全面精簡優化。
-* 📝 **課程考勤與隨堂筆記**：點選課表即刻展開詳情面板，支援每週出席點名登記（出席、遲到、曠課、請假）與統計圖表，並支援依週次與標籤（作業、考試、公告、重點）分類管理課程隨堂筆記。
-* 🎓 **深度學分審查與畢業稽核**：涵蓋校共同、院核心、系專業（基礎/核心/專業模組）、通識、自由選修等全方位分類，支援必修/選修獨立門檻目標設定與進度條即時計算。
+* 🗓️ **全新整合行事曆與待辦日程 (Calendar & Tasks)**：
+  * **雙重視圖模式**：支援「月視圖 (Month View)」與「週視圖 (Week View)」無縫切換。
+  * **學期課表自動整合**：課表課程無縫映射至每日行事曆時間軸，免除手動重排。
+  * **個人重要日程與待辦**：支援自訂「學習、作業、考試、個人、活動、放假」等六大類別，具備色票標籤、倒數提醒與備註。
+  * **待辦清單 (TODO)**：行程卡片支援點擊一鍵打勾標記完成/未完成，直覺好掌控。
+* 📝 **考勤上課日期精準預測與隨堂筆記**：點選課表即刻展開詳情面板，**自動推算並標示每週對應之實際即將上課日期與出席狀態**（出席、遲到、曠課、請假）與統計圖表；支援依週次與標籤（作業、考試、公告、重點）分類管理隨堂筆記。
+* 🎓 **深度學分審查與畢業稽核 (Room DB v7)**：涵蓋校共同、院核心、系專業（基礎/核心/專業模組）、通識、自由選修等全方位分類；**支援自訂分類與已刪除分類過濾 (`deletedCategories`)**，支援必修/選修獨立門檻目標設定與進度條即時計算。
 * 📋 **畢業門檻檢核清單**：支援外語檢定 (TOEIC/TOEFL)、服務學習、畢業專題、專業證照等項目狀態追蹤與佐證紀錄。
 * 📈 **成績登錄與多元 GPA 運算**：支援百分制、4.3 制與 4.0 制等計算標準，即時試算各學期平均分數與歷年累計 GPA；新增**不採計成績**選項與**批次儲存**功能，成績變更自動觸發推播通知。
-* 📅 **學期管理強化**：支援學期刪除（含課程連動清除）、自訂學期排序（依學年度/學期智慧排列）。
+* 🧠 **學期管理智慧化**：支援**學期權重解析演算法**，依學年度與學期類別（上/下/暑）智慧排序與時序比較；**自動依當前系統日期判定主要學期**；支援學期刪除（含課程連動清除與雲端同步）。
+* 🎨 **深色 / 淺色 / 跟隨系統全域主題 (App Theme Modes)**：設定頁提供「跟隨系統」、「淺色模式」、「深色模式」即時切換，針對 Material 3 色彩系統與護眼對比進行全面適配。
+* 📚 **課程錄入體驗優化**：課程對話框新增 **0.0 ~ 10.0 學分下拉選單**，輸入更快速直覺；Google 登入提供親切的人性化錯誤提示引導。
 * 💰 **生活記帳、精準時間與多帳戶管理**：
   * **雙檢視模式**：支援「列表視圖」與「月曆視圖 (Calendar View)」。
-  * **自訂交易時間**：新增時間選擇器 (`TimePickerDialog`)，可精確指定消費時與分，記帳明細時間軸更清晰。
+  * **自訂交易時間**：時間選擇器 (`TimePickerDialog`) 可精確指定消費時與分，記帳明細時間軸更清晰。
   * **年月選擇器**：任意跨月份查看歷史收支與月曆分佈。
   * **多支付帳戶管理**：支援自訂現金、銀行帳戶、電子支付，具備**啟用起始年月**設定與**歷史累積餘額精準運算**。
   * **預算警戒機制**：月度預算動態消耗進度條、超支即時提醒與支出玫瑰色負號標記。
-* 🔔 **通知中心與本地資料庫持久化**：
+* 🔔 **通知中心與雲端雙向持久化**：
   * **本地 Room 資料庫整合**：所有通知完整落地儲存，支援**未讀計數**與紅點標示。
-  * **完整管理操作**：支援**依類型分類篩選**、**單則向左滑動刪除**、**一鍵全部標示為已讀**與**批次清空通知**。
+  * **完整管理操作**：支援**依類型分類篩選**、**單則向左滑動刪除**、**一鍵全部標示為已讀**，以及**本機與 Firestore 雲端雙向一鍵清空所有通知**。
   * **全方位推播**：整合課堂上課提醒、記帳收支異動、成績變更通知、帳戶更新等即時通知，點擊卡片可直接跳轉對應功能頁面。
 * ⚡ **效能極致最佳化與安全強化**：
   * **R8 / ProGuard 深度修剪**：全面啟用程式碼混淆與資源剪裁，安裝包體積由 32MB 降至 **11.5MB**（瘦身達 64%），兼具極速啟動與防逆向安全。
   * **現代化 Credential Manager**：升級至 Google 官方推薦之最新憑證管理員與 Google ID Token 認證機制，登入過程快速流暢。
 * 🔒 **隱私至上 & 訪客模式 (Guest Mode)**：無須註冊登入即可 100% 離線使用，所有資料安全儲存於手機本機 SQLite (Room) 資料庫。
 * ☁️ **雲端雙向安全同步 (Cloud Sync)**：整合 Firebase Auth 與 Cloud Firestore，具備智慧防覆蓋保護機制（登入時自動拉取雲端最新學業、帳戶與通知檔案），支援多裝置一鍵備份與還原。
+* 🎨 **全新品牌視覺識別 (Brand Logos)**：提供專屬設計之圓形、方形與透明背景高解析向量 SVG 與 PNG 圖標資源。
 
 
 ---
@@ -66,13 +76,17 @@
 
 <!-- 💡 提示：將螢幕截圖放置於 docs/images/ 對應檔名後，取消註解 <img> 標籤即可直接呈現 -->
 
-| 儀表板 (Dashboard) | 智慧週課表 (Timetable) | 考勤與筆記 (Attendance/Notes) |
+| 儀表板 (Dashboard) | 智慧週課表 (Timetable) | 整合行事曆 (Calendar) |
 | :---: | :---: | :---: |
-| 📸 `docs/images/dashboard_preview.png`<br>*(待置入圖片)*<br><!-- <img src="docs/images/dashboard_preview.png" width="240" /> --> | 📸 `docs/images/timetable_preview.png`<br>*(待置入圖片)*<br><!-- <img src="docs/images/timetable_preview.png" width="240" /> --> | 📸 `docs/images/attendance_preview.png`<br>*(待置入圖片)*<br><!-- <img src="docs/images/attendance_preview.png" width="240" /> --> |
+| 📸 `docs/images/dashboard_preview.png`<br>*(待置入圖片)*<br><!-- <img src="docs/images/dashboard_preview.png" width="240" /> --> | 📸 `docs/images/timetable_preview.png`<br>*(待置入圖片)*<br><!-- <img src="docs/images/timetable_preview.png" width="240" /> --> | 📸 `docs/images/calendar_preview.png`<br>*(待置入圖片)*<br><!-- <img src="docs/images/calendar_preview.png" width="240" /> --> |
 
-| 畢業審查 (Graduation Audit) | 個人記帳與月曆 (Expense Tracker) | 帳號與同步 (Settings & Sync) |
+| 考勤與筆記 (Attendance/Notes) | 畢業審查 (Graduation Audit) | 個人記帳與月曆 (Expense Tracker) |
 | :---: | :---: | :---: |
-| 📸 `docs/images/graduation_preview.png`<br>*(待置入圖片)*<br><!-- <img src="docs/images/graduation_preview.png" width="240" /> --> | 📸 `docs/images/expense_preview.png`<br>*(待置入圖片)*<br><!-- <img src="docs/images/expense_preview.png" width="240" /> --> | 📸 `docs/images/settings_preview.png`<br>*(待置入圖片)*<br><!-- <img src="docs/images/settings_preview.png" width="240" /> --> |
+| 📸 `docs/images/attendance_preview.png`<br>*(待置入圖片)*<br><!-- <img src="docs/images/attendance_preview.png" width="240" /> --> | 📸 `docs/images/graduation_preview.png`<br>*(待置入圖片)*<br><!-- <img src="docs/images/graduation_preview.png" width="240" /> --> | 📸 `docs/images/expense_preview.png`<br>*(待置入圖片)*<br><!-- <img src="docs/images/expense_preview.png" width="240" /> --> |
+
+| 通知中心 (Notification Center) | 外觀與同步 (Settings & Theme) | 官方品牌標誌 (Brand Logos) |
+| :---: | :---: | :---: |
+| 📸 `docs/images/notification_preview.png`<br>*(待置入圖片)*<br><!-- <img src="docs/images/notification_preview.png" width="240" /> --> | 📸 `docs/images/settings_preview.png`<br>*(待置入圖片)*<br><!-- <img src="docs/images/settings_preview.png" width="240" /> --> | 📸 `logo/app_logo_rounded_512.png`<br>*(已提供向量與點陣)*<br><!-- <img src="logo/app_logo_rounded_512.png" width="240" /> --> |
 
 ---
 
@@ -80,7 +94,33 @@
 
 ### 🔖 版本歷程記錄
 
-#### 🌟 v1.7.3 (最新發布)
+#### 🌟 v2.0.0 (最新發布)
+- 🗓️ **全新「行事曆 (Calendar)」模組集成**：
+  - 新增底導航專屬「行事曆」頁面，支援「月視圖 (Month View)」與「週視圖 (Week View)」流暢切換。
+  - 整合當前學期課表每日時段與個人日程事件（學習、作業、考試、個人、活動、放假等六大類別與自訂色票）。
+  - 待辦事項支援一鍵點擊標記完成/未完成 (`isCompleted`)，底部即時聯動展示選取日期的課堂與日程清單。
+  - 建立 `CalendarDao` 與 `CalendarEvent` 實體，由 Room 本地持久化保存並以 StateFlow 響應式串流。
+- 🎨 **全域主題模式設定 (Theme Modes)**：
+  - 設定頁新增主題切換功能，提供「跟隨系統」、「淺色模式」與「深色模式」三種狀態。
+  - 全面適配 Material 3 色彩語意與深色模式高對比護眼調色，支援無縫熱切換並持久化儲存。
+- 🧠 **學期智慧排序與當前學期自動判定**：
+  - 實作學期權重解析演算法，支援學期字串（如 113-1、113-2、114-1）之權重排序與時序比較。
+  - 依據當前系統日期智慧自動判定並切換至主要學期，減少手動切換與排課繁瑣流程。
+- 📝 **考勤管理進化：上課日期與狀態精確預覽**：
+  - 依據開學日期與各週進度，精準計算並顯示每週即將到達的上課實際月日。
+  - 優化考勤卡片與出席狀態標示（出席、遲到、曠課、請假），出席統計圖表更直覺。
+- 🎓 **畢業計畫資料庫架構升級 (Room DB v7)**：
+  - 資料庫版本由 6 升級至 7，新增 `deletedCategories` 遷移機制，支援自訂學分分類刪除與跨模組連動過濾。
+  - 使用者個人檔案模型增強，新增 `createdAt` 首次登入時間戳記並於設定頁展示。
+- 📚 **課程錄入優化與 Google 登入體驗改善**：
+  - 課程新增與編輯對話框新增 **0.0 ~ 10.0 學分下拉選單**，避免手動鍵盤誤觸。
+  - 更新 Google 登入錯誤捕捉與處理邏輯，提供清楚親切的錯誤導引訊息。
+- 🔔 **通知中心雲端雙向同步與一鍵清空**：
+  - 實作「從雲端刪除所有通知」邏輯，一鍵清空本機時同步清理 Firestore 遠端記錄。
+- 🎨 **專屬品牌視覺標誌 (Official Logos)**：
+  - 新增 `logo/` 目錄，提供官方圓形 (Rounded)、方形 (Square) 及透明背景 (Transparent) 之高品質向量 SVG 與高解析度 PNG (512px / 1024px) 圖標檔案。
+
+#### 🌟 v1.7.3
 - ⚡ **R8 / ProGuard 深度程式碼混淆與資源剪裁**：
   - 啟用 `isMinifyEnabled` 與 `isShrinkResources`，配合完整的混淆保留規則（Room、Moshi、Firebase、Coroutines、Credential Manager 等）。
   - APK 安裝包體積由原本 32MB 驟降至 **11.5MB**（大幅瘦身 64%），兼顧極速啟動與防逆向安全。
@@ -171,9 +211,9 @@ graph TD
 | 領域 | 使用技術 / 函式庫 | 說明 |
 | :--- | :--- | :--- |
 | **程式語言** | Kotlin 2.0+ | 現代化、強型別、空安全保證之 Android 核心開發語言 |
-| **UI 介面** | Jetpack Compose + Material 3 | 現代化宣告式 UI 框架、動態 Material You 配色與 Edge-to-Edge 全螢幕適配 |
+| **UI 介面** | Jetpack Compose + Material 3 | 現代化宣告式 UI 框架、動態 Material You 配色、深淺色主題與 Edge-to-Edge 全螢幕適配 |
 | **非同步與狀態** | Kotlin Coroutines + Flow / StateFlow | 響應式資料流與生命週期感知之全域狀態管理 |
-| **本機資料庫** | Android Jetpack Room + KSP | 型別安全的 SQLite 物件關聯映射 (ORM) 與高效資料庫存取 (含課程、畢業、記帳、通知) |
+| **本機資料庫** | Android Jetpack Room + KSP (v7) | 型別安全的 SQLite 物件關聯映射 (ORM) 與高效資料庫存取 (含課程、行事曆日程、畢業計畫、記帳、通知) |
 | **雲端認證** | Firebase Auth + Credential Manager | 現代化 Google ID Token 憑證授權與 Email/Password 帳號驗證體系 |
 | **雲端資料庫** | Cloud Firestore | 具備離線快取與跨設備即時雙向資料同步能力之 NoSQL 資料庫 |
 | **建置與混淆** | R8 + ProGuard | 程式碼與無效資源深度修剪 (APK 瘦身至 11.5MB)、型別安全與防逆向防護 |
@@ -189,28 +229,30 @@ UniTrack+/
 │   ├── src/
 │   │   ├── main/
 │   │   │   ├── java/com/example/
-│   │   │   │   ├── MainActivity.kt               # 主入口點與 Jetpack Compose Navigation 路由導航
+│   │   │   │   ├── MainActivity.kt               # 主入口點與 Jetpack Compose Navigation 路由導航 (包含行事曆)
 │   │   │   │   ├── data/
-│   │   │   │   │   ├── local/                    # Room Database, TypeConverters, DAOs (Course, Graduation, Expense, Notification)
-│   │   │   │   │   ├── model/                    # 資料實體 (Entities, Enums, AuthModels, CourseNote, CustomAccount, AppNotification)
+│   │   │   │   │   ├── local/                    # Room Database (v7), TypeConverters, DAOs (Course, Calendar, Graduation, Expense, Notification)
+│   │   │   │   │   ├── model/                    # 資料實體 (Entities, CalendarEvent, Enums, AuthModels, CourseNote, CustomAccount, AppNotification)
 │   │   │   │   │   └── repository/               # StudentRepository, AuthRepository (Credential Manager), FirestoreSyncRepository
 │   │   │   │   ├── ui/
 │   │   │   │   │   ├── components/               # 通用 UI 元件 (統計卡片、進度條、彈出對話框)
 │   │   │   │   │   ├── screens/
 │   │   │   │   │   │   ├── auth/                 # 登入與註冊介面 (Google 憑證管理員 / Email / 訪客模式)
 │   │   │   │   │   │   ├── dashboard/            # 學業進度與生活綜合儀表板
-│   │   │   │   │   │   ├── timetable/            # 課表視圖、時間/節次切換、考勤點名、隨堂筆記、成績登記
-│   │   │   │   │   │   ├── graduation/           # 畢業審查、學分分類檢核、學分設定、畢業門檻清單
+│   │   │   │   │   │   ├── timetable/            # 課表視圖、時間/節次切換、考勤上課日標示、隨堂筆記、成績登記
+│   │   │   │   │   │   ├── calendar/             # 全新整合行事曆 (週/月視圖、課表與日程整合、待辦打勾管理)
+│   │   │   │   │   │   ├── graduation/           # 畢業審查、學分分類檢核 (支援自訂與刪除分類)、學分設定、畢業門檻清單
 │   │   │   │   │   │   ├── expense/              # 個人記帳、交易時間選取、月曆視圖、年月選擇、多帳戶管理
-│   │   │   │   │   │   ├── notification/         # 通知中心、分類篩選、未讀標記、滑動刪除、頁面跳轉
-│   │   │   │   │   │   └── settings/             # 帳號設定、通知偏好、版本顯示、雲端同步、JSON 檔案匯入/匯出
-│   │   │   │   │   ├── theme/                    # Material 3 色彩系統、字型排版與主題配置
-│   │   │   │   │   └── viewmodel/                # StudentViewModel (全域狀態與業務邏輯核心)
+│   │   │   │   │   │   ├── notification/         # 通知中心、分類篩選、未讀標記、滑動刪除、雲端雙向清空
+│   │   │   │   │   │   └── settings/             # 帳號設定、主題模式 (深/淺/系統)、首次登入日、版本顯示、雲端同步
+│   │   │   │   │   ├── theme/                    # Material 3 色彩系統、深淺色切換、字型排版與主題配置
+│   │   │   │   │   └── viewmodel/                # StudentViewModel (全域狀態、學期智慧排序與業務邏輯核心)
 │   │   │   │   │   └── util/                     # NotificationHelper, DateTimeUtils 工具集
 │   │   │   │   └── res/                          # 應用程式資源 (圖標、字串、主題樣式、raw/keep.xml)
 │   │   └── test/                                 # Robolectric 單元測試與 Roborazzi 截圖測試
 │   ├── proguard-rules.pro                        # R8 / ProGuard 混淆與保留規則
-│   └── build.gradle.kts                          # App 模組建置設定 (R8 啟用、資源修剪、v1.7.3)
+│   └── build.gradle.kts                          # App 模組建置設定 (R8 啟用、資源修剪、v2.0.0)
+├── logo/                                         # 官方專屬品牌標誌 (圓形、方形、透明背景之向量 SVG 與 PNG)
 ├── docs/
 │   └── images/                                   # README 相關螢幕截圖與展示資源
 ├── gradle/                                       # Gradle Wrapper 與 Version Catalog (libs.versions.toml)
@@ -278,12 +320,15 @@ UniTrack+/
 ### 2. 智慧週課表、考勤與課程筆記 (Timetable & Attendance)
 * **雙顯示模式切換**：支援切換「顯示時間 (例如 08:10~09:00)」或「顯示節次 (例如 第 1 節)」，滿足不同排程習慣。
 * **視覺化週課表排程**：支援週一至週日、第 1 至 14 節網格排課，自訂色彩標籤與週末顯示開關。
-* **學期與週次管理**：支援多學期動態切換、開學與結束日期精準設定、單雙週過濾與批次新增課程；支援**學期刪除**（連動清除課程並同步雲端）與**自訂學期排序**。
+* **學期權重排序與當前學期智慧判定**：
+  * 實作學期權重解析演算法，依學年度與學期類別（上/下/暑）智慧排序與時序比較。
+  * 依據當前系統日期**自動判定並選取主要學期**，省去頻繁手動切換學期之麻煩。
+  * 支援多學期動態切換、開學與結束日期精準設定、單雙週過濾與批次排課；支援**學期刪除**（連動清除課程並同步雲端）。
+* **課程錄入體驗優化**：點擊新增按鈕展開課程編輯抽屜 (`AddEditCourseDialog`)，新增 **0.0 ~ 10.0 學分下拉選單**，避免手動鍵盤誤觸；排版圓角與高度陰影全面優化。
 * **課表分享增強**：分享課表時自動標記當前週數與精準日期區間。
-* **精簡課程輸入抽屜**：點擊新增按鈕展開課程編輯抽屜 (`AddEditCourseDialog`)，排版圓角與高度陰影全面優化，支援快速填寫課程、教室、節次、學分與分類屬性。
 * **考勤點名管理 (Attendance Tracking)**：
-  * 提供每週課堂出席狀態登記（出席、遲到、曠課、請假）。
-  * 自動統計出席率與各類考勤次數，隨時掌握出席狀況。
+  * **上課日期精準推估**：自動結合開學日期精算每週上課對應之實際月日，即時預覽即將到達的課堂日期與出缺席紀錄。
+  * 提供每週課堂出席狀態登記（出席、遲到、曠課、請假），並自動統計出席率與各類考勤次數。
 * **課程隨堂筆記 (Course Notes)**：
   * 支援分類管理：`一般`、`作業`、`考試`、`公告`、`重點`。
   * 可關聯特定週次與時間戳記，方便期中/期末考前快速複習。
@@ -296,31 +341,46 @@ UniTrack+/
 
 ---
 
-### 3. 成績登錄與 GPA 試算 (Grades & GPA)
+### 3. 整合行事曆與個人待辦日程 (Calendar & Tasks)
+* **雙重視圖模式**：提供「月視圖 (Month View)」與「週視圖 (Week View)」一鍵無縫切換，兼顧宏觀月曆規劃與細緻單週行程。
+* **課表與行事曆自動融合**：系統依據當前學期之課表設定，自動將每週課程映射至對應日期的時間軸上，無需重複手動登錄。
+* **個人重要日程管理**：
+  * 支援自訂「學習、作業、考試、個人、活動、放假」等六大類別，具備專屬色彩標籤與分類色票。
+  * 支援全天事件或設定精確開始與結束時間（HH:mm），包含地點與詳細筆記備忘。
+* **待辦清單打勾完成 (TODO)**：日程事件卡片支援點擊一鍵切換完成/未完成狀態 (`isCompleted`)，高效追蹤各項作業與備考進度。
+* **底部即時日程面板**：點擊日曆中任意日期，底部動態展開當日全部課程安排與待辦行程，清楚掌握一日計畫。
+
+<!-- 📸 [照片標記 3.1：行事曆月視圖與週視圖截圖] -->
+<!-- <p align="center"><img src="docs/images/calendar_detail.png" width="360" alt="Calendar Detail" /></p> -->
+
+---
+
+### 4. 成績登錄與 GPA 試算 (Grades & GPA)
 * **成績管理**：支援百分制成績與等第成績（A+、A、B+ 等）輸入與即時計算。
 * **多元計算機制**：預設百分制標準，並支援 4.3 制與 4.0 制換算，精準統計單學期與歷年累計 GPA / 平均分數。
 * **不採計成績選項**：可將特定課程標記為「不採計」，彈性排除於 GPA 計算之外（如重修前成績）。
 * **批次儲存與通知**：一次儲存多門課程成績，儲存後自動觸發成績變更推播通知，隨時掌握學業動態。
 
-<!-- 📸 [照片標記 3.1：成績登記與 GPA 試算畫面截圖] -->
+<!-- 📸 [照片標記 4.1：成績登記與 GPA 試算畫面截圖] -->
 <!-- <p align="center"><img src="docs/images/grades_detail.png" width="360" alt="Grades & GPA Detail" /></p> -->
 
 ---
 
-### 4. 畢業審查與學分稽核 (Graduation Audit)
+### 5. 畢業審查與學分稽核 (Graduation Audit)
 * **自訂畢業學分門檻**：支援依各大專院校系所修業規範，彈性設定校共同、院核心、系專業（基礎/核心/專業模組）、通識與自由選修之總學分及**必修/選修細項門檻**。
+* **自訂分類管理與清理 (Room DB v7)**：升級至資料庫版本 7，支援自訂學分分類與**刪除分類管理 (`deletedCategories`)**，被刪除之類別在排課與審查時自動過濾，保持介面簡潔乾淨。
 * **視覺化進度檢驗**：圖表化清晰比對「已修畢 (Earned)」、「修習中 (In-progress)」與「目標學分 (Target)」。
 * **畢業門檻檢核清單**：支援自訂與追蹤外語檢定 (如 TOEIC/TOEFL)、服務學習、畢業專題、專業證照等非學分門檻。
 
-<!-- 📸 [照片標記 4.1：畢業學分進度圖表截圖] -->
+<!-- 📸 [照片標記 5.1：畢業學分進度圖表截圖] -->
 <!-- <p align="center"><img src="docs/images/graduation_detail.png" width="360" alt="Graduation Detail" /></p> -->
 
-<!-- 📸 [照片標記 4.2：學分門檻設定對話框截圖] -->
+<!-- 📸 [照片標記 5.2：學分門檻設定對話框截圖] -->
 <!-- <p align="center"><img src="docs/images/graduation_thresholds.png" width="360" alt="Graduation Thresholds Dialog" /></p> -->
 
 ---
 
-### 5. 個人記帳、精準時間與多帳戶管理 (Expense & Budget)
+### 6. 個人記帳、精準時間與多帳戶管理 (Expense & Budget)
 * **雙檢視模式與年月選擇**：支援「列表視圖」與「月曆視圖 (Calendar View)」，搭配「年月選擇器」隨時回溯任意歷史月份之消費明細與月曆收支。
 * **精準交易時間選取**：記帳對話框提供日期與時間 (`TimePickerDialog`) 獨立選取機制，可自訂消費發生時與分，收支時間軸更加精準。
 * **自訂多支付帳戶管理 (Multi-Account)**：
@@ -329,32 +389,41 @@ UniTrack+/
   * 支援預設帳戶設定與雲端跨裝置同步。
 * **快速記帳與預算警戒**：提供餐飲、交通、娛樂、學習、住宿等豐富標籤；總支出金額以玫瑰色負號標記；設定每月總預算，以動態進度條即時警示花費進度防範超支。
 
-<!-- 📸 [照片標記 5.1：記帳明細、月曆視圖與預算進度條截圖] -->
+<!-- 📸 [照片標記 6.1：記帳明細、月曆視圖與預算進度條截圖] -->
 <!-- <p align="center"><img src="docs/images/expense_detail.png" width="360" alt="Expense Detail" /></p> -->
 
 ---
 
-### 6. 通知中心、帳號與雲端安全同步 (Auth, Notification & Sync)
-* **通知中心與本地資料庫持久化 (Notification Center)**：
-  * **Room 資料庫儲存**：通知完整落地於本機 SQLite 資料庫 (`NotificationDao`)，不因重啟 App 遺失。
-  * **已讀/未讀狀態管理**：提供未讀計數紅點，支援**一鍵標記全部已讀**與**清空所有通知**。
-  * **滑動刪除與分類篩選**：支援向左滑動刪除單則通知，並可依通知類型（課表、記帳、成績、系統等）進行標籤過濾。
-  * **頁面跳轉聯動**：點擊通知卡片可直接跳轉至對應功能頁面（如課表、記帳、成績等）。
-  * **全方位推播事件**：整合課堂上課提醒、記帳收支即時推播、成績變更通知、帳戶更新與雲端同步狀態。
+### 7. 通知中心、帳號與雲端安全同步 (Auth, Notification & Sync)
+* **通知中心與雲端雙向持久化 (Notification Center)**：
+  * **Room 本地持久化**：通知完整落地於本機 SQLite 資料庫 (`NotificationDao`)，重啟 App 不遺失。
+  * **已讀/未讀狀態管理**：提供未讀計數紅點，支援**一鍵標記全部已讀**與**單則向左滑動刪除**。
+  * **本機與雲端同步清空**：支援一鍵清空所有通知，同時自本機 Room 與 Firebase Firestore 雲端雙向刪除。
+  * **分類篩選與頁面聯動**：支援依類型（課表、記帳、學業、系統等）標籤過濾，點擊卡片可直接跳轉至對應功能頁面。
 * **現代化 Google 登入 (Credential Manager)**：
-  * 升級至 Google 推薦之 Android 憑證管理員與 Google ID Token，登入流程迅速、無縫且具高資安強度。
-* **頭像、個人檔案與版本顯示**：支援使用者自訂頭像保存與暱稱展示；設定介面清晰標示 App 當前版本號 (`v1.7.3`)。
-* **免登入離線優先**：無需連網即可享受 100% 完整功能，保障個人隱私。
+  * 升級至 Google 最新 Android 憑證管理員與 Google ID Token 授權，提供流暢的登入體驗與親切的錯誤訊息導引。
+* **個人檔案與首次登入記錄**：支援使用者自訂頭像保存與暱稱展示；模型新增 `createdAt` 首次登入時間戳記並於設定頁呈現；清楚標示當前版本號 (`v2.0.0`)。
+* **免登入離線優先**：無需連網即可享受 100% 完整功能，所有資料本機加密保存。
 * **雲端安全同步 (Cloud Sync)**：
   * 支援 Google / Email 帳號驗證。
   * 具備防覆蓋安全機制：登入時自動同步最新學業、課表、記帳與自訂帳戶，避免本機空白資料誤蓋雲端。
 * **標準 JSON 檔案匯出/匯入**：提供純文字 JSON 匯出與匯入功能，方便本機備份、跨設備遷移或手動分析。
 
-<!-- 📸 [照片標記 6.1：通知中心介面截圖] -->
+<!-- 📸 [照片標記 7.1：通知中心介面截圖] -->
 <!-- <p align="center"><img src="docs/images/notification_detail.png" width="360" alt="Notification Center" /></p> -->
 
-<!-- 📸 [照片標記 6.2：設定與雲端同步介面截圖] -->
+<!-- 📸 [照片標記 7.2：設定與雲端同步介面截圖] -->
 <!-- <p align="center"><img src="docs/images/settings_detail.png" width="360" alt="Settings & Auth Detail" /></p> -->
+
+---
+
+### 8. 外觀主題與個人化設定 (Theme & Appearance)
+* **全域主題模式切換**：
+  * 提供「跟隨系統 (System)」、「淺色模式 (Light)」與「深色模式 (Dark)」三種模式。
+  * 採用 Material 3 動態配色原則，深色模式具備低眩光高對比特質，夜間閱讀更舒適。
+  * 主題選擇狀態於本地持久化保存，冷啟動時自動即時套用。
+* **品牌專屬視覺識別**：
+  * 全新設計官方應用程式 Logo，於 `logo/` 資料夾提供圓形、方形與透明背景的高解析 SVG 與 PNG 資源。
 
 ---
 
