@@ -407,6 +407,36 @@ private fun AttendanceTabView(
             }
         }
 
+        // Weekly Session Items
+        val dayChinese = listOf("一", "二", "三", "四", "五", "六", "日").getOrElse(course.dayOfWeek - 1) { "一" }
+        val mondayOfFirstWeek = parsedStart.minusDays((parsedStart.dayOfWeek.value - 1).toLong())
+
+        // 收集所有符合重複設定的課堂週次與日期
+        data class CourseSession(val week: Int, val date: LocalDate)
+        val allSessions = (1..totalWeeks).mapNotNull { week ->
+            val isRelevant = if (course.repeatMode == "每週" || course.repeatWeeks == "1-18" || course.repeatWeeks.isBlank()) {
+                true
+            } else if (course.repeatMode == "單週") {
+                week % 2 != 0
+            } else if (course.repeatMode == "雙週") {
+                week % 2 == 0
+            } else {
+                val weeks = course.repeatWeeks.split(",").mapNotNull { it.trim().toIntOrNull() }
+                week in weeks
+            }
+            if (isRelevant) {
+                val mondayOfWeek = mondayOfFirstWeek.plusWeeks((week - 1).toLong())
+                val courseDate = mondayOfWeek.plusDays((course.dayOfWeek - 1).toLong())
+                CourseSession(week, courseDate)
+            } else {
+                null
+            }
+        }
+
+        // 方案 A：出缺席到了當天才顯示（只顯示日期在今天或之前的堂數，未來的週次等到上課當天才顯示）
+        val displayedSessions = allSessions.filter { !it.date.isAfter(today) }
+        val nextUpcomingSession = allSessions.firstOrNull { it.date.isAfter(today) }
+
         // Section Title
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -419,44 +449,66 @@ private fun AttendanceTabView(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            Text(
-                text = "點按修改",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            if (displayedSessions.isNotEmpty()) {
+                Text(
+                    text = "點按修改",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
-
-        // Weekly Session Items
-        val dayChinese = listOf("一", "二", "三", "四", "五", "六", "日").getOrElse(course.dayOfWeek - 1) { "一" }
-        val parsedStart = try {
-            val formatter = DateTimeFormatter.ofPattern("yyyy.MM.dd")
-            LocalDate.parse(startDateStr, formatter)
-        } catch (_: Exception) {
-            LocalDate.now()
-        }
-        val mondayOfFirstWeek = parsedStart.minusDays((parsedStart.dayOfWeek.value - 1).toLong())
 
         Column(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             val statusOptions = listOf("出席", "遲到", "曠課", "請假", "停課")
 
-            for (week in 1..totalWeeks) {
-                val isRelevant = if (course.repeatMode == "每週" || course.repeatWeeks == "1-18" || course.repeatWeeks.isBlank()) {
-                    true
-                } else if (course.repeatMode == "單週") {
-                    week % 2 != 0
-                } else if (course.repeatMode == "雙週") {
-                    week % 2 == 0
-                } else {
-                    val weeks = course.repeatWeeks.split(",").mapNotNull { it.trim().toIntOrNull() }
-                    week in weeks
+            if (displayedSessions.isEmpty()) {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 18.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Text(
+                            text = "尚未到達上課日期",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = if (nextUpcomingSession != null) {
+                                val nextFormatted = "${nextUpcomingSession.date.monthValue}月${nextUpcomingSession.date.dayOfMonth}日 ($dayChinese)"
+                                "出缺席紀錄將於上課當天開放。\n第一堂課日期：$nextFormatted (第 ${nextUpcomingSession.week} 週)"
+                            } else {
+                                "本學期此課程無符合的排課週次。"
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            lineHeight = 22.sp
+                        )
+                    }
                 }
-
-                if (isRelevant) {
+            } else {
+                displayedSessions.forEach { session ->
+                    val week = session.week
+                    val courseDate = session.date
+                    val isToday = courseDate.isEqual(today)
                     val currentStatus = attendanceMap[week] ?: ""
-                    val mondayOfWeek = mondayOfFirstWeek.plusWeeks((week - 1).toLong())
-                    val courseDate = mondayOfWeek.plusDays((course.dayOfWeek - 1).toLong())
                     val dateFormatted = "${courseDate.monthValue}月${courseDate.dayOfMonth}日 ($dayChinese)"
 
                     val borderColor: Color = when (currentStatus) {
@@ -464,7 +516,7 @@ private fun AttendanceTabView(
                         "遲到" -> Color(0xFFF59E0B).copy(alpha = 0.35f)
                         "曠課" -> RoseAccent.copy(alpha = 0.35f)
                         "請假" -> Color(0xFF3B82F6).copy(alpha = 0.35f)
-                        else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+                        else -> if (isToday) MaterialTheme.colorScheme.primary.copy(alpha = 0.4f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
                     }
 
                     Surface(
@@ -488,11 +540,30 @@ private fun AttendanceTabView(
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
-                                Text(
-                                    text = "第 $week 週",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    if (isToday) {
+                                        Surface(
+                                            shape = RoundedCornerShape(4.dp),
+                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                        ) {
+                                            Text(
+                                                text = "今日",
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.primary,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                    Text(
+                                        text = "第 $week 週",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
 
                             // Status selection pills
@@ -539,7 +610,7 @@ private fun AttendanceTabView(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(32.dp))
     }
 }
 
