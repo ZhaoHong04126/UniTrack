@@ -51,13 +51,16 @@ class TodayScheduleWidgetTest {
 
     @Test
     fun testGetPeriodCode() {
+        assertEquals("0", TodayScheduleWidget.getPeriodCode(0))
         assertEquals("1", TodayScheduleWidget.getPeriodCode(1))
+        assertEquals("5", TodayScheduleWidget.getPeriodCode(5))
         assertEquals("9", TodayScheduleWidget.getPeriodCode(9))
-        assertEquals("A", TodayScheduleWidget.getPeriodCode(10))
-        assertEquals("B", TodayScheduleWidget.getPeriodCode(11))
-        assertEquals("C", TodayScheduleWidget.getPeriodCode(12))
-        assertEquals("D", TodayScheduleWidget.getPeriodCode(13))
-        assertEquals("E", TodayScheduleWidget.getPeriodCode(14))
+        assertEquals("10", TodayScheduleWidget.getPeriodCode(10))
+        assertEquals("A", TodayScheduleWidget.getPeriodCode(11))
+        assertEquals("B", TodayScheduleWidget.getPeriodCode(12))
+        assertEquals("C", TodayScheduleWidget.getPeriodCode(13))
+        assertEquals("D", TodayScheduleWidget.getPeriodCode(14))
+        assertEquals("E", TodayScheduleWidget.getPeriodCode(15))
     }
 
     @Test
@@ -67,6 +70,12 @@ class TodayScheduleWidgetTest {
 
         val period3to4 = TodayScheduleWidget.getPeriodTimeRange(3, 4)
         assertEquals("10:10 - 12:00", period3to4)
+
+        val period5 = TodayScheduleWidget.getPeriodTimeRange(5, 5)
+        assertEquals("12:10 - 13:00", period5)
+
+        val period6to7 = TodayScheduleWidget.getPeriodTimeRange(6, 7)
+        assertEquals("13:10 - 15:00", period6to7)
     }
 
     @Test

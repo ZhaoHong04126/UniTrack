@@ -20,15 +20,36 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.data.local.DefaultData
 import com.example.data.model.Course
 import com.example.data.model.CourseCategory
 import com.example.ui.screens.timetable.AddEditCourseDialog
 import com.example.ui.screens.timetable.CourseDetailBottomSheet
+import com.example.ui.theme.AmberAccent
+import com.example.ui.theme.AmberLight
 import com.example.ui.theme.EmeraldAccent
+import com.example.ui.theme.RoseAccent
 import com.example.ui.theme.SapphireDark
 import com.example.ui.theme.SapphireLight
 import com.example.ui.viewmodel.StudentViewModel
+
+private data class AuditCourseItem(
+    val course: Course,
+    val isRetake: Boolean,
+    val originalSemester: String? = null
+)
+
+private fun isCoursePassed(course: Course, minPassingScore: Double = 60.0): Boolean {
+    if (course.score != null && course.score >= minPassingScore) return true
+    if (course.letterGrade in listOf("抵免", "通過", "免修")) return true
+    if (course.isCompleted && course.letterGrade != "不通過" && (course.score == null || course.score >= minPassingScore)) return true
+    if (course.letterGrade != null && course.letterGrade !in listOf("F", "E", "不通過")) {
+        return true
+    }
+    return false
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,9 +73,46 @@ fun CourseAuditListScreen(
     var editingCourse by remember { mutableStateOf<Course?>(null) }
     var showEditCourseDialog by remember { mutableStateOf(false) }
 
-    val filteredCourses = allCourses.filter { course ->
-        (selectedSemesterFilter == null || course.semester == selectedSemesterFilter) &&
-        (selectedCategoryFilter == null || course.category == selectedCategoryFilter)
+    val auditCourseItems = remember(allCourses, plan.minPassingScore, selectedSemesterFilter, selectedCategoryFilter) {
+        val groupedByName = allCourses.groupBy { it.name.trim() }
+
+        val baseItems = if (selectedSemesterFilter == null) {
+            groupedByName.map { (_, coursesInGroup) ->
+                val isRetake = coursesInGroup.size > 1
+                val primaryCourse = if (!isRetake) {
+                    coursesInGroup.first()
+                } else {
+                    coursesInGroup.sortedWith(
+                        compareByDescending<Course> { isCoursePassed(it, plan.minPassingScore) }
+                            .thenByDescending { DefaultData.parseSemesterWeight(it.semester) }
+                            .thenByDescending { it.score ?: 0.0 }
+                    ).first()
+                }
+                val earlierSemester = if (isRetake) {
+                    coursesInGroup.filter { it.id != primaryCourse.id }.map { it.semester }.firstOrNull()
+                } else null
+                AuditCourseItem(course = primaryCourse, isRetake = isRetake, originalSemester = earlierSemester)
+            }
+        } else {
+            allCourses.filter { it.semester == selectedSemesterFilter }.map { course ->
+                val group = groupedByName[course.name.trim()] ?: listOf(course)
+                val isRetake = group.size > 1
+                val earlierSemester = if (isRetake) {
+                    group.filter { it.id != course.id }.map { it.semester }.firstOrNull()
+                } else null
+                AuditCourseItem(course = course, isRetake = isRetake, originalSemester = earlierSemester)
+            }
+        }
+
+        baseItems.filter { item ->
+            selectedCategoryFilter == null || item.course.category == selectedCategoryFilter
+        }.sortedWith(
+            compareBy(
+                { DefaultData.parseSemesterWeight(it.course.semester) },
+                { it.course.dayOfWeek },
+                { it.course.startPeriod }
+            )
+        )
     }
 
     val filterButtonLabel = buildString {
@@ -123,7 +181,7 @@ fun CourseAuditListScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp)
         ) {
-            if (filteredCourses.isEmpty()) {
+            if (auditCourseItems.isEmpty()) {
                 item {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -145,10 +203,11 @@ fun CourseAuditListScreen(
                     }
                 }
             } else {
-                items(filteredCourses.sortedWith(compareBy({ it.semester }, { it.dayOfWeek }, { it.startPeriod }))) { course ->
+                items(auditCourseItems, key = { it.course.id }) { item ->
                     CourseAuditItemCard(
-                        course = course,
-                        onClick = { selectedCourseDetail = course }
+                        item = item,
+                        minPassingScore = plan.minPassingScore,
+                        onClick = { selectedCourseDetail = item.course }
                     )
                 }
             }
@@ -180,6 +239,7 @@ fun CourseAuditListScreen(
                     )
 
                     // 全部學期
+                    val totalAuditedCount = remember(allCourses) { allCourses.groupBy { it.name.trim() }.size }
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -190,7 +250,7 @@ fun CourseAuditListScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "全部學期 (${allCourses.size})",
+                            text = "全部學期 ($totalAuditedCount)",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = if (selectedSemesterFilter == null) FontWeight.Bold else FontWeight.Normal,
                             color = if (selectedSemesterFilter == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
@@ -375,9 +435,13 @@ fun CourseAuditListScreen(
 
 @Composable
 private fun CourseAuditItemCard(
-    course: Course,
+    item: AuditCourseItem,
+    minPassingScore: Double = 60.0,
     onClick: () -> Unit
 ) {
+    val course = item.course
+    val isRetake = item.isRetake
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -393,7 +457,10 @@ private fun CourseAuditItemCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -409,13 +476,44 @@ private fun CourseAuditItemCard(
                     ) {
                         Text(text = "${course.category.shortLabel}・${course.requirementType.shortLabel}")
                     }
+                    if (isRetake) {
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = AmberLight
+                        ) {
+                            Text(
+                                text = "重修",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                color = AmberAccent,
+                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp)
+                            )
+                        }
+                    }
                 }
-                Text(
-                    text = "${course.semester} 學期",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = "${course.semester} 學期",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (isRetake) {
+                        Text(
+                            text = "· 重修",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = AmberAccent
+                        )
+                    }
+                }
             }
+
+            Spacer(modifier = Modifier.width(8.dp))
 
             Column(horizontalAlignment = Alignment.End) {
                 Text(
@@ -424,26 +522,45 @@ private fun CourseAuditItemCard(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
+
+                val isPassed = isCoursePassed(course, minPassingScore)
+
                 if (course.score != null) {
+                    val scoreInt = course.score.toInt()
+                    val statusText = if (isPassed) {
+                        if (isRetake) "${scoreInt}分 重修通過" else "${scoreInt}分 通過"
+                    } else {
+                        "${scoreInt}分 不通過"
+                    }
                     Text(
-                        text = "${course.score.toInt()}分 通過",
+                        text = statusText,
                         style = MaterialTheme.typography.labelSmall,
-                        color = EmeraldAccent,
+                        color = if (isPassed) EmeraldAccent else RoseAccent,
                         fontWeight = FontWeight.Bold
                     )
                 } else if (course.letterGrade != null) {
+                    val statusText = when (val grade = course.letterGrade) {
+                        "通過" -> if (isRetake) "重修通過" else "通過"
+                        "不通過" -> "不通過"
+                        "抵免", "免修" -> grade
+                        "F", "E" -> "$grade (不通過)"
+                        else -> if (isPassed) (if (isRetake) "$grade 重修通過" else "$grade 通過") else "$grade 不通過"
+                    }
                     Text(
-                        text = "${course.letterGrade} 通過",
+                        text = statusText,
                         style = MaterialTheme.typography.labelSmall,
-                        color = EmeraldAccent,
+                        color = if (isPassed) EmeraldAccent else RoseAccent,
                         fontWeight = FontWeight.Bold
                     )
                 } else {
                     Badge(
-                        containerColor = SapphireLight,
-                        contentColor = SapphireDark
+                        containerColor = if (isRetake) AmberLight else SapphireLight,
+                        contentColor = if (isRetake) AmberAccent else SapphireDark
                     ) {
-                        Text("修習中", style = MaterialTheme.typography.labelSmall)
+                        Text(
+                            text = if (isRetake) "重修中" else "修習中",
+                            style = MaterialTheme.typography.labelSmall
+                        )
                     }
                 }
             }

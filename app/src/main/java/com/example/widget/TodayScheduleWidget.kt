@@ -82,31 +82,33 @@ class TodayScheduleWidget : AppWidgetProvider() {
 
         fun getPeriodCode(period: Int): String = when (period) {
             0 -> "0"
-            10 -> "A"
-            11 -> "B"
-            12 -> "C"
-            13 -> "D"
-            14 -> "E"
-            15 -> "F"
+            11 -> "A"
+            12 -> "B"
+            13 -> "C"
+            14 -> "D"
+            15 -> "E"
+            16 -> "F"
             else -> "$period"
         }
 
         fun getPeriodTimeRange(startPeriod: Int, endPeriod: Int): String {
             val periodTimes = mapOf(
+                0 to ("07:10" to "08:00"),
                 1 to ("08:10" to "09:00"),
                 2 to ("09:10" to "10:00"),
                 3 to ("10:10" to "11:00"),
                 4 to ("11:10" to "12:00"),
-                5 to ("13:10" to "14:00"),
-                6 to ("14:10" to "15:00"),
-                7 to ("15:10" to "16:00"),
-                8 to ("16:10" to "17:00"),
-                9 to ("17:10" to "18:00"),
-                10 to ("18:20" to "19:10"),
-                11 to ("19:15" to "20:05"),
-                12 to ("20:10" to "21:00"),
-                13 to ("21:05" to "21:55"),
-                14 to ("22:00" to "22:50")
+                5 to ("12:10" to "13:00"),
+                6 to ("13:10" to "14:00"),
+                7 to ("14:10" to "15:00"),
+                8 to ("15:10" to "16:00"),
+                9 to ("16:10" to "17:00"),
+                10 to ("17:10" to "18:00"),
+                11 to ("18:20" to "19:10"),
+                12 to ("19:15" to "20:05"),
+                13 to ("20:10" to "21:00"),
+                14 to ("21:05" to "21:55"),
+                15 to ("22:00" to "22:50")
             )
             val start = periodTimes[startPeriod]?.first ?: "第${getPeriodCode(startPeriod)}節"
             val end = periodTimes[endPeriod]?.second ?: "第${getPeriodCode(endPeriod)}節"
@@ -132,20 +134,22 @@ class TodayScheduleWidget : AppWidgetProvider() {
                     if (h != null && m != null) return h * 60 + m
                 }
                 val periodMap = mapOf(
+                    0 to (7 * 60 + 10 to 8 * 60),
                     1 to (8 * 60 + 10 to 9 * 60),
                     2 to (9 * 60 + 10 to 10 * 60),
                     3 to (10 * 60 + 10 to 11 * 60),
                     4 to (11 * 60 + 10 to 12 * 60),
-                    5 to (13 * 60 + 10 to 14 * 60),
-                    6 to (14 * 60 + 10 to 15 * 60),
-                    7 to (15 * 60 + 10 to 16 * 60),
-                    8 to (16 * 60 + 10 to 17 * 60),
-                    9 to (17 * 60 + 10 to 18 * 60),
-                    10 to (18 * 60 + 20 to 19 * 60 + 10),
-                    11 to (19 * 60 + 15 to 20 * 60 + 5),
-                    12 to (20 * 60 + 10 to 21 * 60),
-                    13 to (21 * 60 + 5 to 21 * 60 + 55),
-                    14 to (22 * 60 to 22 * 60 + 50)
+                    5 to (12 * 60 + 10 to 13 * 60),
+                    6 to (13 * 60 + 10 to 14 * 60),
+                    7 to (14 * 60 + 10 to 15 * 60),
+                    8 to (15 * 60 + 10 to 16 * 60),
+                    9 to (16 * 60 + 10 to 17 * 60),
+                    10 to (17 * 60 + 10 to 18 * 60),
+                    11 to (18 * 60 + 20 to 19 * 60 + 10),
+                    12 to (19 * 60 + 15 to 20 * 60 + 5),
+                    13 to (20 * 60 + 10 to 21 * 60),
+                    14 to (21 * 60 + 5 to 21 * 60 + 55),
+                    15 to (22 * 60 to 22 * 60 + 50)
                 )
                 val pair = periodMap[fallbackPeriod] ?: (8 * 60 to 9 * 60)
                 return if (isStart) pair.first else pair.second

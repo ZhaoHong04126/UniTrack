@@ -48,10 +48,83 @@ data class CategoryOption(
     val shortLabel: String
 )
 
+private fun getPeriodTimeRange(period: Int): Pair<String, String> = when (period) {
+    0 -> "07:10" to "08:00"
+    1 -> "08:10" to "09:00"
+    2 -> "09:10" to "10:00"
+    3 -> "10:10" to "11:00"
+    4 -> "11:10" to "12:00"
+    5 -> "12:10" to "13:00"
+    6 -> "13:10" to "14:00"
+    7 -> "14:10" to "15:00"
+    8 -> "15:10" to "16:00"
+    9 -> "16:10" to "17:00"
+    10 -> "17:10" to "18:00"
+    11 -> "18:20" to "19:10"
+    12 -> "19:15" to "20:05"
+    13 -> "20:10" to "21:00"
+    14 -> "21:05" to "21:55"
+    15 -> "22:00" to "22:50"
+    else -> String.format(Locale.US, "%02d:00", (7 + period)) to String.format(Locale.US, "%02d:50", (7 + period))
+}
+
+private fun timeToStartPeriod(timeStr: String): Int {
+    val parts = timeStr.split(":")
+    val h = parts.getOrNull(0)?.toIntOrNull() ?: 8
+    val m = parts.getOrNull(1)?.toIntOrNull() ?: 0
+    val totalM = h * 60 + m
+    return when {
+        totalM < 485 -> 0  // before 08:05 -> Period 0 (07:10)
+        totalM < 545 -> 1  // before 09:05 -> Period 1 (08:10)
+        totalM < 605 -> 2  // before 10:05 -> Period 2 (09:10)
+        totalM < 665 -> 3  // before 11:05 -> Period 3 (10:10)
+        totalM < 725 -> 4  // before 12:05 -> Period 4 (11:10)
+        totalM < 785 -> 5  // before 13:05 -> Period 5 (12:10)
+        totalM < 845 -> 6  // before 14:05 -> Period 6 (13:10)
+        totalM < 905 -> 7  // before 15:05 -> Period 7 (14:10)
+        totalM < 965 -> 8  // before 16:05 -> Period 8 (15:10)
+        totalM < 1025 -> 9 // before 17:05 -> Period 9 (16:10)
+        totalM < 1090 -> 10 // before 18:10 -> Period 10 (17:10)
+        totalM < 1152 -> 11 // before 19:12 -> Period 11 (18:20)
+        totalM < 1207 -> 12 // before 20:07 -> Period 12 (19:15)
+        totalM < 1262 -> 13 // before 21:02 -> Period 13 (20:10)
+        totalM < 1317 -> 14 // before 21:57 -> Period 14 (21:05)
+        else -> 15
+    }
+}
+
+private fun timeToEndPeriod(timeStr: String, startPeriod: Int): Int {
+    val parts = timeStr.split(":")
+    val h = parts.getOrNull(0)?.toIntOrNull() ?: 9
+    val m = parts.getOrNull(1)?.toIntOrNull() ?: 0
+    val totalM = h * 60 + m
+    val p = when {
+        totalM <= 485 -> 0  // at or before 08:05 -> Period 0 (ends 08:00)
+        totalM <= 545 -> 1  // at or before 09:05 -> Period 1 (ends 09:00)
+        totalM <= 605 -> 2  // at or before 10:05 -> Period 2 (ends 10:00)
+        totalM <= 665 -> 3  // at or before 11:05 -> Period 3 (ends 11:00)
+        totalM <= 725 -> 4  // at or before 12:05 -> Period 4 (ends 12:00)
+        totalM <= 785 -> 5  // at or before 13:05 -> Period 5 (ends 13:00)
+        totalM <= 845 -> 6  // at or before 14:05 -> Period 6 (ends 14:00)
+        totalM <= 905 -> 7  // at or before 15:05 -> Period 7 (ends 15:00)
+        totalM <= 965 -> 8  // at or before 16:05 -> Period 8 (ends 16:00)
+        totalM <= 1025 -> 9 // at or before 17:05 -> Period 9 (ends 17:00)
+        totalM <= 1090 -> 10 // at or before 18:10 -> Period 10 (ends 18:00)
+        totalM <= 1152 -> 11 // at or before 19:12 -> Period 11 (ends 19:10)
+        totalM <= 1207 -> 12 // at or before 20:07 -> Period 12 (ends 20:05)
+        totalM <= 1262 -> 13 // at or before 21:02 -> Period 13 (ends 21:00)
+        totalM <= 1317 -> 14 // at or before 21:57 -> Period 14 (ends 21:55)
+        else -> 15
+    }
+    return maxOf(startPeriod, p)
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditCourseDialog(
     initialCourse: Course? = null,
+    initialDayOfWeek: Int? = null,
+    initialPeriod: Int? = null,
     defaultSemester: String,
     allCourses: List<Course> = emptyList(),
     plan: GraduationPlan? = null,
@@ -75,10 +148,18 @@ fun AddEditCourseDialog(
     )
 
     var timeSlots by remember {
-        val initialStart = initialCourse?.startTime?.ifBlank { null }
-            ?: String.format(Locale.US, "%02d:00", 7 + (initialCourse?.startPeriod ?: 2))
-        val initialEnd = initialCourse?.endTime?.ifBlank { null }
-            ?: String.format(Locale.US, "%02d:00", 8 + (initialCourse?.endPeriod ?: 3))
+        val initialDay = initialCourse?.dayOfWeek ?: initialDayOfWeek ?: 1
+        val (initialStart, initialEnd) = if (initialCourse != null) {
+            val s = initialCourse.startTime.ifBlank { null }
+                ?: getPeriodTimeRange(initialCourse.startPeriod).first
+            val e = initialCourse.endTime.ifBlank { null }
+                ?: getPeriodTimeRange(initialCourse.endPeriod).second
+            s to e
+        } else if (initialPeriod != null) {
+            getPeriodTimeRange(initialPeriod)
+        } else {
+            "09:00" to "10:30"
+        }
         val initialWeeks = if (initialCourse != null && initialCourse.repeatWeeks.isNotBlank()) {
             if (initialCourse.repeatWeeks == "1-18") (1..18).toSet()
             else initialCourse.repeatWeeks.split(",").mapNotNull { it.trim().toIntOrNull() }.toSet()
@@ -88,7 +169,7 @@ fun AddEditCourseDialog(
         mutableStateOf(
             listOf(
                 TimeSlotItem(
-                    dayOfWeek = initialCourse?.dayOfWeek ?: 1,
+                    dayOfWeek = initialDay,
                     startTimeStr = initialStart,
                     endTimeStr = initialEnd,
                     repeatMode = initialCourse?.repeatMode ?: "每週",
@@ -170,11 +251,8 @@ fun AddEditCourseDialog(
     val conflictingCourseInfo = remember(relevantCourses, semester, timeSlots, isTimeTBD) {
         if (isTimeTBD) return@remember null
         for (slot in timeSlots) {
-            val sHour = slot.startTimeStr.substringBefore(":").toIntOrNull() ?: 9
-            val eHour = slot.endTimeStr.substringBefore(":").toIntOrNull() ?: 10
-            val eMin = slot.endTimeStr.substringAfter(":").toIntOrNull() ?: 30
-            val startP = (sHour - 7).coerceIn(1, 14)
-            val endP = (if (eMin > 0) eHour - 7 else eHour - 8).coerceIn(startP, 14)
+            val startP = timeToStartPeriod(slot.startTimeStr)
+            val endP = timeToEndPeriod(slot.endTimeStr, startP)
             val conflict = relevantCourses.firstOrNull { other ->
                 other.semester == semester.trim() &&
                 other.dayOfWeek == slot.dayOfWeek &&
@@ -950,11 +1028,8 @@ fun AddEditCourseDialog(
                             onSave(course)
                         } else {
                             val coursesToSave = timeSlots.mapIndexed { idx, slot ->
-                                val sHour = slot.startTimeStr.substringBefore(":").toIntOrNull() ?: 9
-                                val eHour = slot.endTimeStr.substringBefore(":").toIntOrNull() ?: 10
-                                val eMin = slot.endTimeStr.substringAfter(":").toIntOrNull() ?: 30
-                                val startP = (sHour - 7).coerceIn(0, 15)
-                                val endP = (if (eMin > 10) eHour - 7 else eHour - 8).coerceIn(startP, 15)
+                                val startP = timeToStartPeriod(slot.startTimeStr)
+                                val endP = timeToEndPeriod(slot.endTimeStr, startP)
                                 val repWeeks = if (slot.repeatMode == "每週") "1-18" else slot.selectedWeeks.sorted().joinToString(",")
 
                                 (if (idx == 0 && initialCourse != null) initialCourse else Course(name = name)).copy(

@@ -85,6 +85,7 @@ fun TimetableScreen(
 
     var showAddDialog by remember { mutableStateOf(false) }
     var editingCourse by remember { mutableStateOf<Course?>(null) }
+    var prefilledDayAndPeriod by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     var selectedCourseDetail by remember { mutableStateOf<Course?>(null) }
     var showSemesterManageDialog by remember { mutableStateOf(false) }
     var showTimeSettingsSheet by remember { mutableStateOf(false) }
@@ -292,6 +293,12 @@ fun TimetableScreen(
                 }
             }
 
+            val handleEmptyCellClick: (Int, Int) -> Unit = { day, period ->
+                editingCourse = null
+                prefilledDayAndPeriod = day to period
+                showAddDialog = true
+            }
+
             if (!isGridView) {
                 // List View Mode
                 if (courses.isEmpty()) {
@@ -332,6 +339,7 @@ fun TimetableScreen(
                     selectedWeek = 0,
                     onModeToggle = cycleNextMode,
                     onCourseClick = { selectedCourseDetail = it },
+                    onEmptyCellClick = handleEmptyCellClick,
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
@@ -361,6 +369,7 @@ fun TimetableScreen(
                         selectedWeek = weekNum,
                         onModeToggle = cycleNextMode,
                         onCourseClick = { selectedCourseDetail = it },
+                        onEmptyCellClick = handleEmptyCellClick,
                         modifier = Modifier.fillMaxSize(),
                         showTimeInsteadOfPeriod = showTimeInsteadOfPeriod,
                         dates = pageDates
@@ -412,6 +421,7 @@ fun TimetableScreen(
                             .clickable {
                                 isFabExpanded = false
                                 editingCourse = null
+                                prefilledDayAndPeriod = null
                                 showAddDialog = true
                             }
                             .padding(horizontal = 18.dp, vertical = 14.dp),
@@ -457,10 +467,15 @@ fun TimetableScreen(
     if (showAddDialog) {
         AddEditCourseDialog(
             initialCourse = editingCourse,
+            initialDayOfWeek = prefilledDayAndPeriod?.first,
+            initialPeriod = prefilledDayAndPeriod?.second,
             defaultSemester = selectedSemester,
             allCourses = allCoursesList,
             plan = graduationPlan,
-            onDismiss = { showAddDialog = false },
+            onDismiss = {
+                showAddDialog = false
+                prefilledDayAndPeriod = null
+            },
             onSave = { course ->
                 if (editingCourse == null) {
                     viewModel.addCourse(course)
@@ -468,6 +483,7 @@ fun TimetableScreen(
                     viewModel.updateCourse(course)
                 }
                 showAddDialog = false
+                prefilledDayAndPeriod = null
             },
             onSaveMultiple = { coursesToSave ->
                 if (editingCourse == null) {
@@ -477,6 +493,7 @@ fun TimetableScreen(
                     coursesToSave.drop(1).forEach { viewModel.addCourse(it, sendNotify = false) }
                 }
                 showAddDialog = false
+                prefilledDayAndPeriod = null
             }
         )
     }
@@ -821,6 +838,7 @@ private fun WeeklyTimetableGrid(
     onModeToggle: () -> Unit,
     onCourseClick: (Course) -> Unit,
     modifier: Modifier = Modifier,
+    onEmptyCellClick: ((day: Int, period: Int) -> Unit)? = null,
     showTimeInsteadOfPeriod: Boolean = false,
     dates: List<String>? = null
 ) {
@@ -837,12 +855,12 @@ private fun WeeklyTimetableGrid(
 
     fun getPeriodCode(period: Int): String = when (period) {
         0 -> "0"
-        10 -> "A"
-        11 -> "B"
-        12 -> "C"
-        13 -> "D"
-        14 -> "E"
-        15 -> "F"
+        11 -> "A"
+        12 -> "B"
+        13 -> "C"
+        14 -> "D"
+        15 -> "E"
+        16 -> "F"
         else -> "$period"
     }
 
@@ -852,16 +870,17 @@ private fun WeeklyTimetableGrid(
         2 -> "09:10" to "10:00"
         3 -> "10:10" to "11:00"
         4 -> "11:10" to "12:00"
-        5 -> "13:10" to "14:00"
-        6 -> "14:10" to "15:00"
-        7 -> "15:10" to "16:00"
-        8 -> "16:10" to "17:00"
-        9 -> "17:10" to "18:00"
-        10 -> "18:20" to "19:10"
-        11 -> "19:15" to "20:05"
-        12 -> "20:10" to "21:00"
-        13 -> "21:05" to "21:55"
-        14 -> "22:00" to "22:50"
+        5 -> "12:10" to "13:00"
+        6 -> "13:10" to "14:00"
+        7 -> "14:10" to "15:00"
+        8 -> "15:10" to "16:00"
+        9 -> "16:10" to "17:00"
+        10 -> "17:10" to "18:00"
+        11 -> "18:20" to "19:10"
+        12 -> "19:15" to "20:05"
+        13 -> "20:10" to "21:00"
+        14 -> "21:05" to "21:55"
+        15 -> "22:00" to "22:50"
         else -> String.format(Locale.US, "%02d:00", (7 + period)) to String.format(Locale.US, "%02d:50", (7 + period))
     }
 
@@ -1013,7 +1032,8 @@ private fun WeeklyTimetableGrid(
                 ) {
                     // Background horizontal grid lines for each period
                     Column {
-                        repeat(totalPeriods) {
+                        repeat(totalPeriods) { pIndex ->
+                            val period = minPeriod + pIndex
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -1022,6 +1042,9 @@ private fun WeeklyTimetableGrid(
                                         width = 0.5.dp,
                                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
                                     )
+                                    .clickable {
+                                        onEmptyCellClick?.invoke(day, period)
+                                    }
                             )
                         }
                     }

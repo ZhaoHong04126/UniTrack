@@ -38,10 +38,13 @@ object WeeklyGridBitmapRenderer {
             listOf("一", "二", "三", "四", "五")
         }
 
-        // 過濾當前週次課程，預設完整展開全部 1~14 節
+        // 過濾當前週次課程，預設完整展開全部 1~14 節 (若有第 0 節課程則自 0 節開始)
         val weekCourses = courses.filter { TodayScheduleWidget.isCourseInWeek(it, currentWeek) }
+        val hasPeriod0 = weekCourses.any { it.startPeriod == 0 }
+        val minPeriod = if (hasPeriod0) 0 else 1
         val maxCoursePeriod = weekCourses.maxOfOrNull { it.endPeriod } ?: 14
-        val totalPeriods = maxOf(14, maxCoursePeriod)
+        val maxPeriodToDisplay = maxOf(14, maxCoursePeriod)
+        val totalPeriods = maxPeriodToDisplay - minPeriod + 1
 
         val leftMargin = 70f
         val topMargin = 60f
@@ -114,26 +117,18 @@ object WeeklyGridBitmapRenderer {
         }
 
         // 3. 繪製節次左側標籤與水平分隔線
-        for (p in 1..totalPeriods) {
-            val yTop = topMargin + (p - 1) * rowHeight
+        for (pIndex in 0 until totalPeriods) {
+            val p = minPeriod + pIndex
+            val yTop = topMargin + pIndex * rowHeight
             val yBottom = yTop + rowHeight
             val cy = yTop + rowHeight / 2 + 8f
 
-            val periodLabel = when (p) {
-                0 -> "0"
-                10 -> "A"
-                11 -> "B"
-                12 -> "C"
-                13 -> "D"
-                14 -> "E"
-                15 -> "F"
-                else -> p.toString()
-            }
+            val periodLabel = TodayScheduleWidget.getPeriodCode(p)
 
             canvas.drawText(periodLabel, leftMargin / 2, cy, periodTextPaint)
             canvas.drawLine(leftMargin, yTop, leftMargin + gridWidth, yTop, gridLinePaint)
 
-            if (p == totalPeriods) {
+            if (pIndex == totalPeriods - 1) {
                 canvas.drawLine(leftMargin, yBottom, leftMargin + gridWidth, yBottom, gridLinePaint)
             }
         }
@@ -164,12 +159,12 @@ object WeeklyGridBitmapRenderer {
         for (course in weekCourses) {
             val dayIdx = course.dayOfWeek - 1
             if (dayIdx in 0 until daysCount) {
-                val startP = course.startPeriod.coerceIn(1, totalPeriods)
-                val endP = course.endPeriod.coerceIn(startP, totalPeriods)
+                val startP = course.startPeriod.coerceIn(minPeriod, maxPeriodToDisplay)
+                val endP = course.endPeriod.coerceIn(startP, maxPeriodToDisplay)
                 val span = endP - startP + 1
 
                 val cardLeft = leftMargin + dayIdx * colWidth + 4f
-                val cardTop = topMargin + (startP - 1) * rowHeight + 4f
+                val cardTop = topMargin + (startP - minPeriod) * rowHeight + 4f
                 val cardRight = cardLeft + colWidth - 8f
                 val cardBottom = cardTop + span * rowHeight - 8f
 
