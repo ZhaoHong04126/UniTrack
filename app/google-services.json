@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "742695547810-ubp5a70n1rq118vb4gphtn7b4eaiom57.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.unitrack.app",
+            "certificate_hash": "9b7056baecb029c41d9bbce3cb0955871c0835e1"
+          }
+        },
+        {
           "client_id": "742695547810-74oes8t8piajd7uctvobfbcc2ttg93d7.apps.googleusercontent.com",
           "client_type": 3
         }

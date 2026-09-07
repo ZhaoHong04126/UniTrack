@@ -11,7 +11,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
@@ -28,7 +27,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -114,7 +112,17 @@ fun AddEditCourseDialog(
     var activeTimePickerSlotIndex by remember { mutableStateOf<Int?>(null) }
     var isPickingStartTime by remember { mutableStateOf(true) }
 
-    var creditsText by remember { mutableStateOf(initialCourse?.credits?.toString() ?: "3.0") }
+    var creditsText by remember {
+        mutableStateOf(
+            initialCourse?.let {
+                if (it.credits == it.credits.toInt().toDouble() || (it.credits * 2).toInt().toDouble() == it.credits * 2) {
+                    String.format(Locale.US, "%.1f", it.credits)
+                } else {
+                    it.credits.toString()
+                }
+            } ?: ""
+        )
+    }
     var category by remember { mutableStateOf(initialCourse?.category) }
     var customCategoryName by remember { mutableStateOf(initialCourse?.customCategory ?: "") }
     var requirementType by remember { mutableStateOf(initialCourse?.requirementType) }
@@ -129,6 +137,10 @@ fun AddEditCourseDialog(
     var notes by remember { mutableStateOf(initialCourse?.notes ?: "") }
 
     var otherInfoExpanded by remember { mutableStateOf(false) }
+    var creditsDropdownExpanded by remember { mutableStateOf(false) }
+    val creditOptions = remember {
+        (0..24).map { it * 0.5 }
+    }
     var categoryDropdownExpanded by remember { mutableStateOf(false) }
     var requirementTypeDropdownExpanded by remember { mutableStateOf(false) }
     var subcategoryDropdownExpanded by remember { mutableStateOf(false) }
@@ -344,15 +356,54 @@ fun AddEditCourseDialog(
                                 )
                             }
 
-                            OutlinedTextField(
-                                value = creditsText,
-                                onValueChange = { creditsText = it },
-                                label = { Text("學分數") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                singleLine = true,
-                                shape = RoundedCornerShape(10.dp),
+                            ExposedDropdownMenuBox(
+                                expanded = creditsDropdownExpanded,
+                                onExpandedChange = { creditsDropdownExpanded = !creditsDropdownExpanded },
                                 modifier = Modifier.fillMaxWidth()
-                            )
+                            ) {
+                                OutlinedTextField(
+                                    value = creditsText.ifBlank { "請選擇學分" },
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text("學分數") },
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = if (creditsText.isBlank()) {
+                                        OutlinedTextFieldDefaults.colors(
+                                            unfocusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                            focusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                        )
+                                    } else {
+                                        OutlinedTextFieldDefaults.colors()
+                                    },
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = creditsDropdownExpanded) },
+                                    modifier = Modifier
+                                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                                        .fillMaxWidth()
+                                )
+                                ExposedDropdownMenu(
+                                    expanded = creditsDropdownExpanded,
+                                    onDismissRequest = { creditsDropdownExpanded = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("未指定", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                        onClick = {
+                                            creditsText = ""
+                                            creditsDropdownExpanded = false
+                                        }
+                                    )
+                                    creditOptions.forEach { opt ->
+                                        val optStr = String.format(Locale.US, "%.1f", opt)
+                                        DropdownMenuItem(
+                                            text = { Text(optStr) },
+                                            onClick = {
+                                                creditsText = optStr
+                                                creditsDropdownExpanded = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -866,7 +917,7 @@ fun AddEditCourseDialog(
                             return@Button
                         }
 
-                        val credits = creditsText.toDoubleOrNull() ?: 3.0
+                        val credits = creditsText.toDoubleOrNull() ?: 0.0
                         val matchedGeneralSubtype = GeneralEduSubtype.entries.firstOrNull { it.label == subcategoryText.trim() } ?: GeneralEduSubtype.NONE
                         val cleanSubcategory = subcategoryText.trim()
 

@@ -9,6 +9,7 @@ import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.NoCredentialException
 import com.example.data.model.AuthProvider
 import com.example.data.model.AuthState
 import com.example.data.model.UserProfile
@@ -144,8 +145,13 @@ class AuthRepository(private val context: Context) {
             Result.failure(Exception("已取消 Google 登入"))
         } catch (e: Exception) {
             Log.e(tag, "Google Sign-In failed", e)
-            _authState.value = AuthState.Error(e.localizedMessage ?: "Google 登入失敗")
-            Result.failure(e)
+            val friendlyMsg = when {
+                e is NoCredentialException || e.message?.contains("No credentials available", ignoreCase = true) == true ->
+                    "Google 登入失敗：尚未在 Firebase Console 註冊此電腦的 SHA-1 指紋，或手機尚未登入 Google 帳號"
+                else -> e.localizedMessage ?: "Google 登入失敗"
+            }
+            _authState.value = AuthState.Error(friendlyMsg)
+            Result.failure(Exception(friendlyMsg, e))
         }
     }
 
