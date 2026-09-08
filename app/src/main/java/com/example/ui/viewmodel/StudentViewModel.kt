@@ -447,12 +447,23 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             db.notificationDao()
         )
         viewModelScope.launch {
-            repository.seedInitialDataIfEmpty()
+            if (currentUser.value == null) {
+                repository.seedInitialDataIfEmpty()
+            }
             checkAndGenerateSmartNotifications()
         }
+        var lastSyncedUid: String? = null
+        var lastSyncedTime = 0L
         viewModelScope.launch {
             currentUser.collect { profile ->
                 if (profile != null) {
+                    val now = System.currentTimeMillis()
+                    if (lastSyncedUid == profile.uid && (now - lastSyncedTime) < 10_000L) {
+                        return@collect
+                    }
+                    lastSyncedUid = profile.uid
+                    lastSyncedTime = now
+
                     val lastUid = prefs.getString("last_logged_in_uid", null)
                     if (lastUid != null && lastUid != profile.uid) {
                         repository.clearAllData()
@@ -2235,7 +2246,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             val targetDate = java.time.LocalDate.parse(dateStr, formatter)
             val dayOfWeek = targetDate.dayOfWeek.value // 1=Mon .. 7=Sun
 
-            val sem = targetSemester ?: graduationPlan.value.currentSemester.ifBlank { "114-1" }
+            val sem = targetSemester ?: graduationPlan.value.currentSemester.ifBlank { DefaultData.getCurrentAcademicSemester() }
             val startDateStr = getSemesterStartDate(sem)
             val startFormatter = java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd")
             val startDate = java.time.LocalDate.parse(startDateStr, startFormatter)
@@ -2268,7 +2279,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         return try {
             val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")
             val targetDate = java.time.LocalDate.parse(dateStr, formatter)
-            val sem = targetSemester ?: graduationPlan.value.currentSemester.ifBlank { "114-1" }
+            val sem = targetSemester ?: graduationPlan.value.currentSemester.ifBlank { DefaultData.getCurrentAcademicSemester() }
             val startDateStr = getSemesterStartDate(sem)
             val startFormatter = java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd")
             val startDate = java.time.LocalDate.parse(startDateStr, startFormatter)

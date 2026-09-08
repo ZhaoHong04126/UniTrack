@@ -64,7 +64,7 @@ fun DashboardScreen(
         Triple(available, baseDailyBudget, remainingDays)
     }
 
-    val currentSemester = plan.currentSemester.ifBlank { "114-1" }
+    val currentSemester = plan.currentSemester.ifBlank { com.example.data.local.DefaultData.getCurrentAcademicSemester() }
     val semesterStatus = remember(currentSemester, semesterTimeConfigVersion) {
         viewModel.getSemesterScheduleStatus(currentSemester)
     }
@@ -109,7 +109,7 @@ fun DashboardScreen(
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
                         ) {
                             Text(
-                                text = "${plan.currentSemester.ifBlank { "114-1" }} 學期",
+                                text = "${plan.currentSemester.ifBlank { com.example.data.local.DefaultData.getCurrentAcademicSemester() }} 學期",
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.primary,
@@ -178,7 +178,7 @@ fun DashboardScreen(
 
         when (semesterStatus) {
             is SemesterScheduleStatus.NotStarted -> {
-                item {
+                item(key = "semester_not_started") {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
@@ -222,7 +222,7 @@ fun DashboardScreen(
                 }
             }
             is SemesterScheduleStatus.Ended -> {
-                item {
+                item(key = "semester_ended") {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
@@ -268,7 +268,7 @@ fun DashboardScreen(
             is SemesterScheduleStatus.InSession -> {
 
                 if (todayClasses.isEmpty()) {
-                    item {
+                    item(key = "empty_today_classes") {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(16.dp),
@@ -312,7 +312,7 @@ fun DashboardScreen(
                     }
                 } else if (activeClasses.isEmpty()) {
                     // 今日課程皆已結束
-                    item {
+                    item(key = "all_classes_ended") {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(16.dp),
@@ -355,7 +355,7 @@ fun DashboardScreen(
                         }
                     }
                 } else {
-                    items(activeClasses) { course ->
+                    items(activeClasses, key = { it.id }) { course ->
                         val isOngoing = viewModel.isCourseOngoingToday(course, nowMinutes)
                         TodayCourseItemCard(course = course, isOngoing = isOngoing)
                     }

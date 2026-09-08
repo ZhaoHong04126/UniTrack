@@ -46,7 +46,7 @@ fun WidgetSettingsScreen(
 
     var selectedPreviewTab by remember { mutableIntStateOf(0) }
 
-    val currentSemester = plan.currentSemester.ifBlank { "114-1" }
+    val currentSemester = plan.currentSemester.ifBlank { com.example.data.local.DefaultData.getCurrentAcademicSemester() }
     val currentStartDateStr = remember(currentSemester, semesterTimeConfigVersion) {
         viewModel.getSemesterStartDate(currentSemester)
     }

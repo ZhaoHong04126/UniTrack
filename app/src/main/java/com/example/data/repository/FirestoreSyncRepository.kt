@@ -334,12 +334,10 @@ class FirestoreSyncRepository(
                         downloadedCourses.add(course)
                     }
                 }
-                courseDao.deleteAllCourses()
-                if (downloadedCourses.isNotEmpty()) {
-                    courseDao.insertCourses(downloadedCourses)
-                }
+                // 2. 下載 Courses（使用原子事務同步，絕不清空本地表避免 UI 閃爍）
+                courseDao.syncAllCourses(downloadedCourses)
 
-                // 3. 下載 Thresholds（先清空本機門檻）
+                // 3. 下載 Thresholds（使用原子事務同步）
                 val thresholdsSnapshot = userDocRef.collection("thresholds").get().await()
                 val downloadedThresholds = mutableListOf<GraduationThreshold>()
                 if (!thresholdsSnapshot.isEmpty) {
@@ -357,12 +355,9 @@ class FirestoreSyncRepository(
                         downloadedThresholds.add(t)
                     }
                 }
-                graduationDao.deleteAllThresholds()
-                if (downloadedThresholds.isNotEmpty()) {
-                    graduationDao.insertThresholds(downloadedThresholds)
-                }
+                graduationDao.syncAllThresholds(downloadedThresholds)
 
-                // 4. 下載 Expenses（先清空本機記帳明細）
+                // 4. 下載 Expenses（使用原子事務同步）
                 val expensesSnapshot = userDocRef.collection("expenses").get().await()
                 val downloadedExpenses = mutableListOf<ExpenseRecord>()
                 if (!expensesSnapshot.isEmpty) {
@@ -389,21 +384,19 @@ class FirestoreSyncRepository(
                         downloadedExpenses.add(exp)
                     }
                 }
-                expenseDao.deleteAllExpenses()
-                if (downloadedExpenses.isNotEmpty()) {
-                    expenseDao.insertExpenses(downloadedExpenses)
-                }
+                expenseDao.syncAllExpenses(downloadedExpenses)
 
-                // 5. 下載 Budgets（先清空本機預算設定）
+                // 5. 下載 Budgets（使用原子事務同步）
                 val budgetsSnapshot = userDocRef.collection("budgets").get().await()
-                expenseDao.deleteAllBudgets()
+                val downloadedBudgets = mutableListOf<MonthlyBudget>()
                 if (!budgetsSnapshot.isEmpty) {
                     for (doc in budgetsSnapshot.documents) {
                         val ym = doc.getString("yearMonth") ?: doc.id
                         val amount = doc.getDouble("budgetAmount") ?: 12000.0
-                        expenseDao.setBudget(MonthlyBudget(yearMonth = ym, budgetAmount = amount))
+                        downloadedBudgets.add(MonthlyBudget(yearMonth = ym, budgetAmount = amount))
                     }
                 }
+                expenseDao.syncAllBudgets(downloadedBudgets)
 
                 // 6. 下載 Custom Accounts (包含排序與初始餘額)
                 val accountsSnapshot = userDocRef.collection("profile").document("custom_accounts").get().await()

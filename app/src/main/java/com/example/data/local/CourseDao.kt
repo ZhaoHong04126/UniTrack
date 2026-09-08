@@ -45,4 +45,18 @@ interface CourseDao {
 
     @Query("DELETE FROM courses")
     suspend fun deleteAllCourses()
+
+    @Transaction
+    suspend fun syncAllCourses(downloadedCourses: List<Course>) {
+        val downloadedIds = downloadedCourses.map { it.id }.toSet()
+        val localCourses = getAllCoursesOnce()
+        for (local in localCourses) {
+            if (local.id !in downloadedIds) {
+                deleteCourse(local)
+            }
+        }
+        if (downloadedCourses.isNotEmpty()) {
+            insertCourses(downloadedCourses)
+        }
+    }
 }

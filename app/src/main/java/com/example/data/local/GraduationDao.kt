@@ -40,4 +40,18 @@ interface GraduationDao {
 
     @Query("DELETE FROM graduation_thresholds")
     suspend fun deleteAllThresholds()
+
+    @Transaction
+    suspend fun syncAllThresholds(downloadedThresholds: List<GraduationThreshold>) {
+        val downloadedIds = downloadedThresholds.map { it.id }.toSet()
+        val local = getAllThresholdsOnce()
+        for (t in local) {
+            if (t.id !in downloadedIds) {
+                deleteThreshold(t)
+            }
+        }
+        if (downloadedThresholds.isNotEmpty()) {
+            insertThresholds(downloadedThresholds)
+        }
+    }
 }

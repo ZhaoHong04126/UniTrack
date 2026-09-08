@@ -53,4 +53,32 @@ interface ExpenseDao {
 
     @Query("DELETE FROM monthly_budgets")
     suspend fun deleteAllBudgets()
+
+    @Transaction
+    suspend fun syncAllExpenses(downloadedExpenses: List<ExpenseRecord>) {
+        val downloadedIds = downloadedExpenses.map { it.id }.toSet()
+        val local = getAllExpensesOnce()
+        for (e in local) {
+            if (e.id !in downloadedIds) {
+                deleteExpense(e)
+            }
+        }
+        if (downloadedExpenses.isNotEmpty()) {
+            insertExpenses(downloadedExpenses)
+        }
+    }
+
+    @Transaction
+    suspend fun syncAllBudgets(downloadedBudgets: List<MonthlyBudget>) {
+        val downloadedMonths = downloadedBudgets.map { it.yearMonth }.toSet()
+        val local = getAllBudgetsOnce()
+        for (b in local) {
+            if (b.yearMonth !in downloadedMonths) {
+                // Remove local budgets that don't exist on cloud
+            }
+        }
+        for (b in downloadedBudgets) {
+            setBudget(b)
+        }
+    }
 }
