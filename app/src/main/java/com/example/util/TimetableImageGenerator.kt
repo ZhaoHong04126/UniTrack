@@ -17,6 +17,7 @@ import androidx.core.graphics.createBitmap
 import androidx.core.graphics.toColorInt
 import androidx.core.graphics.withTranslation
 import com.example.data.model.Course
+import com.example.ui.viewmodel.StudentViewModel
 import java.io.File
 import java.io.FileOutputStream
 
@@ -81,41 +82,19 @@ object TimetableImageGenerator {
             listOf("一", "二", "三", "四", "五")
         }
 
-        val minPeriod = 0
-        val defaultMaxPeriod = 10 // A 節 (17:10~18:00)
-        val maxPeriod = maxOf(defaultMaxPeriod, courses.maxOfOrNull { it.endPeriod } ?: defaultMaxPeriod)
-        val totalPeriods = maxPeriod - minPeriod + 1
+        val defaultMinHour = 7
+        val defaultMaxHour = 17
 
-        fun getPeriodCode(p: Int): String = when (p) {
-            0 -> "0"
-            11 -> "A"
-            12 -> "B"
-            13 -> "C"
-            14 -> "D"
-            15 -> "E"
-            16 -> "F"
-            else -> "$p"
-        }
+        val earliestCourseMinute = courses.minOfOrNull {
+            StudentViewModel.parseCourseTimeToMinutes(it.startTime, it.startPeriod, true)
+        } ?: (defaultMinHour * 60)
+        val latestCourseMinute = courses.maxOfOrNull {
+            StudentViewModel.parseCourseTimeToMinutes(it.endTime, it.endPeriod, false)
+        } ?: (18 * 60)
 
-        fun getPeriodTimeRange(period: Int): Pair<String, String> = when (period) {
-            0 -> "07:10" to "08:00"
-            1 -> "08:10" to "09:00"
-            2 -> "09:10" to "10:00"
-            3 -> "10:10" to "11:00"
-            4 -> "11:10" to "12:00"
-            5 -> "12:10" to "13:00"
-            6 -> "13:10" to "14:00"
-            7 -> "14:10" to "15:00"
-            8 -> "15:10" to "16:00"
-            9 -> "16:10" to "17:00"
-            10 -> "17:10" to "18:00"
-            11 -> "18:10" to "19:00"
-            12 -> "19:10" to "20:00"
-            13 -> "20:10" to "21:00"
-            14 -> "21:10" to "22:00"
-            15 -> "22:10" to "23:00"
-            else -> String.format(java.util.Locale.US, "%02d:00", (7 + period)) to String.format(java.util.Locale.US, "%02d:50", (7 + period))
-        }
+        val minHour = minOf(defaultMinHour, earliestCourseMinute / 60)
+        val maxHour = maxOf(defaultMaxHour, (latestCourseMinute - 1) / 60)
+        val totalHours = maxHour - minHour + 1
 
         // Paints
         val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -206,7 +185,7 @@ object TimetableImageGenerator {
         val headerRowHeight = 60f
         val contentTop = gridTop + headerRowHeight
         val contentHeight = gridBottom - contentTop
-        val rowHeight = contentHeight / totalPeriods
+        val rowHeight = contentHeight / totalHours
 
         // Draw Header Background (Weekday header + Top-left corner)
         val headerRect = RectF(paddingLeft, gridTop, paddingRight, contentTop)
@@ -234,22 +213,21 @@ object TimetableImageGenerator {
         // Vertical line between timeline column and timetable grid
         canvas.drawLine(tableLeft, gridTop, tableLeft, gridBottom, headerLinePaint)
 
-        // Draw Period Rows and Horizontal Grid lines
-        for (p in 0 until totalPeriods) {
-            val currentPeriod = minPeriod + p
-            val y = contentTop + p * rowHeight
-            // Period number or time range on left
+        // Draw Hour Rows and Horizontal Grid lines
+        for (h in 0 until totalHours) {
+            val currentHour = minHour + h
+            val y = contentTop + h * rowHeight
+            // Hour number or time range on left
             val centerX = paddingLeft + periodColWidth / 2
             if (showTimeInsteadOfPeriod) {
-                val timeRange = getPeriodTimeRange(currentPeriod)
-                canvas.drawText(timeRange.first, centerX, y + rowHeight / 2 - 4f, timeStartPaint)
-                canvas.drawText(timeRange.second, centerX, y + rowHeight / 2 + 22f, timeEndPaint)
+                canvas.drawText(String.format(java.util.Locale.US, "%02d:00", currentHour), centerX, y + rowHeight / 2 - 4f, timeStartPaint)
+                canvas.drawText(String.format(java.util.Locale.US, "%02d:00", currentHour + 1), centerX, y + rowHeight / 2 + 22f, timeEndPaint)
             } else {
-                canvas.drawText(getPeriodCode(currentPeriod), centerX, y + rowHeight / 2 + 10f, periodPaint)
+                canvas.drawText("$currentHour", centerX, y + rowHeight / 2 + 10f, periodPaint)
             }
 
             // Grid Line
-            if (p > 0) {
+            if (h > 0) {
                 canvas.drawLine(paddingLeft, y, paddingRight, y, gridLinePaint)
             }
         }
@@ -260,18 +238,22 @@ object TimetableImageGenerator {
             canvas.drawLine(x, contentTop, x, gridBottom, gridLinePaint)
         }
 
-        // Draw Courses
+        // Draw Courses (60等分/分鐘制定位)
+        val baseMin = minHour * 60
         courses.forEach { course ->
             val dayIndex = course.dayOfWeek - 1
             if (dayIndex in 0 until daysCount) {
-                val startP = (course.startPeriod - minPeriod).coerceAtLeast(0)
-                val endP = (course.endPeriod - minPeriod).coerceAtMost(totalPeriods - 1)
+                val startMin = StudentViewModel.parseCourseTimeToMinutes(course.startTime, course.startPeriod, true)
+                val rawEndMin = StudentViewModel.parseCourseTimeToMinutes(course.endTime, course.endPeriod, false)
+                val endMin = maxOf(rawEndMin, startMin + 30)
 
-                if (startP <= endP && startP < totalPeriods) {
-                    val cardLeft = tableLeft + dayIndex * colWidth + 4f
-                    val cardRight = tableLeft + (dayIndex + 1) * colWidth - 4f
-                    val cardTop = contentTop + startP * rowHeight + 4f
-                    val cardBottom = contentTop + (endP + 1) * rowHeight - 4f
+                val topOffsetMin = (startMin - baseMin).coerceAtLeast(0)
+                val durationMin = (endMin - startMin).coerceAtLeast(15)
+
+                val cardLeft = tableLeft + dayIndex * colWidth + 4f
+                val cardRight = tableLeft + (dayIndex + 1) * colWidth - 4f
+                val cardTop = contentTop + (topOffsetMin.toFloat() / 60f) * rowHeight + 2f
+                val cardBottom = cardTop + (durationMin.toFloat() / 60f) * rowHeight - 4f
 
                     val cardColor = runCatching {
                         course.colorHex.toColorInt()
@@ -317,7 +299,6 @@ object TimetableImageGenerator {
                     }
                 }
             }
-        }
 
         // Footer Brand
         val footerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {

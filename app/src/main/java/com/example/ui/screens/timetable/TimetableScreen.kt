@@ -843,46 +843,29 @@ private fun WeeklyTimetableGrid(
     dates: List<String>? = null
 ) {
     val scrollState = rememberScrollState()
-    val minPeriod = 0
-    val defaultMaxPeriod = 10 // A 節 (17:10~18:00)
-    val maxEndPeriod = courses.maxOfOrNull { it.endPeriod } ?: defaultMaxPeriod
-    val maxPeriodToDisplay = remember(maxEndPeriod) {
-        maxOf(defaultMaxPeriod, maxEndPeriod)
+    val defaultMinHour = 7
+    val defaultMaxHour = 17 // 17:00 ~ 18:00，預設覆蓋一般日間課程 0~10 節
+
+    val earliestCourseMinute = remember(courses) {
+        courses.minOfOrNull {
+            StudentViewModel.parseCourseTimeToMinutes(it.startTime, it.startPeriod, true)
+        } ?: (defaultMinHour * 60)
     }
-    val totalPeriods = maxPeriodToDisplay - minPeriod + 1
+    val latestCourseMinute = remember(courses) {
+        courses.maxOfOrNull {
+            StudentViewModel.parseCourseTimeToMinutes(it.endTime, it.endPeriod, false)
+        } ?: (18 * 60)
+    }
+
+    val minHour = remember(earliestCourseMinute) {
+        minOf(defaultMinHour, earliestCourseMinute / 60)
+    }
+    val maxHour = remember(latestCourseMinute) {
+        maxOf(defaultMaxHour, (latestCourseMinute - 1) / 60)
+    }
+    val totalHours = maxHour - minHour + 1
     val hourHeight = 60.dp
     val timeColumnWidth = if (showTimeInsteadOfPeriod) 46.dp else 36.dp
-
-    fun getPeriodCode(period: Int): String = when (period) {
-        0 -> "0"
-        11 -> "A"
-        12 -> "B"
-        13 -> "C"
-        14 -> "D"
-        15 -> "E"
-        16 -> "F"
-        else -> "$period"
-    }
-
-    fun getPeriodTimeRange(period: Int): Pair<String, String> = when (period) {
-        0 -> "07:10" to "08:00"
-        1 -> "08:10" to "09:00"
-        2 -> "09:10" to "10:00"
-        3 -> "10:10" to "11:00"
-        4 -> "11:10" to "12:00"
-        5 -> "12:10" to "13:00"
-        6 -> "13:10" to "14:00"
-        7 -> "14:10" to "15:00"
-        8 -> "15:10" to "16:00"
-        9 -> "16:10" to "17:00"
-        10 -> "17:10" to "18:00"
-        11 -> "18:20" to "19:10"
-        12 -> "19:15" to "20:05"
-        13 -> "20:10" to "21:00"
-        14 -> "21:05" to "21:55"
-        15 -> "22:00" to "22:50"
-        else -> String.format(Locale.US, "%02d:00", (7 + period)) to String.format(Locale.US, "%02d:50", (7 + period))
-    }
 
     Column(
         modifier = modifier
@@ -898,7 +881,7 @@ private fun WeeklyTimetableGrid(
                 .padding(vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Mode toggle corner button (一鍵循環切換四模式：各週節次 -> 各週時間 -> 整學期節次 -> 整學期時間)
+            // Mode toggle corner button (一鍵循環切換四模式：各週小時 -> 各週時間 -> 整學期小時 -> 整學期時間)
             Box(
                 modifier = Modifier
                     .width(timeColumnWidth)
@@ -913,9 +896,9 @@ private fun WeeklyTimetableGrid(
                     else -> Icons.Default.Schedule
                 }
                 val desc = when {
-                    selectedWeek > 0 && !showTimeInsteadOfPeriod -> "各週節次模式"
+                    selectedWeek > 0 && !showTimeInsteadOfPeriod -> "各週模式"
                     selectedWeek > 0 && showTimeInsteadOfPeriod -> "各週時間模式"
-                    selectedWeek == 0 && !showTimeInsteadOfPeriod -> "整學期節次模式"
+                    selectedWeek == 0 && !showTimeInsteadOfPeriod -> "整學期模式"
                     else -> "整學期時間模式"
                 }
                 Icon(
@@ -963,19 +946,19 @@ private fun WeeklyTimetableGrid(
                 .fillMaxWidth()
                 .verticalScroll(scrollState)
         ) {
-            // Timeline Period Numbers / Time Column
+            // Timeline Hour Numbers / Time Column (7, 8, 9, 10...)
             Box(
                 modifier = Modifier
                     .width(timeColumnWidth)
-                    .height(hourHeight * totalPeriods)
+                    .height(hourHeight * totalHours)
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
                     .clip(RoundedCornerShape(topStart = 0.dp, bottomStart = 12.dp))
             ) {
-                for (p in minPeriod..maxPeriodToDisplay) {
-                    val periodIndex = p - minPeriod
+                for (h in minHour..maxHour) {
+                    val hourIndex = h - minHour
                     Box(
                         modifier = Modifier
-                            .offset(y = hourHeight * periodIndex)
+                            .offset(y = hourHeight * hourIndex)
                             .width(timeColumnWidth)
                             .height(hourHeight)
                             .border(
@@ -985,14 +968,13 @@ private fun WeeklyTimetableGrid(
                         contentAlignment = Alignment.Center
                     ) {
                         if (showTimeInsteadOfPeriod) {
-                            val timeRange = getPeriodTimeRange(p)
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center,
                                 modifier = Modifier.fillMaxHeight().padding(horizontal = 2.dp)
                             ) {
                                 Text(
-                                    text = timeRange.first,
+                                    text = String.format(Locale.US, "%02d:00", h),
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold
@@ -1000,7 +982,7 @@ private fun WeeklyTimetableGrid(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
-                                    text = timeRange.second,
+                                    text = String.format(Locale.US, "%02d:00", h + 1),
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         fontSize = 8.5.sp,
                                         fontWeight = FontWeight.Normal
@@ -1010,13 +992,12 @@ private fun WeeklyTimetableGrid(
                             }
                         } else {
                             Text(
-                                text = getPeriodCode(p),
+                                text = "$h",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.SemiBold
                                 ),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                modifier = Modifier.padding(top = 4.dp)
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                             )
                         }
                     }
@@ -1028,12 +1009,12 @@ private fun WeeklyTimetableGrid(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(hourHeight * totalPeriods)
+                        .height(hourHeight * totalHours)
                 ) {
-                    // Background horizontal grid lines for each period
+                    // Background horizontal grid lines for each hour
                     Column {
-                        repeat(totalPeriods) { pIndex ->
-                            val period = minPeriod + pIndex
+                        repeat(totalHours) { hIndex ->
+                            val hour = minHour + hIndex
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -1043,30 +1024,43 @@ private fun WeeklyTimetableGrid(
                                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
                                     )
                                     .clickable {
+                                        val period = when (hour) {
+                                            in 7..22 -> hour - 7
+                                            else -> 1
+                                        }
                                         onEmptyCellClick?.invoke(day, period)
                                     }
                             )
                         }
                     }
 
-                    // Courses for this day
+                    // Courses for this day (60等分/分鐘制定位)
                     val dayCourses = courses.filter { it.dayOfWeek == day }
+                    val baseMin = minHour * 60
                     dayCourses.forEach { course ->
-                        val startPeriodOffset = (course.startPeriod - minPeriod).coerceAtLeast(0)
-                        val duration = (course.endPeriod - course.startPeriod + 1).coerceAtLeast(1)
+                        val startMin = StudentViewModel.parseCourseTimeToMinutes(course.startTime, course.startPeriod, true)
+                        val rawEndMin = StudentViewModel.parseCourseTimeToMinutes(course.endTime, course.endPeriod, false)
+                        val endMin = maxOf(rawEndMin, startMin + 30)
+
+                        val topOffsetMinutes = (startMin - baseMin).coerceAtLeast(0)
+                        val durationMinutes = (endMin - startMin).coerceAtLeast(15)
+
+                        val topOffsetDp = hourHeight * (topOffsetMinutes.toFloat() / 60f)
+                        val cardHeightDp = hourHeight * (durationMinutes.toFloat() / 60f)
+
                         val courseColor = runCatching { Color(course.colorHex.toColorInt()) }
                             .getOrDefault(SapphirePrimary)
 
                         Box(
                             modifier = Modifier
-                                .padding(horizontal = 2.dp, vertical = 2.dp)
-                                .offset(y = hourHeight * startPeriodOffset)
+                                .padding(horizontal = 2.dp)
+                                .offset(y = topOffsetDp + 1.dp)
                                 .fillMaxWidth()
-                                .height(hourHeight * duration - 4.dp)
+                                .height((cardHeightDp - 2.dp).coerceAtLeast(16.dp))
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(courseColor)
                                 .clickable { onCourseClick(course) }
-                                .padding(horizontal = 5.dp, vertical = 5.dp)
+                                .padding(horizontal = 5.dp, vertical = 4.dp)
                         ) {
                             Column(
                                 horizontalAlignment = Alignment.Start,
@@ -1093,10 +1087,10 @@ private fun WeeklyTimetableGrid(
                                         lineHeight = 13.sp
                                     ),
                                     color = Color.White,
-                                    maxLines = if (duration > 1) 3 else 1,
+                                    maxLines = if (durationMinutes > 60) 4 else 2,
                                     overflow = TextOverflow.Ellipsis
                                 )
-                                if (course.teacher.isNotBlank() && duration > 1) {
+                                if (course.teacher.isNotBlank() && durationMinutes > 60) {
                                     Text(
                                         text = course.teacher,
                                         style = MaterialTheme.typography.labelSmall.copy(

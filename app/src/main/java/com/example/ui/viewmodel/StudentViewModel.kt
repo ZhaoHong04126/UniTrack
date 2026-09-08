@@ -268,32 +268,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun parseCourseTimeToMinutes(timeStr: String, fallbackPeriod: Int, isStart: Boolean): Int {
-        val parts = timeStr.split(":")
-        if (parts.size == 2) {
-            val h = parts[0].toIntOrNull()
-            val m = parts[1].toIntOrNull()
-            if (h != null && m != null) return h * 60 + m
-        }
-        val periodMap = mapOf(
-            0 to (7 * 60 + 10 to 8 * 60),
-            1 to (8 * 60 + 10 to 9 * 60),
-            2 to (9 * 60 + 10 to 10 * 60),
-            3 to (10 * 60 + 10 to 11 * 60),
-            4 to (11 * 60 + 10 to 12 * 60),
-            5 to (12 * 60 + 10 to 13 * 60),
-            6 to (13 * 60 + 10 to 14 * 60),
-            7 to (14 * 60 + 10 to 15 * 60),
-            8 to (15 * 60 + 10 to 16 * 60),
-            9 to (16 * 60 + 10 to 17 * 60),
-            10 to (17 * 60 + 10 to 18 * 60),
-            11 to (18 * 60 + 20 to 19 * 60 + 10),
-            12 to (19 * 60 + 15 to 20 * 60 + 5),
-            13 to (20 * 60 + 10 to 21 * 60),
-            14 to (21 * 60 + 5 to 21 * 60 + 55),
-            15 to (22 * 60 to 22 * 60 + 50)
-        )
-        val pair = periodMap[fallbackPeriod] ?: (8 * 60 to 9 * 60)
-        return if (isStart) pair.first else pair.second
+        return Companion.parseCourseTimeToMinutes(timeStr, fallbackPeriod, isStart)
     }
 
     fun getCurrentMinutes(): Int {
@@ -2292,6 +2267,37 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             }
         } catch (_: Exception) {
             null
+        }
+    }
+
+    companion object {
+        fun parseCourseTimeToMinutes(timeStr: String, fallbackPeriod: Int, isStart: Boolean): Int {
+            val parts = timeStr.split(":")
+            if (parts.size == 2) {
+                val h = parts[0].toIntOrNull()
+                val m = parts[1].toIntOrNull()
+                if (h != null && m != null) return h * 60 + m
+            }
+            val periodMap = mapOf(
+                0 to (7 * 60 + 10 to 8 * 60),
+                1 to (8 * 60 + 10 to 9 * 60),
+                2 to (9 * 60 + 10 to 10 * 60),
+                3 to (10 * 60 + 10 to 11 * 60),
+                4 to (11 * 60 + 10 to 12 * 60),
+                5 to (12 * 60 + 10 to 13 * 60),
+                6 to (13 * 60 + 10 to 14 * 60),
+                7 to (14 * 60 + 10 to 15 * 60),
+                8 to (15 * 60 + 10 to 16 * 60),
+                9 to (16 * 60 + 10 to 17 * 60),
+                10 to (17 * 60 + 10 to 18 * 60),
+                11 to (18 * 60 + 20 to 19 * 60 + 10),
+                12 to (19 * 60 + 15 to 20 * 60 + 5),
+                13 to (20 * 60 + 10 to 21 * 60),
+                14 to (21 * 60 + 5 to 21 * 60 + 55),
+                15 to (22 * 60 to 22 * 60 + 50)
+            )
+            val pair = periodMap[fallbackPeriod] ?: (8 * 60 to 9 * 60)
+            return if (isStart) pair.first else pair.second
         }
     }
 }
