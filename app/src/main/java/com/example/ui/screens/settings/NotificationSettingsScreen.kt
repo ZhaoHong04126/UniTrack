@@ -695,6 +695,37 @@ fun NotificationSettingsScreen(
                 )
             }
 
+            // 4. 系統推播功能即時測試
+            SectionCard(title = "推播功能測試", icon = Icons.Default.NotificationsActive, iconTint = SapphirePrimary) {
+                Text(
+                    text = "點擊下方按鈕可立即發送一則系統測試通知至手機通知列，確認通知功能與權限是否正常運作。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Button(
+                    onClick = {
+                        viewModel.sendTestSystemNotification()
+                        Toast.makeText(context, "已發送測試推播通知，請查看手機頂部通知列！", Toast.LENGTH_SHORT).show()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = SapphirePrimary),
+                    enabled = preferences.masterEnabled
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.NotificationsActive,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "發送系統推播測試通知",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
         }
     }

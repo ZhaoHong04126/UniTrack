@@ -12,6 +12,7 @@ import com.example.data.repository.AuthRepository
 import com.example.data.repository.FirestoreSyncRepository
 import com.example.data.repository.StudentRepository
 import com.example.util.NotificationHelper
+import com.example.util.NotificationScheduler
 import com.example.widget.WidgetUpdateHelper
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -644,6 +645,14 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                 checkExpenseBudgetAlert(_selectedExpenseMonth.value)
             }
         }
+        if (preferences.masterEnabled && preferences.courseReminderEnabled) {
+            checkAndGenerateSmartNotifications()
+        } else {
+            viewModelScope.launch {
+                val courses = repository.getAllCoursesOnce()
+                NotificationScheduler.cancelCourseReminders(getApplication(), courses)
+            }
+        }
     }
 
     fun sendNotification(
@@ -716,7 +725,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         // 1. 記帳生活預算智能警示檢測
         checkExpenseBudgetAlert(_selectedExpenseMonth.value)
 
-        // 2. 今日課表上課提醒檢測
+        // 2. 今日課表上課提醒檢測與定時推播註冊
         val notifPrefs = _notificationPreferences.value
         if (notifPrefs.masterEnabled && notifPrefs.courseReminderEnabled) {
             val courses = repository.getAllCoursesOnce()
@@ -736,8 +745,10 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                 (it.semester == plan.currentSemester || it.semester.isBlank()) && it.dayOfWeek == dayOfWeekToday
             }.sortedBy { it.startPeriod }
 
-            if (todaySemCourses.isNotEmpty()) {
-                val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+            val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+
+            // 2.1 每日晨間課表摘要推播
+            if (notifPrefs.courseDailySummaryEnabled && todaySemCourses.isNotEmpty()) {
                 val todayKey = "notified_today_courses_$todayStr"
                 if (!prefs.getBoolean(todayKey, false)) {
                     prefs.edit { putBoolean(todayKey, true) }
@@ -747,10 +758,40 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                         message = "今日共有 ${todaySemCourses.size} 門課程：$summary",
                         type = NotificationType.COURSE,
                         actionRoute = "timetable",
-                        sendSystemPush = false
+                        sendSystemPush = true
                     )
                 }
             }
+
+            // 2.2 即將上課推播檢測 (當下開啟 App 時，若有在課前提醒時間內的課程即刻推播)
+            val nowMin = getCurrentMinutes()
+            val reminderLeadMin = notifPrefs.courseReminderMinutesBefore.coerceAtLeast(5)
+            for (course in todaySemCourses) {
+                val startMin = parseCourseTimeToMinutes(course.startTime, course.startPeriod, true)
+                val diff = startMin - nowMin
+                if (diff in 0..reminderLeadMin) {
+                    val courseNotifKey = "notified_course_imminent_${course.id}_${todayStr}"
+                    if (!prefs.getBoolean(courseNotifKey, false)) {
+                        prefs.edit { putBoolean(courseNotifKey, true) }
+                        val locStr = if (course.location.isNotBlank()) "，教室：${course.location}" else ""
+                        val timeStr = course.startTime.ifBlank { "第 ${course.startPeriod} 節" }
+                        sendNotification(
+                            title = "⏰ 上課提醒：${course.name}",
+                            message = "即將於 $timeStr 開始上課$locStr，請提早準備前往！",
+                            type = NotificationType.COURSE,
+                            actionRoute = "timetable",
+                            sendSystemPush = true
+                        )
+                    }
+                }
+            }
+
+            // 2.3 透過 AlarmManager 為今日未開始之課程排定背景推播廣播鬧鐘
+            NotificationScheduler.scheduleCourseReminders(
+                context = getApplication(),
+                courses = todaySemCourses,
+                reminderLeadMinutes = reminderLeadMin
+            )
         }
     }
 
