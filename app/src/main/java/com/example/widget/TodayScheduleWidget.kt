@@ -72,11 +72,26 @@ class TodayScheduleWidget : AppWidgetProvider() {
             }
         }
 
+        fun parseRepeatWeeks(repeatWeeks: String): Set<Int> {
+            if (repeatWeeks.isBlank() || repeatWeeks == "1-18") return (1..18).toSet()
+            return repeatWeeks.split(",").flatMap { part ->
+                val trimmed = part.trim()
+                if (trimmed.contains("-")) {
+                    val range = trimmed.split("-")
+                    val start = range.getOrNull(0)?.trim()?.toIntOrNull()
+                    val end = range.getOrNull(1)?.trim()?.toIntOrNull()
+                    if (start != null && end != null && start <= end) (start..end).toList() else emptyList()
+                } else {
+                    listOfNotNull(trimmed.toIntOrNull())
+                }
+            }.toSet()
+        }
+
         fun isCourseInWeek(course: Course, week: Int): Boolean {
             if (course.repeatMode == "單週") return week % 2 != 0
             if (course.repeatMode == "雙週") return week % 2 == 0
             if (course.repeatMode == "每週" || course.repeatWeeks == "1-18" || course.repeatWeeks.isBlank()) return true
-            val weeks = course.repeatWeeks.split(",").mapNotNull { it.trim().toIntOrNull() }
+            val weeks = parseRepeatWeeks(course.repeatWeeks)
             return week in weeks
         }
 

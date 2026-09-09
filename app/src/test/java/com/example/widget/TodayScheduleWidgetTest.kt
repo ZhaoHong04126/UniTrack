@@ -47,6 +47,25 @@ class TodayScheduleWidgetTest {
         assertFalse(TodayScheduleWidget.isCourseInWeek(courseCustomWeeks, 2))
         assertTrue(TodayScheduleWidget.isCourseInWeek(courseCustomWeeks, 5))
         assertFalse(TodayScheduleWidget.isCourseInWeek(courseCustomWeeks, 6))
+
+        // 使用者回報的情境：指定週次 2..18 週（排除第 1 週）
+        val courseWeeks2to18 = Course(
+            name = "多變量微積分課輔",
+            repeatMode = "第 2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18 週",
+            repeatWeeks = "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18"
+        )
+        assertFalse("第 1 週不應有此課", TodayScheduleWidget.isCourseInWeek(courseWeeks2to18, 1))
+        assertTrue("第 2 週應有此課", TodayScheduleWidget.isCourseInWeek(courseWeeks2to18, 2))
+        assertTrue("第 18 週應有此課", TodayScheduleWidget.isCourseInWeek(courseWeeks2to18, 18))
+    }
+
+    @Test
+    fun testParseRepeatWeeks() {
+        assertEquals((1..18).toSet(), TodayScheduleWidget.parseRepeatWeeks(""))
+        assertEquals((1..18).toSet(), TodayScheduleWidget.parseRepeatWeeks("1-18"))
+        assertEquals((1..8).toSet(), TodayScheduleWidget.parseRepeatWeeks("1-8"))
+        assertEquals((2..18).toSet(), TodayScheduleWidget.parseRepeatWeeks("2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18"))
+        assertEquals(setOf(1, 3, 4, 5, 8), TodayScheduleWidget.parseRepeatWeeks("1,3-5,8"))
     }
 
     @Test

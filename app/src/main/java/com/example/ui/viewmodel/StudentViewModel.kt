@@ -13,6 +13,7 @@ import com.example.data.repository.FirestoreSyncRepository
 import com.example.data.repository.StudentRepository
 import com.example.util.NotificationHelper
 import com.example.util.NotificationScheduler
+import com.example.widget.TodayScheduleWidget
 import com.example.widget.WidgetUpdateHelper
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -2279,12 +2280,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
             val currentCourses = allCourses.value.filter { it.semester == sem && it.dayOfWeek == dayOfWeek }
             currentCourses.filter { course ->
-                if (course.repeatMode == "每週" || course.repeatWeeks == "1-18" || course.repeatWeeks.isBlank()) {
-                    true
-                } else {
-                    val weeks = course.repeatWeeks.split(",").mapNotNull { it.trim().toIntOrNull() }
-                    weekNum in weeks
-                }
+                TodayScheduleWidget.isCourseInWeek(course, weekNum)
             }.sortedWith(compareBy({ it.startPeriod }, { it.startTime }))
         } catch (_: Exception) {
             emptyList()

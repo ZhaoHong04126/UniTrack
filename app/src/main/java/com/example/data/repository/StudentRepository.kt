@@ -267,12 +267,15 @@ class StudentRepository(
                 put("requirementType", c.requirementType.name)
                 put("generalEduSubtype", c.generalEduSubtype.name)
                 put("subcategory", c.subcategory)
+                put("customCategory", c.customCategory)
                 put("semester", c.semester)
                 put("score", c.score ?: JSONObject.NULL)
                 put("letterGrade", c.letterGrade ?: JSONObject.NULL)
                 put("isCompleted", c.isCompleted)
                 put("colorHex", c.colorHex)
                 put("notes", c.notes)
+                put("repeatWeeks", c.repeatWeeks)
+                put("repeatMode", c.repeatMode)
             }
             coursesArray.put(cObj)
         }
@@ -361,12 +364,15 @@ class StudentRepository(
                                 }
                             }.getOrDefault(GeneralEduSubtype.NONE),
                             subcategory = o.optString("subcategory", ""),
+                            customCategory = o.optString("customCategory", ""),
                             semester = o.optString("semester", "113-2"),
                             score = if (o.isNull("score")) null else o.optDouble("score"),
                             letterGrade = if (o.isNull("letterGrade")) null else o.optString("letterGrade"),
                             isCompleted = o.optBoolean("isCompleted", false),
                             colorHex = o.optString("colorHex", "#3B82F6"),
-                            notes = o.optString("notes", "")
+                            notes = o.optString("notes", ""),
+                            repeatWeeks = o.optString("repeatWeeks", "1-18"),
+                            repeatMode = o.optString("repeatMode", "每週")
                         )
                     )
                 }

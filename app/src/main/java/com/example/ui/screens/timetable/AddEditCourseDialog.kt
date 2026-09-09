@@ -38,6 +38,7 @@ import com.example.data.model.CourseRequirementType
 import com.example.data.model.CustomParentCategory
 import com.example.data.model.GeneralEduSubtype
 import com.example.data.model.GraduationPlan
+import com.example.widget.TodayScheduleWidget
 import java.util.Locale
 import java.util.UUID
 
@@ -161,8 +162,7 @@ fun AddEditCourseDialog(
             "09:00" to "10:30"
         }
         val initialWeeks = if (initialCourse != null && initialCourse.repeatWeeks.isNotBlank()) {
-            if (initialCourse.repeatWeeks == "1-18") (1..18).toSet()
-            else initialCourse.repeatWeeks.split(",").mapNotNull { it.trim().toIntOrNull() }.toSet()
+            TodayScheduleWidget.parseRepeatWeeks(initialCourse.repeatWeeks)
         } else {
             (1..18).toSet()
         }
@@ -1136,15 +1136,16 @@ fun AddEditCourseDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    val isCustomWeeks = currentSlot.repeatMode !in listOf("每週", "單週", "雙週")
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
                             text = "指定週次",
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Bold,
-                            color = if (currentSlot.repeatMode.startsWith("第") || currentSlot.repeatMode == "指定週次") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            color = if (isCustomWeeks || currentSlot.repeatMode.startsWith("第") || currentSlot.repeatMode == "指定週次") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = if (currentSlot.repeatMode.startsWith("第")) currentSlot.repeatMode else "例如只上前八週",
+                            text = if (isCustomWeeks || currentSlot.repeatMode.startsWith("第")) currentSlot.repeatMode else "例如只上前八週",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

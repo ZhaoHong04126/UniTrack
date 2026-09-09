@@ -36,6 +36,7 @@ import com.example.data.model.Course
 import com.example.ui.theme.SapphirePrimary
 import com.example.ui.viewmodel.StudentViewModel
 import com.example.util.TimetableImageGenerator
+import com.example.widget.TodayScheduleWidget
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
@@ -1222,11 +1223,7 @@ private fun formatSemesterHeaderLabel(sem: String, admissionSemester: String): S
 }
 
 private fun isCourseInWeek(course: Course, week: Int): Boolean {
-    if (course.repeatMode == "單週") return week % 2 != 0
-    if (course.repeatMode == "雙週") return week % 2 == 0
-    if (course.repeatMode == "每週" || course.repeatWeeks == "1-18" || course.repeatWeeks.isBlank()) return true
-    val weeks = course.repeatWeeks.split(",").mapNotNull { it.trim().toIntOrNull() }
-    return week in weeks
+    return TodayScheduleWidget.isCourseInWeek(course, week)
 }
 
 private fun getWeekDates(startDateStr: String, week: Int, count: Int): List<String>? {

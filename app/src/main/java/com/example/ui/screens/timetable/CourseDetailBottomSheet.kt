@@ -29,6 +29,7 @@ import com.example.data.model.GeneralEduSubtype
 import com.example.ui.theme.EmeraldAccent
 import com.example.ui.theme.RoseAccent
 import com.example.ui.theme.SapphirePrimary
+import com.example.widget.TodayScheduleWidget
 import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -414,16 +415,7 @@ private fun AttendanceTabView(
         // 收集所有符合重複設定的課堂週次與日期
         data class CourseSession(val week: Int, val date: LocalDate)
         val allSessions = (1..totalWeeks).mapNotNull { week ->
-            val isRelevant = if (course.repeatMode == "每週" || course.repeatWeeks == "1-18" || course.repeatWeeks.isBlank()) {
-                true
-            } else if (course.repeatMode == "單週") {
-                week % 2 != 0
-            } else if (course.repeatMode == "雙週") {
-                week % 2 == 0
-            } else {
-                val weeks = course.repeatWeeks.split(",").mapNotNull { it.trim().toIntOrNull() }
-                week in weeks
-            }
+            val isRelevant = TodayScheduleWidget.isCourseInWeek(course, week)
             if (isRelevant) {
                 val mondayOfWeek = mondayOfFirstWeek.plusWeeks((week - 1).toLong())
                 val courseDate = mondayOfWeek.plusDays((course.dayOfWeek - 1).toLong())
