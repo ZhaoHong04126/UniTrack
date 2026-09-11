@@ -38,7 +38,13 @@ fun GradeEntryScreen(
 ) {
     val selectedSemester by viewModel.selectedSemester.collectAsStateWithLifecycle()
     val allSemesters by viewModel.allSemesters.collectAsStateWithLifecycle()
-    val courses by viewModel.currentSemesterCourses.collectAsStateWithLifecycle()
+    val allCurrentCourses by viewModel.currentSemesterCourses.collectAsStateWithLifecycle()
+    val courses = remember(allCurrentCourses) {
+        allCurrentCourses.filter { !it.isTutorial }
+            .groupBy { it.name.trim() }
+            .values
+            .map { list -> list.maxByOrNull { it.credits } ?: list.first() }
+    }
     val plan by viewModel.graduationPlan.collectAsStateWithLifecycle()
     val locale = LocalConfiguration.current.locales[0]
     val focusManager = LocalFocusManager.current

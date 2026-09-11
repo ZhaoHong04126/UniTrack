@@ -129,7 +129,8 @@ class FirestoreSyncRepository(
                             "colorHex" to course.colorHex,
                             "notes" to course.notes,
                             "repeatWeeks" to course.repeatWeeks,
-                            "repeatMode" to course.repeatMode
+                            "repeatMode" to course.repeatMode,
+                            "isTutorial" to course.isTutorial
                         )
                         coursesCol.document(course.id.toString()).set(courseMap, SetOptions.merge()).await()
                     }
@@ -294,38 +295,40 @@ class FirestoreSyncRepository(
                     graduationDao.insertOrUpdatePlan(defaultPlan)
                 }
 
-                // 2. 下載 Courses（先清空本機殘留課程，避免帳號切換或未同步刪除導致資料混合）
+                // 2. 下載 Courses（使用原子事務同步，絕不清空本地表避免 UI 閃爍）
                 val localCoursesMap = courseDao.getAllCoursesOnce().associateBy { it.id }
                 val coursesSnapshot = userDocRef.collection("courses").get().await()
                 val downloadedCourses = mutableListOf<Course>()
                 var coursesNeedBackfill = false
+                var tutorialNeedBackfill = false
                 if (!coursesSnapshot.isEmpty) {
                     for (doc in coursesSnapshot.documents) {
-                        val id = doc.getLong("id") ?: continue
-                        val name = doc.getString("name") ?: continue
-                        val localCourse = localCoursesMap[id]
-
-                        val hasRepeatWeeks = doc.contains("repeatWeeks")
-                        val hasRepeatMode = doc.contains("repeatMode")
-                        if (!hasRepeatWeeks || !hasRepeatMode) {
+                        val docId = doc.id.toLongOrNull() ?: System.currentTimeMillis()
+                        val rawWeeks = doc.getString("repeatWeeks")
+                        val rawMode = doc.getString("repeatMode")
+                        val resolvedRepeatWeeks = if (rawWeeks.isNullOrBlank()) {
                             coursesNeedBackfill = true
-                        }
-
-                        val resolvedRepeatWeeks = if (hasRepeatWeeks) {
-                            doc.getString("repeatWeeks") ?: "1-18"
+                            "1-18"
                         } else {
-                            localCourse?.repeatWeeks ?: "1-18"
+                            rawWeeks
                         }
-
-                        val resolvedRepeatMode = if (hasRepeatMode) {
-                            doc.getString("repeatMode") ?: "每週"
+                        val resolvedRepeatMode = if (rawMode.isNullOrBlank()) {
+                            coursesNeedBackfill = true
+                            "每週"
                         } else {
-                            localCourse?.repeatMode ?: "每週"
+                            rawMode
                         }
+                        val hasTutorialField = doc.contains("isTutorial")
+                        if (!hasTutorialField) {
+                            tutorialNeedBackfill = true
+                        }
+                        val resolvedIsTutorial = doc.getBoolean("isTutorial")
+                            ?: localCoursesMap[docId]?.isTutorial
+                            ?: false
 
                         val course = Course(
-                            id = id,
-                            name = name,
+                            id = docId,
+                            name = doc.getString("name") ?: "",
                             code = doc.getString("code") ?: "",
                             teacher = doc.getString("teacher") ?: "",
                             location = doc.getString("location") ?: "",
@@ -354,7 +357,7 @@ class FirestoreSyncRepository(
                             notes = doc.getString("notes") ?: "",
                             repeatWeeks = resolvedRepeatWeeks,
                             repeatMode = resolvedRepeatMode,
-                            isTutorial = doc.getBoolean("isTutorial") ?: false
+                            isTutorial = resolvedIsTutorial
                         )
                         downloadedCourses.add(course)
                     }
@@ -362,15 +365,16 @@ class FirestoreSyncRepository(
                 // 2. 下載 Courses（使用原子事務同步，絕不清空本地表避免 UI 閃爍）
                 courseDao.syncAllCourses(downloadedCourses)
 
-                // 若雲端先前未存入 repeatWeeks/repeatMode，立即補齊更新避免後續重複缺失
-                if (coursesNeedBackfill && downloadedCourses.isNotEmpty()) {
+                // 若雲端先前未存入 repeatWeeks/repeatMode/isTutorial，立即補齊更新避免後續重複缺失
+                if ((coursesNeedBackfill || tutorialNeedBackfill) && downloadedCourses.isNotEmpty()) {
                     val coursesCol = userDocRef.collection("courses")
                     for (c in downloadedCourses) {
                         runCatching {
                             coursesCol.document(c.id.toString()).set(
                                 mapOf(
                                     "repeatWeeks" to c.repeatWeeks,
-                                    "repeatMode" to c.repeatMode
+                                    "repeatMode" to c.repeatMode,
+                                    "isTutorial" to c.isTutorial
                                 ),
                                 SetOptions.merge()
                             ).await()

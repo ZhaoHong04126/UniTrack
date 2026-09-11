@@ -79,9 +79,10 @@ fun CourseAuditListScreen(
 
         val baseItems = if (selectedSemesterFilter == null) {
             groupedByName.map { (_, coursesInGroup) ->
-                val isRetake = coursesInGroup.size > 1
+                val semList = coursesInGroup.map { it.semester }.distinct()
+                val isRetake = semList.size > 1
                 val primaryCourse = if (!isRetake) {
-                    coursesInGroup.first()
+                    coursesInGroup.maxByOrNull { it.credits } ?: coursesInGroup.first()
                 } else {
                     coursesInGroup.sortedWith(
                         compareByDescending<Course> { isCoursePassed(it, plan.minPassingScore) }
@@ -90,19 +91,23 @@ fun CourseAuditListScreen(
                     ).first()
                 }
                 val earlierSemester = if (isRetake) {
-                    coursesInGroup.filter { it.id != primaryCourse.id }.map { it.semester }.firstOrNull()
+                    coursesInGroup.firstOrNull { it.semester != primaryCourse.semester }?.semester
                 } else null
                 AuditCourseItem(course = primaryCourse, isRetake = isRetake, originalSemester = earlierSemester)
             }
         } else {
-            nonTutorialCourses.filter { it.semester == selectedSemesterFilter }.map { course ->
-                val group = groupedByName[course.name.trim()] ?: listOf(course)
-                val isRetake = group.size > 1
-                val earlierSemester = if (isRetake) {
-                    group.filter { it.id != course.id }.map { it.semester }.firstOrNull()
-                } else null
-                AuditCourseItem(course = course, isRetake = isRetake, originalSemester = earlierSemester)
-            }
+            nonTutorialCourses.filter { it.semester == selectedSemesterFilter }
+                .groupBy { it.name.trim() }
+                .values
+                .map { group ->
+                    val course = group.maxByOrNull { it.credits } ?: group.first()
+                    val allSemList = (groupedByName[course.name.trim()] ?: listOf(course)).map { it.semester }.distinct()
+                    val isRetake = allSemList.size > 1
+                    val earlierSemester = if (isRetake) {
+                        allSemList.firstOrNull { it != course.semester }
+                    } else null
+                    AuditCourseItem(course = course, isRetake = isRetake, originalSemester = earlierSemester)
+                }
         }
 
         baseItems.filter { item ->
@@ -240,7 +245,8 @@ fun CourseAuditListScreen(
                     )
 
                     // 全部學期
-                    val totalAuditedCount = remember(allCourses) { allCourses.groupBy { it.name.trim() }.size }
+                    val nonTutorialCourses = remember(allCourses) { allCourses.filter { !it.isTutorial } }
+                    val totalAuditedCount = remember(nonTutorialCourses) { nonTutorialCourses.groupBy { it.name.trim() }.size }
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -262,7 +268,7 @@ fun CourseAuditListScreen(
                     }
 
                     existingSemesters.forEach { sem ->
-                        val count = allCourses.count { it.semester == sem }
+                        val count = nonTutorialCourses.filter { it.semester == sem }.groupBy { it.name.trim() }.size
                         val isSelected = selectedSemesterFilter == sem
                         Row(
                             modifier = Modifier
@@ -318,7 +324,7 @@ fun CourseAuditListScreen(
                     }
 
                     categories.forEach { cat ->
-                        val count = allCourses.count { it.category == cat }
+                        val count = nonTutorialCourses.filter { it.category == cat }.groupBy { it.name.trim() }.size
                         val isSelected = selectedCategoryFilter == cat
                         Row(
                             modifier = Modifier

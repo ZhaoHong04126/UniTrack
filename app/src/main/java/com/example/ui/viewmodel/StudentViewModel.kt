@@ -823,7 +823,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         val result = mutableListOf<SemesterGpa>()
 
         for (sem in semList) {
-            val semCourses = courses.filter { it.semester == sem }
+            val semCourses = courses.filter { it.semester == sem && !it.isTutorial }
             var totalWeightedScore = 0.0
             var totalGradedCredits = 0.0
             var passedCredits = 0.0
@@ -855,7 +855,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                     averageScore = round(semAvg * 10.0) / 10.0,
                     totalCredits = totalCredits,
                     passedCredits = passedCredits,
-                    courseCount = semCourses.size
+                    courseCount = semCourses.groupBy { it.name.trim() }.size
                 )
             )
         }
@@ -867,7 +867,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         var totalWeightedScore = 0.0
         var totalGradedCredits = 0.0
 
-        for (c in courses) {
+        for (c in courses.filter { !it.isTutorial }) {
             val scoreVal = c.score ?: scoreFromLetterGrade(c.letterGrade)
             if (scoreVal != null) {
                 totalWeightedScore += scoreVal * c.credits
@@ -1486,8 +1486,13 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     ) = viewModelScope.launch {
         if (changedCourses.isEmpty()) return@launch
 
+        val allSemCourses = allCourses.value.filter { it.semester == semester }
         for (c in changedCourses) {
             repository.updateCourse(c)
+            val siblingSlots = allSemCourses.filter { it.name.trim() == c.name.trim() && it.id != c.id }
+            for (sibling in siblingSlots) {
+                repository.updateCourse(sibling.copy(score = c.score, letterGrade = c.letterGrade, isCompleted = c.isCompleted))
+            }
         }
 
         val user = currentUser.value
