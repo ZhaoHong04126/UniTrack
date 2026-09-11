@@ -5,10 +5,10 @@
 [![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose%20%7C%20Material%203-4285F4?logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
 [![Room](https://img.shields.io/badge/Storage-Room%20(SQLite)-00599C?logo=sqlite&logoColor=white)](https://developer.android.com/training/data-storage/room)
 [![Firebase](https://img.shields.io/badge/Backend-Firebase%20(Auth%20%2B%20Firestore)-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com/)
-[![Version](https://img.shields.io/badge/Version-v2.1.0-3B82F6)](https://github.com/ZhaoHong04126/UniTrack)
+[![Version](https://img.shields.io/badge/Version-v2.2.0-3B82F6)](https://github.com/ZhaoHong04126/UniTrack)
 
 > **專為大學生量身打造的全方位學業與生活管理助理。**  
-> 集結「智慧週課表 & 考勤筆記」、「整合行事曆與待辦日程」、「系統級上課推播提醒 (AlarmManager)」、「桌面今日課表小工具」、「畢業學分稽核與門檻檢核」、「GPA / 學業儀表板」、「個人記帳與月度預算（含自訂交易時間）」、「通知中心與雲端原子事務同步」、「深淺色主題切換」於一體，支援 100% 純本機離線隱私保護與 Firebase 雲端雙向同步。經由 R8 深度修剪，安裝包極致輕量 (11.5MB)。
+> 集結「智慧週課表 & 考勤筆記」、「正課與課輔/實習時段獨立管理」、「整合行事曆與待辦日程」、「系統級上課推播提醒 (AlarmManager)」、「桌面今日課表小工具」、「畢業學分稽核與門檻檢核」、「GPA / 學業儀表板」、「個人記帳與月度預算（含自訂交易時間）」、「通知中心與雲端原子事務同步」、「深淺色主題切換」於一體，支援 100% 純本機離線隱私保護與 Firebase 雲端雙向同步。經由 R8 深度修剪，安裝包極致輕量 (11.5MB)。
 
 ---
 
@@ -25,7 +25,7 @@
   - [Firebase 與環境設定](#firebase-與環境設定)
 - [📊 功能模組詳解](#-功能模組詳解)
   - [1. 儀表板與學業概況 (Dashboard)](#1-儀表板與學業概況-dashboard)
-  - [2. 智慧週課表、考勤與課程筆記 (Timetable & Attendance)](#2-智慧週課表考勤與課程筆記-timetable--attendance)
+  - [2. 智慧週課表、課輔管理與考勤筆記 (Timetable & Attendance)](#2-智慧週課表課輔管理與考勤筆記-timetable--attendance)
   - [3. 整合行事曆與個人待辦日程 (Calendar & Tasks)](#3-整合行事曆與個人待辦日程-calendar--tasks)
   - [4. 成績登錄與 GPA 試算 (Grades & GPA)](#4-成績登錄與-gpa-試算-grades--gpa)
   - [5. 畢業審查與學分稽核 (Graduation Audit)](#5-畢業審查與學分稽核-graduation-audit)
@@ -41,9 +41,17 @@
 ## ✨ 核心功能亮點
 
 * 📅 **智慧排課、小時制解析與多元顯示**：
-  * 支援 **「顯示時間」與「顯示節次」雙模式一鍵切換**，全面重構為直覺的**小時制課程時間計算與排版**。
+  * 支援 **「顯示時間」與「顯示節次」雙模式一鍵切換**，全面採用直覺的**小時制課程時間計算與排版**。
   * 視覺化週課表排程，1~14 節自訂節次、單雙週/自訂週次設定、開學與結束日期動態計算、週末顯示開關。
-  * 支援批次排課與**高質感課表分享圖片生成（附帶週數、時間區間與日期）**。
+  * 支援批次排課與**高質感課表分享長圖生成（附帶週數、時間區間與日期）**。
+* 🧑‍🏫 **正課與課輔/實習時段獨立管理 (Tutorial Classes - Room DB v9)**：
+  * 課程編輯支援附加「🧑‍🏫 課輔 / 實習時段 (TA)」，可個別指定上課星期、節次、教室與週次，自動設為 0 學分。
+  * 課表卡片、長圖生成與課程詳情面板以專屬徽章清晰標註「課輔」；衝堂警示精準提示正課或課輔衝突。
+  * **成績與學分智慧淨化**：成績登錄 (`GradeEntryScreen`) 與畢業審查清單 (`CourseAuditListScreen`) 自動過濾排除課輔時段，杜絕 0 學分課堂干擾 GPA 與學分審查。
+* 🔄 **彈性週次重複模式 (Flexible Repeat Weeks & Modes)**：
+  * 支援「每週」、「單週」、「雙週」與「指定週次」（如第 1~8 週、第 9~16 週或任意自訂週次選取）。
+  * 各時段（正課、課輔）可各自獨立設定不同的上課週次模式。
+  * 週課表、行事曆與桌面小工具 (`TodayScheduleWidget`) 依開學週次動態過濾並精準呈現當週課堂，全面支援 Firestore 雲端雙向同步。
 * ⏰ **系統級上課推播提醒與開機自動重排 (AlarmManager)**：
   * 結合 Android 底層 `AlarmManager`，課前精準發送系統級推播提醒（如課前 15 分鐘），避免錯過重要課堂。
   * 註冊開機廣播接收器 (`BootCompletedReceiver`)，設備重啟後自動重新排程全部提醒，穩定可靠。
@@ -57,7 +65,7 @@
   * **個人重要日程與待辦**：支援自訂「學習、作業、考試、個人、活動、放假」等六大類別，具備色票標籤、倒數提醒與備註。
   * **待辦清單 (TODO)**：行程卡片支援點擊一鍵打勾標記完成/未完成，直覺好掌控。
 * 📝 **考勤上課日期精準預測與隨堂筆記**：點選課表即刻展開詳情面板，**自動推算並標示每週對應之實際即將上課日期與出席狀態**（出席、遲到、曠課、請假）與統計圖表；支援依週次與標籤分類管理隨堂筆記。
-* 🎓 **深度學分審查與畢業稽核 (Room DB v7)**：
+* 🎓 **深度學分審查與畢業稽核 (Room DB v9)**：
   * 涵蓋校共同、院核心、系專業（基礎/核心/專業模組）、通識、自由選修等全方位分類。
   * **支援自訂分類與已刪除分類過濾 (`deletedCategories`)**，並在審查清單中**清楚標示重修課程**與通過學分。
   * 支援必修/選修獨立門檻目標設定與進度條即時計算。
@@ -85,7 +93,6 @@
 * 🔒 **隱私至上 & 訪客模式 (Guest Mode)**：無須註冊登入即可 100% 離線使用，所有資料安全儲存於手機本機 SQLite (Room) 資料庫。
 * 🎨 **全新品牌視覺識別 (Brand Logos)**：提供專屬設計之圓形、方形與透明背景高解析向量 SVG 與 PNG 圖標資源。
 
-
 ---
 
 ## 📱 應用介面預覽
@@ -110,7 +117,19 @@
 
 ### 🔖 版本歷程記錄
 
-#### 🌟 v2.1.0 (最新發布)
+#### 🌟 v2.2.0 (最新發布)
+- 🧑‍🏫 **課輔 / 實習時段獨立管理 (Tutorial Class - Room DB v9)**：
+  - 資料庫升級至 Version 9（`MIGRATION_8_9`），`Course` 資料實體新增 `isTutorial` 欄位。
+  - 課程新增/編輯對話框支援一鍵新增「🧑‍🏫 課輔 / 實習時段 (TA)」，自訂專屬上課時間、教室與週次模式，且自動設定為 0 學分。
+  - 課表卡片、長圖導出與課程詳情底部面板新增專屬「課輔」徽章標籤與高識別度主題樣式。
+  - 成績登錄畫面 (`GradeEntryScreen`) 與畢業審查清單 (`CourseAuditListScreen`) 全面過濾排除課輔課程，杜絕無學分時段干擾 GPA 計算與學分累計。
+  - 課程衝堂檢驗邏輯升級，衝突時精準辨識並提示「正課」或「課輔」重疊，防止誤排課。
+- 🔄 **擴充週次重複模式 (Repeat Weeks & Modes)**：
+  - 課程與各時段支援設定 `repeatWeeks` 與 `repeatMode`（每週、單週、雙週、指定週次）。
+  - 週課表、行事曆與桌面小工具 (`TodayScheduleWidget`) 依開學週數自動動態過濾並僅展示當週進行之課堂。
+  - Firestore 雲端雙向同步全面支援 `isTutorial`、`repeatWeeks` 與 `repeatMode` 屬性。
+
+#### 🌟 v2.1.0
 - ⏰ **AlarmManager 系統級上課推播提醒與開機自動重排**：
   - 實現精準課前定時推播 (`CourseReminderReceiver`)，透過 Android `AlarmManager` 於課前設定時間（如 15 分鐘前）準時觸發上課提醒。
   - 新增開機廣播接收器 (`BootCompletedReceiver`)，設備重新開機時自動重新排程所有未過期之課堂鬧鐘提醒。
@@ -247,7 +266,7 @@ graph TD
 | **程式語言** | Kotlin 2.0+ | 現代化、強型別、空安全保證之 Android 核心開發語言 |
 | **UI 介面** | Jetpack Compose + Material 3 | 現代化宣告式 UI 框架、動態 Material You 配色、深淺色主題與 Edge-to-Edge 全螢幕適配 |
 | **非同步與狀態** | Kotlin Coroutines + Flow / StateFlow | 響應式資料流與生命週期感知之全域狀態管理 |
-| **本機資料庫** | Android Jetpack Room + KSP (v7) | 型別安全的 SQLite 物件關聯映射 (ORM) 與高效資料庫存取 (含課程、行事曆日程、畢業計畫、記帳、通知) |
+| **本機資料庫** | Android Jetpack Room + KSP (v9) | 型別安全的 SQLite 物件關聯映射 (ORM) 與高效資料庫存取 (含課程、課輔、行事曆日程、畢業計畫、記帳、通知) |
 | **雲端認證** | Firebase Auth + Credential Manager | 現代化 Google ID Token 憑證授權與 Email/Password 帳號驗證體系 |
 | **雲端資料庫** | Cloud Firestore | 具備離線快取與跨設備即時雙向資料同步能力之 NoSQL 資料庫 |
 | **建置與混淆** | R8 + ProGuard | 程式碼與無效資源深度修剪 (APK 瘦身至 11.5MB)、型別安全與防逆向防護 |
@@ -265,7 +284,7 @@ UniTrack+/
 │   │   │   ├── java/com/example/
 │   │   │   │   ├── MainActivity.kt               # 主入口點與 Jetpack Compose Navigation 路由導航 (包含行事曆)
 │   │   │   │   ├── data/
-│   │   │   │   │   ├── local/                    # Room Database (v7), TypeConverters, DAOs (Course, Calendar, Graduation, Expense, Notification)
+│   │   │   │   │   ├── local/                    # Room Database (v9), TypeConverters, DAOs (Course, Calendar, Graduation, Expense, Notification)
 │   │   │   │   │   ├── model/                    # 資料實體 (Entities, CalendarEvent, Enums, AuthModels, CourseNote, CustomAccount, AppNotification)
 │   │   │   │   │   └── repository/               # StudentRepository, AuthRepository (Credential Manager), FirestoreSyncRepository
 │   │   │   │   ├── receiver/                     # 系統廣播接收器 (BootCompletedReceiver, CourseReminderReceiver)
@@ -275,9 +294,9 @@ UniTrack+/
 │   │   │   │   │   ├── screens/
 │   │   │   │   │   │   ├── auth/                 # 登入與註冊介面 (Google 憑證管理員 / Email / 訪客模式)
 │   │   │   │   │   │   ├── dashboard/            # 學業進度 (動態已修與 GPA 計算) 與生活綜合儀表板
-│   │   │   │   │   │   ├── timetable/            # 課表視圖、小時制時間/節次切換、考勤上課日標示、隨堂筆記、成績登記
+│   │   │   │   │   │   ├── timetable/            # 課表視圖、小時制時間/節次切換、課輔時段、考勤上課日標示、隨堂筆記、成績登記
 │   │   │   │   │   │   ├── calendar/             # 全新整合行事曆 (週/月視圖、課表與日程整合、待辦打勾管理)
-│   │   │   │   │   │   ├── graduation/           # 畢業審查、學分分類檢核 (支援自訂/刪除分類、重修標註)、學分設定、畢業門檻
+│   │   │   │   │   │   ├── graduation/           # 畢業審查、學分分類檢核 (支援自訂/刪除分類、排除課輔、重修標註)、學分設定、畢業門檻
 │   │   │   │   │   │   ├── expense/              # 個人記帳、交易時間選取、月曆視圖、年月選擇、多帳戶管理
 │   │   │   │   │   │   ├── notification/         # 通知中心、分類篩選、未讀標記、滑動刪除、雲端雙向清空
 │   │   │   │   │   │   └── settings/             # 帳號設定、主題模式 (深/淺/系統)、桌面小工具設定、測試推播、雲端同步
@@ -287,7 +306,7 @@ UniTrack+/
 │   │   │   │   └── res/                          # 應用程式資源 (圖標、字串、主題樣式、raw/keep.xml)
 │   │   └── test/                                 # Robolectric 單元測試與 Roborazzi 截圖測試
 │   ├── proguard-rules.pro                        # R8 / ProGuard 混淆與保留規則
-│   └── build.gradle.kts                          # App 模組建置設定 (R8 啟用、資源修剪、v2.1.0)
+│   └── build.gradle.kts                          # App 模組建置設定 (R8 啟用、資源修剪、v2.2.0)
 ├── logo/                                         # 官方專屬品牌標誌 (圓形、方形、透明背景之向量 SVG 與 PNG)
 ├── docs/
 │   └── images/                                   # README 相關螢幕截圖與展示資源
@@ -353,11 +372,18 @@ UniTrack+/
 
 ---
 
-### 2. 智慧週課表、考勤與課程筆記 (Timetable & Attendance)
+### 2. 智慧週課表、課輔管理與考勤筆記 (Timetable & Attendance)
 * **雙顯示模式切換**：支援切換「顯示時間 (例如 08:10~09:00)」或「顯示節次 (例如 第 1 節)」，滿足不同排程習慣。
 * **小時制課程時間解析與排版**：
   * 全面重構課程時間解析架構，改以直覺小時制時鐘計算與呈現課程時段，時間軸排列更精準清晰。
   * 支援 1~14 節自訂節次、單雙週/自訂週次設定、開學與結束日期動態計算、週末顯示開關。
+* **課輔與實習時段獨立管理 (Tutorial Class)**：
+  * 課程新增/編輯對話框支援新增「🧑‍🏫 課輔 / 實習時段 (TA)」，自動設定為 0 學分，支援獨立設定上課教室、節次與週次模式。
+  * 課表卡片、長圖導出與課程詳情底部面板標註「課輔」專屬徽章。
+  * 衝堂檢測邏輯升級：衝堂時精準提示「正課」或「課輔」衝突，防範誤排課。
+* **高彈性週次重複設定 (Repeat Weeks & Modes)**：
+  * 支援設定「每週」、「單週」、「雙週」與「指定週次」（例如第 1~8 週、第 9~16 週或任意自訂週次選取）。
+  * 各時段（正課、課輔）可各自獨立配置不同週次模式，課表與桌面小工具依開學週數動態精準過濾。
 * **高解析課表長圖生成分享**：優化 `TimetableImageGenerator`，支援匯出附帶週次、精確起訖時間與日期之高質感課表長圖。
 * **學期權重排序與當前學期智慧判定**：
   * 實作學期權重解析演算法，依學年度與學期類別（上/下/暑）智慧排序與時序比較。
@@ -394,7 +420,9 @@ UniTrack+/
 ---
 
 ### 4. 成績登錄與 GPA 試算 (Grades & GPA)
-* **成績管理**：支援百分制成績與等第成績（A+、A、B+ 等）輸入與即時計算。
+* **成績管理與課輔自動排除**：
+  * 支援百分制成績與等第成績（A+、A、B+ 等）輸入與即時計算。
+  * **自動排除課輔/實習時段**：無學分之課輔時段不進入成績輸入介面，徹底杜絕無效數據干擾學期 GPA 運算。
 * **多元計算機制**：預設百分制標準，並支援 4.3 制與 4.0 制換算，精準統計單學期與歷年累計 GPA / 平均分數。
 * **不採計成績選項**：可將特定課程標記為「不採計」，彈性排除於 GPA 計算之外（如重修前成績）。
 * **批次儲存與通知**：一次儲存多門課程成績，儲存後自動觸發成績變更推播通知，隨時掌握學業動態。
@@ -406,8 +434,8 @@ UniTrack+/
 
 ### 5. 畢業審查與學分稽核 (Graduation Audit)
 * **自訂畢業學分門檻**：支援依各大專院校系所修業規範，彈性設定校共同、院核心、系專業（基礎/核心/專業模組）、通識與自由選修之總學分及**必修/選修細項門檻**。
-* **自訂分類管理與清理 (Room DB v7)**：升級至資料庫版本 7，支援自訂學分分類與**刪除分類管理 (`deletedCategories`)**，被刪除之類別在排課與審查時自動過濾，保持介面簡潔乾淨。
-* **重修課程清晰標示**：課程審查清單 (`CourseAuditListScreen`) 清楚標示重修課程與合格學分，完整呈現各類別門檻修畢狀態。
+* **自訂分類管理與清理 (Room DB v9)**：升級至資料庫版本 9，支援自訂學分分類與**刪除分類管理 (`deletedCategories`)**，被刪除之類別在排課與審查時自動過濾，保持介面簡潔乾淨。
+* **排除課輔與重修課程清晰標示**：課程審查清單 (`CourseAuditListScreen`) 自動排除無學分課輔，並清楚標示重修課程與合格學分，完整呈現各類別門檻修畢狀態。
 * **視覺化進度檢驗**：圖表化清晰比對「已修畢 (Earned)」、「修習中 (In-progress)」與「目標學分 (Target)」。
 * **畢業門檻檢核清單**：支援自訂與追蹤外語檢定 (如 TOEIC/TOEFL)、服務學習、畢業專題、專業證照等非學分門檻。
 
@@ -447,8 +475,9 @@ UniTrack+/
   * **分類篩選與頁面聯動**：支援依類型標籤過濾，點擊卡片直接跳轉至對應功能頁面。
 * **現代化 Google 登入 (Credential Manager)**：
   * 升級至 Google 最新 Android 憑證管理員與 Google ID Token 授權，提供清晰友善的錯誤導引訊息。
-* **個人檔案與首次登入記錄**：支援自訂頭像與暱稱保存；記錄首次登入時間戳記 (`createdAt`)；清楚標示當前版本號 (`v2.1.0`)。
+* **個人檔案與首次登入記錄**：支援自訂頭像與暱稱保存；記錄首次登入時間戳記 (`createdAt`)；清楚標示當前版本號 (`v2.2.0`)。
 * **免登入離線優先**：無需連網即可享受 100% 完整功能，所有資料本機加密保存。
+* **雲端安全同步與跨裝置相容 (Cloud Sync)**：支援 Google / Email 帳號驗證；具備智慧防覆蓋保護機制；課程資料庫完整支援同步課輔 (`isTutorial`)、重複週次 (`repeatWeeks`) 與模式 (`repeatMode`)，跨裝置無縫同步。
 * **標準 JSON 檔案匯出/匯入**：提供純文字 JSON 匯出與匯入功能，方便本機備份、跨設備遷移或手動分析。
 
 <!-- 📸 [照片標記 7.1：通知中心介面截圖] -->
