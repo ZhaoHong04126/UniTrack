@@ -353,7 +353,8 @@ class FirestoreSyncRepository(
                             colorHex = doc.getString("colorHex") ?: "#3B82F6",
                             notes = doc.getString("notes") ?: "",
                             repeatWeeks = resolvedRepeatWeeks,
-                            repeatMode = resolvedRepeatMode
+                            repeatMode = resolvedRepeatMode,
+                            isTutorial = doc.getBoolean("isTutorial") ?: false
                         )
                         downloadedCourses.add(course)
                     }

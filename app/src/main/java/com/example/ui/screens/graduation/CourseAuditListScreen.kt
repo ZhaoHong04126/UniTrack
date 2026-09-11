@@ -63,7 +63,7 @@ fun CourseAuditListScreen(
     val allSemesters by viewModel.allSemesters.collectAsStateWithLifecycle()
 
     val existingSemesters = remember(allSemesters, allCourses) {
-        (allCourses.map { it.semester } + allSemesters).distinct()
+        (allCourses.filter { !it.isTutorial }.map { it.semester } + allSemesters).distinct()
     }
 
     var selectedSemesterFilter by remember { mutableStateOf<String?>(null) }
@@ -74,7 +74,8 @@ fun CourseAuditListScreen(
     var showEditCourseDialog by remember { mutableStateOf(false) }
 
     val auditCourseItems = remember(allCourses, plan.minPassingScore, selectedSemesterFilter, selectedCategoryFilter) {
-        val groupedByName = allCourses.groupBy { it.name.trim() }
+        val nonTutorialCourses = allCourses.filter { !it.isTutorial }
+        val groupedByName = nonTutorialCourses.groupBy { it.name.trim() }
 
         val baseItems = if (selectedSemesterFilter == null) {
             groupedByName.map { (_, coursesInGroup) ->
@@ -94,7 +95,7 @@ fun CourseAuditListScreen(
                 AuditCourseItem(course = primaryCourse, isRetake = isRetake, originalSemester = earlierSemester)
             }
         } else {
-            allCourses.filter { it.semester == selectedSemesterFilter }.map { course ->
+            nonTutorialCourses.filter { it.semester == selectedSemesterFilter }.map { course ->
                 val group = groupedByName[course.name.trim()] ?: listOf(course)
                 val isRetake = group.size > 1
                 val earlierSemester = if (isRetake) {

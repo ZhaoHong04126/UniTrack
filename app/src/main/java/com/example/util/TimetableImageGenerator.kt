@@ -262,6 +262,9 @@ object TimetableImageGenerator {
                     // Draw soft rounded card background
                     val cardPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                         color = cardColor
+                        if (course.isTutorial) {
+                            alpha = 180
+                        }
                     }
                     val rect = RectF(cardLeft, cardTop, cardRight, cardBottom)
                     canvas.drawRoundRect(rect, 16f, 16f, cardPaint)
@@ -276,6 +279,7 @@ object TimetableImageGenerator {
                         }
 
                         val courseText = buildString {
+                            if (course.isTutorial) appendLine("【課輔】")
                             if (course.location.isNotBlank()) appendLine(course.location)
                             appendLine(course.name)
                             if (course.teacher.isNotBlank()) append(course.teacher)

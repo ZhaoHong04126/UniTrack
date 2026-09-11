@@ -1051,6 +1051,8 @@ private fun WeeklyTimetableGrid(
 
                         val courseColor = runCatching { Color(course.colorHex.toColorInt()) }
                             .getOrDefault(SapphirePrimary)
+                        val displayColor = if (course.isTutorial) courseColor.copy(alpha = 0.72f) else courseColor
+                        val borderStroke = if (course.isTutorial) androidx.compose.foundation.BorderStroke(1.dp, courseColor) else null
 
                         Box(
                             modifier = Modifier
@@ -1059,7 +1061,8 @@ private fun WeeklyTimetableGrid(
                                 .fillMaxWidth()
                                 .height((cardHeightDp - 2.dp).coerceAtLeast(16.dp))
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(courseColor)
+                                .background(displayColor)
+                                .then(if (borderStroke != null) Modifier.border(borderStroke, RoundedCornerShape(8.dp)) else Modifier)
                                 .clickable { onCourseClick(course) }
                                 .padding(horizontal = 5.dp, vertical = 4.dp)
                         ) {
@@ -1070,7 +1073,7 @@ private fun WeeklyTimetableGrid(
                             ) {
                                 if (course.location.isNotBlank()) {
                                     Text(
-                                        text = course.location,
+                                        text = if (course.isTutorial) "實習 · ${course.location}" else course.location,
                                         style = MaterialTheme.typography.labelSmall.copy(
                                             fontSize = 9.5.sp,
                                             fontWeight = FontWeight.Medium
@@ -1079,9 +1082,20 @@ private fun WeeklyTimetableGrid(
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
+                                } else if (course.isTutorial) {
+                                    Text(
+                                        text = "課輔 / 實習",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Medium
+                                        ),
+                                        color = Color.White.copy(alpha = 0.9f),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
                                 }
                                 Text(
-                                    text = course.name,
+                                    text = if (course.isTutorial) "【課輔】${course.name}" else course.name,
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
@@ -1156,7 +1170,7 @@ private fun CourseListItemCard(
                     .width(4.dp)
                     .height(42.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(courseColor)
+                    .background(if (course.isTutorial) courseColor.copy(alpha = 0.6f) else courseColor)
             )
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Row(
@@ -1168,11 +1182,20 @@ private fun CourseListItemCard(
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold
                     )
-                    Badge(
-                        containerColor = course.category.badgeColor.copy(alpha = 0.15f),
-                        contentColor = course.category.badgeColor
-                    ) {
-                        Text(text = course.category.shortLabel)
+                    if (course.isTutorial) {
+                        Badge(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.secondary
+                        ) {
+                            Text(text = "課輔")
+                        }
+                    } else {
+                        Badge(
+                            containerColor = course.category.badgeColor.copy(alpha = 0.15f),
+                            contentColor = course.category.badgeColor
+                        ) {
+                            Text(text = course.category.shortLabel)
+                        }
                     }
                 }
                 Text(
@@ -1185,10 +1208,10 @@ private fun CourseListItemCard(
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = "${course.credits} 學分",
+                    text = if (course.isTutorial) "課輔" else "${course.credits} 學分",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
-                    color = SapphirePrimary
+                    color = if (course.isTutorial) MaterialTheme.colorScheme.secondary else SapphirePrimary
                 )
                 if (course.score != null || course.letterGrade != null) {
                     Text(

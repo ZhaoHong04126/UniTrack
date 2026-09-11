@@ -155,6 +155,23 @@ fun CourseDetailBottomSheet(
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
+                        // 課程性質標籤：正課 / 課輔
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = if (course.isTutorial) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                            border = BorderStroke(
+                                1.dp,
+                                if (course.isTutorial) MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                            )
+                        ) {
+                            Text(
+                                text = if (course.isTutorial) "課輔" else "正課",
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (course.isTutorial) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
 
                     // Action buttons in top right
@@ -214,7 +231,7 @@ fun CourseDetailBottomSheet(
                 }
 
                 Text(
-                    text = "$teacherText · ${course.credits} 學分",
+                    text = if (course.isTutorial) "$teacherText · 課輔時段（不計學分）" else "$teacherText · ${course.credits} 學分",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1262,6 +1279,12 @@ private fun InfoTabView(
             icon = Icons.Default.Category,
             label = "課程類別",
             value = categoryLabel
+        )
+
+        DetailRowItem(
+            icon = Icons.Default.Bookmark,
+            label = "當節課程性質",
+            value = if (course.isTutorial) "課輔 / 實習 (此時段不計入畢業學分)" else "正課"
         )
 
         if (course.code.isNotBlank()) {

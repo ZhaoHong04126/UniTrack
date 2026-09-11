@@ -30,7 +30,8 @@ data class Course(
     val colorHex: String = "#3B82F6",
     val notes: String = "",
     val repeatWeeks: String = "1-18",
-    val repeatMode: String = "每週"
+    val repeatMode: String = "每週",
+    val isTutorial: Boolean = false
 )
 
 data class CourseNote(

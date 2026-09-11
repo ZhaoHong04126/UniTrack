@@ -941,6 +941,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         var peCredits = 0.0
 
         for (c in courses) {
+            if (c.isTutorial) continue
             val isPassed = (c.score != null && c.score >= plan.minPassingScore) ||
                 (c.letterGrade in listOf("抵免", "通過", "免修")) ||
                 (c.isCompleted && c.letterGrade != "不通過")

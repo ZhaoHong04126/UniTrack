@@ -145,7 +145,8 @@ fun AddEditCourseDialog(
         val endTimeStr: String = "10:30",
         val repeatMode: String = "每週",
         val selectedWeeks: Set<Int> = (1..18).toSet(),
-        val location: String = ""
+        val location: String = "",
+        val isTutorial: Boolean = false
     )
 
     var timeSlots by remember {
@@ -174,7 +175,8 @@ fun AddEditCourseDialog(
                     endTimeStr = initialEnd,
                     repeatMode = initialCourse?.repeatMode ?: "每週",
                     selectedWeeks = initialWeeks,
-                    location = initialCourse?.location ?: ""
+                    location = initialCourse?.location ?: "",
+                    isTutorial = initialCourse?.isTutorial ?: false
                 )
             )
         )
@@ -250,6 +252,32 @@ fun AddEditCourseDialog(
 
     val conflictingCourseInfo = remember(relevantCourses, semester, timeSlots, isTimeTBD) {
         if (isTimeTBD) return@remember null
+
+        // 1. 檢查對話框內部各時段之間是否彼此衝堂
+        for (i in timeSlots.indices) {
+            val s1 = timeSlots[i]
+            val s1Start = timeToStartPeriod(s1.startTimeStr)
+            val s1End = timeToEndPeriod(s1.endTimeStr, s1Start)
+            for (j in i + 1 until timeSlots.size) {
+                val s2 = timeSlots[j]
+                if (s1.dayOfWeek == s2.dayOfWeek) {
+                    val s2Start = timeToStartPeriod(s2.startTimeStr)
+                    val s2End = timeToEndPeriod(s2.endTimeStr, s2Start)
+                    if (maxOf(s1Start, s2Start) <= minOf(s1End, s2End)) {
+                        val pseudoCourse = Course(
+                            name = if (s2.isTutorial) "此課程另一個課輔時段" else "此課程另一時段",
+                            dayOfWeek = s2.dayOfWeek,
+                            startPeriod = s2Start,
+                            endPeriod = s2End,
+                            isTutorial = s2.isTutorial
+                        )
+                        return@remember Pair(pseudoCourse, s1)
+                    }
+                }
+            }
+        }
+
+        // 2. 檢查是否與已排定課程（含正課與課輔/實習）衝堂 - 任何時間皆嚴禁衝堂
         for (slot in timeSlots) {
             val startP = timeToStartPeriod(slot.startTimeStr)
             val endP = timeToEndPeriod(slot.endTimeStr, startP)
@@ -683,26 +711,69 @@ fun AddEditCourseDialog(
                                         endTimeStr = "10:30",
                                         repeatMode = "每週",
                                         selectedWeeks = (1..18).toSet(),
-                                        location = timeSlots.lastOrNull()?.location ?: ""
+                                        location = timeSlots.lastOrNull()?.location ?: "",
+                                        isTutorial = false
                                     )
                                 }
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                horizontalArrangement = Arrangement.spacedBy(3.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Add,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(16.dp)
+                                    modifier = Modifier.size(15.dp)
                                 )
                                 Text(
-                                    text = "新增",
+                                    text = "時段",
                                     style = MaterialTheme.typography.labelMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                MaterialTheme.colorScheme.secondary.copy(alpha = 0.6f)
+                            ),
+                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.25f),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable {
+                                    val nextDay = ((timeSlots.lastOrNull()?.dayOfWeek ?: 1) % 7) + 1
+                                    timeSlots = timeSlots + TimeSlotItem(
+                                        dayOfWeek = nextDay,
+                                        startTimeStr = "18:00",
+                                        endTimeStr = "19:30",
+                                        repeatMode = "每週",
+                                        selectedWeeks = (1..18).toSet(),
+                                        location = timeSlots.lastOrNull()?.location ?: "",
+                                        isTutorial = true
+                                    )
+                                }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                                Text(
+                                    text = "課輔",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.secondary
                                 )
                             }
                         }
@@ -723,6 +794,35 @@ fun AddEditCourseDialog(
                                         .padding(12.dp),
                                     verticalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
+                                    // 若為課輔時段，顯示課輔標記與提示（不顯示正課切換鈕）
+                                    if (slot.isTutorial) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Surface(
+                                                shape = RoundedCornerShape(8.dp),
+                                                color = MaterialTheme.colorScheme.secondaryContainer,
+                                                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.secondary)
+                                            ) {
+                                                Text(
+                                                    text = "🧑‍🏫 課輔 / 實習",
+                                                    style = MaterialTheme.typography.labelMedium,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.secondary,
+                                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                                )
+                                            }
+
+                                            Text(
+                                                text = "不計學分 · 彈性出席",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.secondary,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                    }
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -759,7 +859,8 @@ fun AddEditCourseDialog(
                                             }
                                         }
 
-                                        if (timeSlots.size > 1) {
+                                        // 原時段（第一個）不支援刪除，只有新增的時段才支援刪除
+                                        if (index > 0) {
                                             Spacer(modifier = Modifier.width(8.dp))
 
                                             Box(
@@ -880,12 +981,12 @@ fun AddEditCourseDialog(
                                         }
                                     }
 
-                                    OutlinedTextField(
+                                     OutlinedTextField(
                                         value = slot.location,
                                         onValueChange = { loc ->
                                             updateSlot(index) { it.copy(location = loc) }
                                         },
-                                        placeholder = { Text("教室 (選填)") },
+                                        placeholder = { Text(if (slot.isTutorial) "課輔 / 實習教室 (選填)" else "教室 (選填)") },
                                         singleLine = true,
                                         shape = RoundedCornerShape(10.dp),
                                         modifier = Modifier.fillMaxWidth()
@@ -900,9 +1001,11 @@ fun AddEditCourseDialog(
             if (conflictingCourseInfo != null) {
                 val (conflictCourse, conflictSlot) = conflictingCourseInfo
                 val conflictDayLabel = weekdays.firstOrNull { it.first == conflictSlot.dayOfWeek }?.second ?: "${conflictSlot.dayOfWeek}"
+                val conflictCourseNature = if (conflictCourse.isTutorial) "【課輔】" else ""
+                val currentSlotNature = if (conflictSlot.isTutorial) "課輔" else "正課"
                 Surface(
                     shape = RoundedCornerShape(10.dp),
-                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.85f),
+                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.9f),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -917,7 +1020,7 @@ fun AddEditCourseDialog(
                             modifier = Modifier.size(18.dp)
                         )
                         Text(
-                            text = "課程時間重疊（衝堂）：週$conflictDayLabel 與「${conflictCourse.name}」(第 ${conflictCourse.startPeriod}~${conflictCourse.endPeriod} 節) 衝突，無法儲存",
+                            text = "課程時間重疊（衝堂）：週$conflictDayLabel $currentSlotNature 與「$conflictCourseNature${conflictCourse.name}」(第 ${conflictCourse.startPeriod}~${conflictCourse.endPeriod} 節) 衝堂，嚴禁重疊排課",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onErrorContainer,
                             fontWeight = FontWeight.SemiBold
@@ -991,7 +1094,7 @@ fun AddEditCourseDialog(
                         val finalCategory = category ?: CourseCategory.UNSPECIFIED
                         val finalRequirementType = requirementType ?: CourseRequirementType.UNSPECIFIED
 
-                        if (name.isBlank()) {
+                        if (name.isBlank() || (!isTimeTBD && conflictingCourseInfo != null)) {
                             return@Button
                         }
 
@@ -1042,7 +1145,7 @@ fun AddEditCourseDialog(
                                     endPeriod = endP,
                                     startTime = slot.startTimeStr,
                                     endTime = slot.endTimeStr,
-                                    credits = if (idx == 0) credits else 0.0,
+                                    credits = if (idx == 0 && !slot.isTutorial) credits else 0.0,
                                     category = finalCategory,
                                     customCategory = customCategoryName.trim(),
                                     requirementType = finalRequirementType,
@@ -1055,7 +1158,8 @@ fun AddEditCourseDialog(
                                     colorHex = colorHex,
                                     notes = notes.trim(),
                                     repeatWeeks = repWeeks,
-                                    repeatMode = slot.repeatMode
+                                    repeatMode = slot.repeatMode,
+                                    isTutorial = slot.isTutorial
                                 )
                             }
                             onSaveMultiple?.invoke(coursesToSave) ?: coursesToSave.forEach { onSave(it) }
