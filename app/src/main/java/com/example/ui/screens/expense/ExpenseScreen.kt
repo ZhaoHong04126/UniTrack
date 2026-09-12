@@ -117,6 +117,10 @@ fun ExpenseScreen(
             .sortedWith(compareByDescending<ExpenseRecord> { it.dateString }.thenByDescending { it.timestamp })
     }
 
+    val displayMonthExpenses = remember(monthExpenses) {
+        filterRecordsForOverview(monthExpenses)
+    }
+
     val allMonthExpensesNoFilter = remember(allExpenses, selectedMonth) {
         allExpenses.filter { it.dateString.startsWith(selectedMonth) }
             .sortedWith(compareByDescending<ExpenseRecord> { it.dateString }.thenByDescending { it.timestamp })
@@ -522,6 +526,7 @@ fun ExpenseScreen(
 
                         // Selected Date Header
                         val selectedDayRecords = allExpenses.filter { it.dateString == selectedCalendarDate }
+                        val displaySelectedDayRecords = filterRecordsForOverview(selectedDayRecords)
                         val dayTotalExp = selectedDayRecords.filter { it.type == ExpenseType.EXPENSE }.sumOf { it.amount }
                         val dayTotalInc = selectedDayRecords.filter { it.type == ExpenseType.INCOME }.sumOf { it.amount }
 
@@ -571,7 +576,7 @@ fun ExpenseScreen(
                             }
                         }
 
-                        if (selectedDayRecords.isEmpty()) {
+                        if (displaySelectedDayRecords.isEmpty()) {
                             item {
                                 Card(
                                     modifier = Modifier.fillMaxWidth(),
@@ -613,9 +618,11 @@ fun ExpenseScreen(
                                 }
                             }
                         } else {
-                            items(selectedDayRecords, key = { it.id }) { record ->
+                            items(displaySelectedDayRecords, key = { it.id }) { record ->
                                 ExpenseRecordItemCard(
                                     record = record,
+                                    accounts = customAccounts,
+                                    isConsolidatedTransfer = true,
                                     onClick = {
                                         if (record.type == ExpenseType.TRANSFER_OUT || record.type == ExpenseType.TRANSFER_IN) {
                                             viewingTransferRecord = record
@@ -629,7 +636,7 @@ fun ExpenseScreen(
                         }
                     } else {
                         // Original List View
-                        if (monthExpenses.isEmpty()) {
+                        if (displayMonthExpenses.isEmpty()) {
                             item {
                                 Card(
                                     modifier = Modifier.fillMaxWidth(),
@@ -658,9 +665,11 @@ fun ExpenseScreen(
                                 }
                             }
                         } else {
-                            items(monthExpenses, key = { it.id }) { record ->
+                            items(displayMonthExpenses, key = { it.id }) { record ->
                                 ExpenseRecordItemCard(
                                     record = record,
+                                    accounts = customAccounts,
+                                    isConsolidatedTransfer = true,
                                     onClick = {
                                         if (record.type == ExpenseType.TRANSFER_OUT || record.type == ExpenseType.TRANSFER_IN) {
                                             viewingTransferRecord = record
@@ -925,10 +934,13 @@ fun ExpenseScreen(
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
 
                             val filteredRecords = remember(allMonthExpensesNoFilter, chartExpenseType) {
+                                val actualTransactions = allMonthExpensesNoFilter.filter {
+                                    it.type == ExpenseType.EXPENSE || it.type == ExpenseType.INCOME
+                                }
                                 if (chartExpenseType == null) {
-                                    allMonthExpensesNoFilter
+                                    actualTransactions
                                 } else {
-                                    allMonthExpensesNoFilter.filter { it.type == chartExpenseType }
+                                    actualTransactions.filter { it.type == chartExpenseType }
                                 }
                             }
 
@@ -936,9 +948,7 @@ fun ExpenseScreen(
                                 val emptyLabel = when (chartExpenseType) {
                                     ExpenseType.EXPENSE -> "支出"
                                     ExpenseType.INCOME -> "收入"
-                                    ExpenseType.TRANSFER_OUT -> "轉出"
-                                    ExpenseType.TRANSFER_IN -> "轉入"
-                                    null -> "收支"
+                                    else -> "收支"
                                 }
                                 Column(
                                     modifier = Modifier
@@ -1011,6 +1021,7 @@ fun ExpenseScreen(
         val currentAccount = customAccounts.find { it.id == account.id } ?: account
         AccountDetailBottomSheet(
             account = currentAccount,
+            accounts = customAccounts,
             monthExpenses = allMonthExpensesNoFilter,
             allExpenses = allExpenses,
             selectedMonth = selectedMonth,
@@ -1039,6 +1050,7 @@ fun ExpenseScreen(
     viewingTransferRecord?.let { record ->
         TransferDetailDialog(
             record = record,
+            accounts = customAccounts,
             onDismiss = { viewingTransferRecord = null },
             onDelete = {
                 viewModel.deleteExpense(it)
@@ -1309,6 +1321,78 @@ private fun ExpenseCategoryFilterBottomSheet(
     }
 }
 
+data class TransferDisplayInfo(
+    val fromName: String,
+    val toName: String,
+    val userNote: String
+)
+
+private fun parseTransferDisplayInfo(record: ExpenseRecord, accounts: List<PaymentAccount>): TransferDisplayInfo {
+    val fromId = Regex("""\[from:([^]]+)]""").find(record.note)?.groupValues?.getOrNull(1)
+    val toId = Regex("""\[to:([^]]+)]""").find(record.note)?.groupValues?.getOrNull(1)
+
+    val fromAcc = accounts.find { it.id == fromId }
+        ?: if (record.type == ExpenseType.TRANSFER_OUT) accounts.find { it.method == record.paymentMethod } else null
+    val toAcc = accounts.find { it.id == toId }
+        ?: if (record.type == ExpenseType.TRANSFER_IN) accounts.find { it.method == record.paymentMethod } else null
+
+    val fromName = fromAcc?.name
+        ?: if (record.type == ExpenseType.TRANSFER_IN) record.title.removePrefix("轉帳自 ").trim()
+        else record.paymentMethod.label.split(" ").first()
+
+    val toName = toAcc?.name
+        ?: if (record.type == ExpenseType.TRANSFER_OUT) record.title.removePrefix("轉帳至 ").trim()
+        else record.paymentMethod.label.split(" ").first()
+
+    val userNote = when {
+        record.note.contains(" | ") -> record.note.substringAfter(" | ").trim()
+        else -> {
+            val clean = record.note.replace(Regex("""\[(pair|from|to):[^]]+]"""), "").trim()
+            if (clean.startsWith("轉至 ") || clean.startsWith("來自 ")) "" else clean
+        }
+    }
+
+    return TransferDisplayInfo(
+        fromName = fromName,
+        toName = toName,
+        userNote = userNote
+    )
+}
+
+private fun filterRecordsForOverview(records: List<ExpenseRecord>): List<ExpenseRecord> {
+    val transferPairs = records.filter { it.type == ExpenseType.TRANSFER_OUT || it.type == ExpenseType.TRANSFER_IN }
+        .mapNotNull { r ->
+            Regex("""\[pair:([^]]+)]""").find(r.note)?.groupValues?.getOrNull(1)?.let { it to r }
+        }
+        .groupBy({ it.first }, { it.second })
+
+    val handledPairIds = mutableSetOf<String>()
+    val result = mutableListOf<ExpenseRecord>()
+
+    for (record in records) {
+        if (record.type == ExpenseType.TRANSFER_OUT || record.type == ExpenseType.TRANSFER_IN) {
+            val pairId = Regex("""\[pair:([^]]+)]""").find(record.note)?.groupValues?.getOrNull(1)
+            if (pairId != null) {
+                if (handledPairIds.add(pairId)) {
+                    // Prefer TRANSFER_OUT record to represent the single transfer card
+                    val pairRecords = transferPairs[pairId] ?: listOf(record)
+                    val outRecord = pairRecords.find { it.type == ExpenseType.TRANSFER_OUT } ?: record
+                    result.add(outRecord)
+                }
+            } else {
+                if (record.type == ExpenseType.TRANSFER_OUT) {
+                    result.add(record)
+                } else if (records.none { it.type == ExpenseType.TRANSFER_OUT && it.amount == record.amount && it.dateString == record.dateString }) {
+                    result.add(record)
+                }
+            }
+        } else {
+            result.add(record)
+        }
+    }
+    return result
+}
+
 private fun isExpenseForAccount(record: ExpenseRecord, account: PaymentAccount): Boolean {
     if (record.note.contains("[from:") || record.note.contains("[to:")) {
         if (record.type == ExpenseType.TRANSFER_OUT) {
@@ -1328,6 +1412,8 @@ private fun cleanExpenseNote(note: String): String {
 @Composable
 private fun ExpenseRecordItemCard(
     record: ExpenseRecord,
+    accounts: List<PaymentAccount> = emptyList(),
+    isConsolidatedTransfer: Boolean = false,
     onClick: () -> Unit
 ) {
     val isExpense = record.type == ExpenseType.EXPENSE
@@ -1335,6 +1421,29 @@ private fun ExpenseRecordItemCard(
     val isTransferIn = record.type == ExpenseType.TRANSFER_IN
     val isTransfer = isTransferOut || isTransferIn
     val isOutflow = isExpense || isTransferOut
+
+    val transferInfo = if (isTransfer) remember(record, accounts) { parseTransferDisplayInfo(record, accounts) } else null
+
+    val displayTitle = when {
+        isConsolidatedTransfer && isTransfer -> "${transferInfo?.fromName} ➔ ${transferInfo?.toName}"
+        isTransferOut -> "轉出至 ${transferInfo?.toName}"
+        isTransferIn -> "轉入自 ${transferInfo?.fromName}"
+        else -> record.title
+    }
+
+    val displayAmountText = when {
+        isTransfer && isConsolidatedTransfer -> "$${record.amount.toInt()}"
+        isOutflow -> "-$${record.amount.toInt()}"
+        else -> "+$${record.amount.toInt()}"
+    }
+
+    val displayAmountColor = when {
+        isTransfer && isConsolidatedTransfer -> SapphirePrimary
+        isExpense -> RoseAccent
+        isTransferOut -> SapphirePrimary
+        isTransferIn -> Color(0xFF0284C7)
+        else -> EmeraldAccent
+    }
 
     Card(
         modifier = Modifier
@@ -1357,9 +1466,8 @@ private fun ExpenseRecordItemCard(
                     .clip(CircleShape)
                     .background(
                         when {
+                            isTransfer -> SapphirePrimary.copy(alpha = 0.12f)
                             isExpense -> RoseLight
-                            isTransferOut -> SapphirePrimary.copy(alpha = 0.12f)
-                            isTransferIn -> Color(0xFFE0F2FE)
                             else -> EmeraldLight
                         }
                     ),
@@ -1382,9 +1490,8 @@ private fun ExpenseRecordItemCard(
                     },
                     contentDescription = null,
                     tint = when {
+                        isTransfer -> SapphirePrimary
                         isExpense -> RoseAccent
-                        isTransferOut -> SapphirePrimary
-                        isTransferIn -> Color(0xFF0284C7)
                         else -> EmeraldAccent
                     },
                     modifier = Modifier.size(20.dp)
@@ -1393,7 +1500,7 @@ private fun ExpenseRecordItemCard(
 
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    text = record.title,
+                    text = displayTitle,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold
                 )
@@ -1408,21 +1515,32 @@ private fun ExpenseRecordItemCard(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Text(
-                        text = if (isTransfer) "・轉帳" else "・${record.category.label}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "・${record.paymentMethod.label.split(" ").first()}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    if (isTransfer) {
+                        Text(
+                            text = if (isConsolidatedTransfer) "・帳戶轉帳" else if (isTransferOut) "・轉出" else "・轉入",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        Text(
+                            text = "・${record.category.label}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "・${record.paymentMethod.label.split(" ").first()}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
-                val cleanNote = remember(record.note) { cleanExpenseNote(record.note) }
-                if (cleanNote.isNotBlank()) {
+                val noteText = when {
+                    isTransfer -> transferInfo?.userNote.orEmpty()
+                    else -> cleanExpenseNote(record.note)
+                }
+                if (noteText.isNotBlank()) {
                     Text(
-                        text = cleanNote,
+                        text = noteText,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1430,15 +1548,10 @@ private fun ExpenseRecordItemCard(
             }
 
             Text(
-                text = "${if (isOutflow) "-" else "+"}$${record.amount.toInt()}",
+                text = displayAmountText,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.ExtraBold,
-                color = when {
-                    isExpense -> RoseAccent
-                    isTransferOut -> SapphirePrimary
-                    isTransferIn -> Color(0xFF0284C7)
-                    else -> EmeraldAccent
-                }
+                color = displayAmountColor
             )
         }
     }
@@ -1607,6 +1720,7 @@ private fun PaymentAccountCard(
 @Composable
 private fun AccountDetailBottomSheet(
     account: PaymentAccount,
+    accounts: List<PaymentAccount> = emptyList(),
     monthExpenses: List<ExpenseRecord>,
     allExpenses: List<ExpenseRecord>,
     selectedMonth: String,
@@ -1811,6 +1925,8 @@ private fun AccountDetailBottomSheet(
                     items(methodExpenses) { record ->
                         ExpenseRecordItemCard(
                             record = record,
+                            accounts = accounts,
+                            isConsolidatedTransfer = false,
                             onClick = {
                                 onEditExpense(record)
                             }
@@ -2240,16 +2356,19 @@ private fun ExpenseDonutChart(
     records: List<ExpenseRecord>,
     type: ExpenseType?
 ) {
-    val totalExp = remember(records) { records.filter { it.type == ExpenseType.EXPENSE }.sumOf { it.amount } }
-    val totalInc = remember(records) { records.filter { it.type == ExpenseType.INCOME }.sumOf { it.amount } }
+    val validRecords = remember(records) {
+        records.filter { it.type == ExpenseType.EXPENSE || it.type == ExpenseType.INCOME }
+    }
+    val totalExp = remember(validRecords) { validRecords.filter { it.type == ExpenseType.EXPENSE }.sumOf { it.amount } }
+    val totalInc = remember(validRecords) { validRecords.filter { it.type == ExpenseType.INCOME }.sumOf { it.amount } }
     val net = totalInc - totalExp
 
-    val totalAmount = remember(records, type) {
-        if (type == null) records.sumOf { it.amount } else records.filter { it.type == type }.sumOf { it.amount }
+    val totalAmount = remember(validRecords, type) {
+        if (type == null) validRecords.sumOf { it.amount } else validRecords.filter { it.type == type }.sumOf { it.amount }
     }
 
-    val categoryTotals = remember(records, type) {
-        val filtered = if (type == null) records else records.filter { it.type == type }
+    val categoryTotals = remember(validRecords, type) {
+        val filtered = if (type == null) validRecords else validRecords.filter { it.type == type }
         filtered.groupBy { Pair(it.category, it.type) }
             .mapValues { (_, list) -> list.sumOf { it.amount } }
             .toList()

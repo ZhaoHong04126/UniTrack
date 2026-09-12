@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -673,15 +674,36 @@ internal fun getAccountIcon(method: PaymentMethod): ImageVector {
 @Composable
 fun TransferDetailDialog(
     record: ExpenseRecord,
+    accounts: List<PaymentAccount> = emptyList(),
     onDismiss: () -> Unit,
     onDelete: (ExpenseRecord) -> Unit,
     onEdit: (ExpenseRecord) -> Unit = {}
 ) {
     var showConfirmDelete by remember { mutableStateOf(false) }
+    val fromId = Regex("""\[from:([^]]+)]""").find(record.note)?.groupValues?.getOrNull(1)
+    val toId = Regex("""\[to:([^]]+)]""").find(record.note)?.groupValues?.getOrNull(1)
+
+    val fromAcc = accounts.find { it.id == fromId }
+        ?: if (record.type == ExpenseType.TRANSFER_OUT) accounts.find { it.method == record.paymentMethod } else null
+    val toAcc = accounts.find { it.id == toId }
+        ?: if (record.type == ExpenseType.TRANSFER_IN) accounts.find { it.method == record.paymentMethod } else null
+
+    val fromName = fromAcc?.name
+        ?: if (record.type == ExpenseType.TRANSFER_IN) record.title.removePrefix("轉帳自 ").trim()
+        else record.paymentMethod.label.split(" ").first()
+
+    val toName = toAcc?.name
+        ?: if (record.type == ExpenseType.TRANSFER_OUT) record.title.removePrefix("轉帳至 ").trim()
+        else record.paymentMethod.label.split(" ").first()
+
     val cleanNote = remember(record.note) {
-        record.note.replace(Regex("""\[(pair|from|to):[^]]+]"""), "").trim()
+        if (record.note.contains(" | ")) {
+            record.note.substringAfter(" | ").trim()
+        } else {
+            val stripped = record.note.replace(Regex("""\[(pair|from|to):[^]]+]"""), "").trim()
+            if (stripped.startsWith("轉至 ") || stripped.startsWith("來自 ")) "" else stripped
+        }
     }
-    val isTransferOut = record.type == ExpenseType.TRANSFER_OUT
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -736,31 +758,112 @@ fun TransferDetailDialog(
                 }
             }
 
-            // Big Amount Card
+            // Big Amount & Transfer Route Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(containerColor = SapphirePrimary.copy(alpha = 0.08f))
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(18.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Text(
-                        text = if (isTransferOut) "-$${record.amount.toInt()}" else "+$${record.amount.toInt()}",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = if (isTransferOut) SapphirePrimary else Color(0xFF0284C7)
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = record.title,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "$${record.amount.toInt()}",
+                            style = MaterialTheme.typography.headlineLarge,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = SapphirePrimary
+                        )
+                        Text(
+                            text = "帳戶內部資金調撥",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    // Visual route
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surface,
+                            tonalElevation = 2.dp,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                Text(
+                                    text = "轉出帳戶",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = fromName,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = "-$${record.amount.toInt()}",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = RoseAccent
+                                )
+                            }
+                        }
+
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = SapphirePrimary,
+                            modifier = Modifier
+                                .padding(horizontal = 8.dp)
+                                .size(24.dp)
+                        )
+
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surface,
+                            tonalElevation = 2.dp,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                Text(
+                                    text = "轉入帳戶",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = toName,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = "+$${record.amount.toInt()}",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = EmeraldAccent
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
@@ -773,11 +876,12 @@ fun TransferDetailDialog(
                     .padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                DetailRow(label = "交易類型", value = if (isTransferOut) "帳戶轉出" else "帳戶轉入")
-                DetailRow(label = "關聯方式", value = record.paymentMethod.label)
+                DetailRow(label = "交易類型", value = "帳戶內部轉帳")
+                DetailRow(label = "轉出帳戶", value = fromName)
+                DetailRow(label = "轉入帳戶", value = toName)
                 val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
                 val timeStr = if (record.timestamp > 0) " " + timeFormat.format(Date(record.timestamp)) else ""
-                DetailRow(label = "交易時間", value = "${record.dateString}$timeStr")
+                DetailRow(label = "轉帳時間", value = "${record.dateString}$timeStr")
                 if (cleanNote.isNotBlank()) {
                     DetailRow(label = "備註用途", value = cleanNote)
                 }
