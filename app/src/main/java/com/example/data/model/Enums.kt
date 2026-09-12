@@ -44,7 +44,9 @@ enum class GeneralEduSubtype(val label: String) {
 
 enum class ExpenseType(val label: String) {
     EXPENSE("支出"),
-    INCOME("收入")
+    INCOME("收入"),
+    TRANSFER_OUT("轉出"),
+    TRANSFER_IN("轉入")
 }
 
 @Suppress("SpellCheckingInspection")

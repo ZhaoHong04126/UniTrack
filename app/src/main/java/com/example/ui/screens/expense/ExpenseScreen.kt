@@ -82,6 +82,7 @@ fun ExpenseScreen(
     var showYearMonthPicker by remember { mutableStateOf(false) }
     var showFilterBottomSheet by remember { mutableStateOf(false) }
     var showAddAccountDialog by remember { mutableStateOf(false) }
+    var showTransferDialog by remember { mutableStateOf(false) }
     var showDeleteAccountsBottomSheet by remember { mutableStateOf(false) }
     var accountToDelete by remember { mutableStateOf<PaymentAccount?>(null) }
     var selectedCategoryFilter by remember { mutableStateOf<ExpenseCategory?>(null) }
@@ -89,6 +90,8 @@ fun ExpenseScreen(
     var chartType by remember { mutableIntStateOf(0) } // 0: 圓餅圖, 1: 折線圖
     var chartExpenseType by remember { mutableStateOf<ExpenseType?>(ExpenseType.EXPENSE) }
     var viewingAccount by remember { mutableStateOf<PaymentAccount?>(null) }
+    var viewingTransferRecord by remember { mutableStateOf<ExpenseRecord?>(null) }
+    var editingTransferRecord by remember { mutableStateOf<ExpenseRecord?>(null) }
     var isFabExpanded by remember { mutableStateOf(false) }
     var draggingAccountIndex by remember { mutableStateOf<Int?>(null) }
     var dragOffsetY by remember { mutableFloatStateOf(0f) }
@@ -468,6 +471,36 @@ fun ExpenseScreen(
                                 )
                             )
                         }
+                        1 -> {
+                            FilterChip(
+                                selected = false,
+                                onClick = { showTransferDialog = true },
+                                label = {
+                                    Text(
+                                        text = "帳戶轉帳",
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.SwapHoriz,
+                                        contentDescription = "帳戶轉帳",
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                },
+                                shape = RoundedCornerShape(20.dp),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    containerColor = SapphirePrimary.copy(alpha = 0.12f),
+                                    labelColor = SapphirePrimary,
+                                    iconColor = SapphirePrimary
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = false,
+                                    borderColor = SapphirePrimary.copy(alpha = 0.35f)
+                                )
+                            )
+                        }
                         else -> Unit
                     }
                 }
@@ -584,8 +617,12 @@ fun ExpenseScreen(
                                 ExpenseRecordItemCard(
                                     record = record,
                                     onClick = {
-                                        editingExpense = record
-                                        showAddDialog = true
+                                        if (record.type == ExpenseType.TRANSFER_OUT || record.type == ExpenseType.TRANSFER_IN) {
+                                            viewingTransferRecord = record
+                                        } else {
+                                            editingExpense = record
+                                            showAddDialog = true
+                                        }
                                     }
                                 )
                             }
@@ -625,8 +662,12 @@ fun ExpenseScreen(
                                 ExpenseRecordItemCard(
                                     record = record,
                                     onClick = {
-                                        editingExpense = record
-                                        showAddDialog = true
+                                        if (record.type == ExpenseType.TRANSFER_OUT || record.type == ExpenseType.TRANSFER_IN) {
+                                            viewingTransferRecord = record
+                                        } else {
+                                            editingExpense = record
+                                            showAddDialog = true
+                                        }
                                     }
                                 )
                             }
@@ -636,16 +677,16 @@ fun ExpenseScreen(
                 1 -> {
                     // Tab 1: Account Management (Payment Accounts) with Continuous Long-Press Drag Reordering
                     itemsIndexed(customAccounts, key = { _, acc -> acc.id }) { index, account ->
-                        val methodExpenses = allMonthExpensesNoFilter.filter { it.paymentMethod == account.method }
+                        val methodExpenses = allMonthExpensesNoFilter.filter { isExpenseForAccount(it, account) }
                         val totalExp = methodExpenses.filter { it.type == ExpenseType.EXPENSE }.sumOf { it.amount }
                         val totalInc = methodExpenses.filter { it.type == ExpenseType.INCOME }.sumOf { it.amount }
 
                         val isBeforeStart = if (account.startYearMonth.isNotBlank()) selectedMonth < account.startYearMonth else false
                         val cumulativeExpenses = allExpenses.filter {
-                            it.paymentMethod == account.method && it.dateString.substringBeforeLast("-") <= selectedMonth
+                            isExpenseForAccount(it, account) && it.dateString.substringBeforeLast("-") <= selectedMonth
                         }
-                        val cumExp = cumulativeExpenses.filter { it.type == ExpenseType.EXPENSE }.sumOf { it.amount }
-                        val cumInc = cumulativeExpenses.filter { it.type == ExpenseType.INCOME }.sumOf { it.amount }
+                        val cumExp = cumulativeExpenses.filter { it.type == ExpenseType.EXPENSE || it.type == ExpenseType.TRANSFER_OUT }.sumOf { it.amount }
+                        val cumInc = cumulativeExpenses.filter { it.type == ExpenseType.INCOME || it.type == ExpenseType.TRANSFER_IN }.sumOf { it.amount }
                         val currentBalance = if (isBeforeStart) 0.0 else account.initialBalance + (cumInc - cumExp)
                         val isDragging = draggingAccountIndex == index
 
@@ -895,6 +936,8 @@ fun ExpenseScreen(
                                 val emptyLabel = when (chartExpenseType) {
                                     ExpenseType.EXPENSE -> "支出"
                                     ExpenseType.INCOME -> "收入"
+                                    ExpenseType.TRANSFER_OUT -> "轉出"
+                                    ExpenseType.TRANSFER_IN -> "轉入"
                                     null -> "收支"
                                 }
                                 Column(
@@ -973,9 +1016,13 @@ fun ExpenseScreen(
             selectedMonth = selectedMonth,
             onDismiss = { viewingAccount = null },
             onEditExpense = { record ->
-                editingExpense = record
-                viewingAccount = null
-                showAddDialog = true
+                if (record.type == ExpenseType.TRANSFER_OUT || record.type == ExpenseType.TRANSFER_IN) {
+                    viewingTransferRecord = record
+                } else {
+                    editingExpense = record
+                    viewingAccount = null
+                    showAddDialog = true
+                }
             },
             onUpdateAccount = { updatedAccount ->
                 viewModel.updateAccount(updatedAccount)
@@ -986,6 +1033,93 @@ fun ExpenseScreen(
                     accountToDelete = currentAccount
                 }
             } else null
+        )
+    }
+
+    viewingTransferRecord?.let { record ->
+        TransferDetailDialog(
+            record = record,
+            onDismiss = { viewingTransferRecord = null },
+            onDelete = {
+                viewModel.deleteExpense(it)
+                viewingTransferRecord = null
+            },
+            onEdit = {
+                viewingTransferRecord = null
+                editingTransferRecord = record
+            }
+        )
+    }
+
+    editingTransferRecord?.let { record ->
+        val fromId = Regex("""\[from:([^]]+)]""").find(record.note)?.groupValues?.getOrNull(1)
+        val toId = Regex("""\[to:([^]]+)]""").find(record.note)?.groupValues?.getOrNull(1)
+        val initialFromAcc = customAccounts.find { it.id == fromId }
+            ?: (if (record.type == ExpenseType.TRANSFER_OUT) customAccounts.find { it.method == record.paymentMethod } else null)
+            ?: customAccounts.getOrNull(0)
+        val initialToAcc = customAccounts.find { it.id == toId }
+            ?: (if (record.type == ExpenseType.TRANSFER_IN) customAccounts.find { it.method == record.paymentMethod } else null)
+            ?: customAccounts.getOrNull(1)
+            ?: customAccounts.getOrNull(0)
+        val initialNote = if (record.note.contains(" | ")) record.note.substringAfter(" | ").trim() else ""
+        val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
+        val initialTimeStr = if (record.timestamp > 0) timeFormat.format(Date(record.timestamp)) else null
+
+        AccountTransferDialog(
+            accounts = customAccounts,
+            getAccountBalance = { acc ->
+                val cum = allExpenses.filter {
+                    isExpenseForAccount(it, acc) && it.dateString.substringBeforeLast("-") <= selectedMonth
+                }
+                val exp = cum.filter { it.type == ExpenseType.EXPENSE || it.type == ExpenseType.TRANSFER_OUT }.sumOf { it.amount }
+                val inc = cum.filter { it.type == ExpenseType.INCOME || it.type == ExpenseType.TRANSFER_IN }.sumOf { it.amount }
+                if (acc.startYearMonth.isNotBlank() && selectedMonth < acc.startYearMonth) 0.0 else acc.initialBalance + (inc - exp)
+            },
+            onDismiss = { editingTransferRecord = null },
+            onConfirm = { fromAcc, toAcc, amount, dateStr, timestamp, note ->
+                viewModel.updateTransfer(
+                    oldRecord = record,
+                    newFromAccount = fromAcc,
+                    newToAccount = toAcc,
+                    newAmount = amount,
+                    newDateString = dateStr,
+                    newTimestamp = timestamp,
+                    newNote = note
+                )
+                editingTransferRecord = null
+            },
+            initialFromAccount = initialFromAcc,
+            initialToAccount = initialToAcc,
+            initialAmount = record.amount,
+            initialDateString = record.dateString,
+            initialTimeString = initialTimeStr,
+            initialNote = initialNote,
+            isEditing = true
+        )
+    }
+
+    if (showTransferDialog) {
+        AccountTransferDialog(
+            accounts = customAccounts,
+            getAccountBalance = { acc ->
+                val cum = allExpenses.filter {
+                    isExpenseForAccount(it, acc) && it.dateString.substringBeforeLast("-") <= selectedMonth
+                }
+                val exp = cum.filter { it.type == ExpenseType.EXPENSE || it.type == ExpenseType.TRANSFER_OUT }.sumOf { it.amount }
+                val inc = cum.filter { it.type == ExpenseType.INCOME || it.type == ExpenseType.TRANSFER_IN }.sumOf { it.amount }
+                if (acc.startYearMonth.isNotBlank() && selectedMonth < acc.startYearMonth) 0.0 else acc.initialBalance + (inc - exp)
+            },
+            onDismiss = { showTransferDialog = false },
+            onConfirm = { fromAcc, toAcc, amount, dateStr, timestamp, note ->
+                viewModel.transferBetweenAccounts(
+                    fromAccount = fromAcc,
+                    toAccount = toAcc,
+                    amount = amount,
+                    dateString = dateStr,
+                    timestamp = timestamp,
+                    note = note
+                )
+            }
         )
     }
 
@@ -1175,12 +1309,32 @@ private fun ExpenseCategoryFilterBottomSheet(
     }
 }
 
+private fun isExpenseForAccount(record: ExpenseRecord, account: PaymentAccount): Boolean {
+    if (record.note.contains("[from:") || record.note.contains("[to:")) {
+        if (record.type == ExpenseType.TRANSFER_OUT) {
+            return record.note.contains("[from:${account.id}]")
+        }
+        if (record.type == ExpenseType.TRANSFER_IN) {
+            return record.note.contains("[to:${account.id}]")
+        }
+    }
+    return record.paymentMethod == account.method
+}
+
+private fun cleanExpenseNote(note: String): String {
+    return note.replace(Regex("""\[(pair|from|to):[^]]+]"""), "").trim()
+}
+
 @Composable
 private fun ExpenseRecordItemCard(
     record: ExpenseRecord,
     onClick: () -> Unit
 ) {
     val isExpense = record.type == ExpenseType.EXPENSE
+    val isTransferOut = record.type == ExpenseType.TRANSFER_OUT
+    val isTransferIn = record.type == ExpenseType.TRANSFER_IN
+    val isTransfer = isTransferOut || isTransferIn
+    val isOutflow = isExpense || isTransferOut
 
     Card(
         modifier = Modifier
@@ -1201,23 +1355,38 @@ private fun ExpenseRecordItemCard(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(if (isExpense) RoseLight else EmeraldLight),
+                    .background(
+                        when {
+                            isExpense -> RoseLight
+                            isTransferOut -> SapphirePrimary.copy(alpha = 0.12f)
+                            isTransferIn -> Color(0xFFE0F2FE)
+                            else -> EmeraldLight
+                        }
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = when (record.category) {
-                        ExpenseCategory.FOOD -> Icons.Default.Restaurant
-                        ExpenseCategory.BOOKS_STUDY -> Icons.AutoMirrored.Filled.MenuBook
-                        ExpenseCategory.TRANSPORT -> Icons.Default.DirectionsBus
-                        ExpenseCategory.RENT_UTILITY -> Icons.Default.Home
-                        ExpenseCategory.ENTERTAINMENT -> Icons.Default.SportsEsports
-                        ExpenseCategory.DAILY -> Icons.Default.ShoppingBag
-                        ExpenseCategory.SALARY_JOB -> Icons.Default.Work
-                        ExpenseCategory.SCHOLARSHIP -> Icons.Default.School
-                        ExpenseCategory.OTHER -> Icons.Default.MoreHoriz
+                    imageVector = when {
+                        isTransfer -> Icons.Default.SwapHoriz
+                        else -> when (record.category) {
+                            ExpenseCategory.FOOD -> Icons.Default.Restaurant
+                            ExpenseCategory.BOOKS_STUDY -> Icons.AutoMirrored.Filled.MenuBook
+                            ExpenseCategory.TRANSPORT -> Icons.Default.DirectionsBus
+                            ExpenseCategory.RENT_UTILITY -> Icons.Default.Home
+                            ExpenseCategory.ENTERTAINMENT -> Icons.Default.SportsEsports
+                            ExpenseCategory.DAILY -> Icons.Default.ShoppingBag
+                            ExpenseCategory.SALARY_JOB -> Icons.Default.Work
+                            ExpenseCategory.SCHOLARSHIP -> Icons.Default.School
+                            ExpenseCategory.OTHER -> Icons.Default.MoreHoriz
+                        }
                     },
                     contentDescription = null,
-                    tint = if (isExpense) RoseAccent else EmeraldAccent,
+                    tint = when {
+                        isExpense -> RoseAccent
+                        isTransferOut -> SapphirePrimary
+                        isTransferIn -> Color(0xFF0284C7)
+                        else -> EmeraldAccent
+                    },
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -1240,7 +1409,7 @@ private fun ExpenseRecordItemCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "・${record.category.label}",
+                        text = if (isTransfer) "・轉帳" else "・${record.category.label}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1250,9 +1419,10 @@ private fun ExpenseRecordItemCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                if (record.note.isNotBlank()) {
+                val cleanNote = remember(record.note) { cleanExpenseNote(record.note) }
+                if (cleanNote.isNotBlank()) {
                     Text(
-                        text = record.note,
+                        text = cleanNote,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1260,10 +1430,15 @@ private fun ExpenseRecordItemCard(
             }
 
             Text(
-                text = "${if (isExpense) "-" else "+"}$${record.amount.toInt()}",
+                text = "${if (isOutflow) "-" else "+"}$${record.amount.toInt()}",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.ExtraBold,
-                color = if (isExpense) RoseAccent else EmeraldAccent
+                color = when {
+                    isExpense -> RoseAccent
+                    isTransferOut -> SapphirePrimary
+                    isTransferIn -> Color(0xFF0284C7)
+                    else -> EmeraldAccent
+                }
             )
         }
     }
@@ -1441,7 +1616,7 @@ private fun AccountDetailBottomSheet(
     onDeleteAccount: (() -> Unit)? = null
 ) {
     val methodExpenses = remember(monthExpenses, account) {
-        monthExpenses.filter { it.paymentMethod == account.method }
+        monthExpenses.filter { isExpenseForAccount(it, account) }
             .sortedWith(compareByDescending<ExpenseRecord> { it.dateString }.thenByDescending { it.timestamp })
     }
     val totalExpense = methodExpenses.filter { it.type == ExpenseType.EXPENSE }.sumOf { it.amount }
@@ -1451,11 +1626,11 @@ private fun AccountDetailBottomSheet(
     val isBeforeStart = if (account.startYearMonth.isNotBlank()) selectedMonth < account.startYearMonth else false
     val cumulativeExpenses = remember(allExpenses, account, selectedMonth) {
         allExpenses.filter {
-            it.paymentMethod == account.method && it.dateString.substringBeforeLast("-") <= selectedMonth
+            isExpenseForAccount(it, account) && it.dateString.substringBeforeLast("-") <= selectedMonth
         }
     }
-    val cumExp = cumulativeExpenses.filter { it.type == ExpenseType.EXPENSE }.sumOf { it.amount }
-    val cumInc = cumulativeExpenses.filter { it.type == ExpenseType.INCOME }.sumOf { it.amount }
+    val cumExp = cumulativeExpenses.filter { it.type == ExpenseType.EXPENSE || it.type == ExpenseType.TRANSFER_OUT }.sumOf { it.amount }
+    val cumInc = cumulativeExpenses.filter { it.type == ExpenseType.INCOME || it.type == ExpenseType.TRANSFER_IN }.sumOf { it.amount }
     val currentBalance = if (isBeforeStart) 0.0 else account.initialBalance + (cumInc - cumExp)
 
     var showEditAccountBottomSheet by remember { mutableStateOf(false) }
@@ -2270,7 +2445,7 @@ private fun ExpenseLineTrendChart(
         when (type) {
             ExpenseType.EXPENSE -> maxExp.coerceAtLeast(100.0)
             ExpenseType.INCOME -> maxInc.coerceAtLeast(100.0)
-            null -> maxOf(maxExp, maxInc).coerceAtLeast(100.0)
+            else -> maxOf(maxExp, maxInc).coerceAtLeast(100.0)
         }
     }
 
@@ -2505,12 +2680,12 @@ private fun ExpenseLineTrendChart(
                 }
 
                 when (type) {
-                    null -> {
+                    ExpenseType.EXPENSE -> drawTrendLine(dailyExpSums, RoseAccent)
+                    ExpenseType.INCOME -> drawTrendLine(dailyIncSums, EmeraldAccent)
+                    else -> {
                         drawTrendLine(dailyExpSums, RoseAccent)
                         drawTrendLine(dailyIncSums, EmeraldAccent)
                     }
-                    ExpenseType.EXPENSE -> drawTrendLine(dailyExpSums, RoseAccent)
-                    ExpenseType.INCOME -> drawTrendLine(dailyIncSums, EmeraldAccent)
                 }
 
                 // Draw vertical indicator and highlighted points if touched

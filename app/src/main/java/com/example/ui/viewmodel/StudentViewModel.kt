@@ -1249,7 +1249,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             if (e.type == ExpenseType.EXPENSE) {
                 totalExp += e.amount
                 catMap[e.category] = (catMap[e.category] ?: 0.0) + e.amount
-            } else {
+            } else if (e.type == ExpenseType.INCOME) {
                 totalInc += e.amount
             }
         }
@@ -1257,8 +1257,8 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         val activeAccounts = accounts.filter { it.startYearMonth.isBlank() || it.startYearMonth <= month }
         val totalInitialBalance = activeAccounts.sumOf { it.initialBalance }
         val cumulativeExpenses = expenses.filter { it.dateString.substringBeforeLast("-") <= month }
-        val cumExp = cumulativeExpenses.filter { it.type == ExpenseType.EXPENSE }.sumOf { it.amount }
-        val cumInc = cumulativeExpenses.filter { it.type == ExpenseType.INCOME }.sumOf { it.amount }
+        val cumExp = cumulativeExpenses.filter { it.type == ExpenseType.EXPENSE || it.type == ExpenseType.TRANSFER_OUT }.sumOf { it.amount }
+        val cumInc = cumulativeExpenses.filter { it.type == ExpenseType.INCOME || it.type == ExpenseType.TRANSFER_IN }.sumOf { it.amount }
         val totalAccountBalance = if (activeAccounts.isEmpty() && cumulativeExpenses.isEmpty()) 0.0 else totalInitialBalance + (cumInc - cumExp)
 
         val budget = budgets.firstOrNull { it.yearMonth == month }?.budgetAmount ?: 10000.0
@@ -1754,10 +1754,129 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    fun transferBetweenAccounts(
+        fromAccount: PaymentAccount,
+        toAccount: PaymentAccount,
+        amount: Double,
+        dateString: String,
+        timestamp: Long = System.currentTimeMillis(),
+        note: String = ""
+    ) = viewModelScope.launch {
+        val pairId = UUID.randomUUID().toString().take(8)
+        val userNoteClean = note.trim()
+        val noteSuffix = if (userNoteClean.isNotBlank()) " | $userNoteClean" else ""
+
+        val outRecord = ExpenseRecord(
+            title = "轉帳至 ${toAccount.name}",
+            amount = amount,
+            type = ExpenseType.TRANSFER_OUT,
+            category = ExpenseCategory.OTHER,
+            paymentMethod = fromAccount.method,
+            timestamp = timestamp,
+            dateString = dateString,
+            note = "[pair:$pairId][from:${fromAccount.id}][to:${toAccount.id}] 轉至 ${toAccount.name}$noteSuffix"
+        )
+        val inRecord = ExpenseRecord(
+            title = "轉帳自 ${fromAccount.name}",
+            amount = amount,
+            type = ExpenseType.TRANSFER_IN,
+            category = ExpenseCategory.OTHER,
+            paymentMethod = toAccount.method,
+            timestamp = timestamp + 1,
+            dateString = dateString,
+            note = "[pair:$pairId][from:${fromAccount.id}][to:${toAccount.id}] 來自 ${fromAccount.name}$noteSuffix"
+        )
+
+        repository.insertExpense(outRecord)
+        repository.insertExpense(inRecord)
+        currentUser.value?.let { firestoreSyncRepository.uploadAllToCloud(it.uid) }
+        _userMessage.value = "已完成帳戶轉帳：$${amount.toInt()}（${fromAccount.name} ➔ ${toAccount.name}）"
+
+        sendNotification(
+            title = "🔄 帳戶轉帳成功",
+            message = "已從「${fromAccount.name}」轉出 $${amount.toInt()} 至「${toAccount.name}」｜ 日期：$dateString",
+            type = NotificationType.EXPENSE,
+            actionRoute = "expense",
+            sendSystemPush = _notificationPreferences.value.expenseTransactionNoticeEnabled
+        )
+    }
+
+    fun updateTransfer(
+        oldRecord: ExpenseRecord,
+        newFromAccount: PaymentAccount,
+        newToAccount: PaymentAccount,
+        newAmount: Double,
+        newDateString: String,
+        newTimestamp: Long = System.currentTimeMillis(),
+        newNote: String = ""
+    ) = viewModelScope.launch {
+        val oldPairId = Regex("""\[pair:([^]]+)]""").find(oldRecord.note)?.groupValues?.getOrNull(1)
+        if (oldPairId != null) {
+            val all = repository.getAllExpensesOnce()
+            val paired = all.filter { it.note.contains("[pair:$oldPairId]") }
+            for (item in paired) {
+                repository.deleteExpense(item)
+                currentUser.value?.let { firestoreSyncRepository.deleteExpenseFromCloud(it.uid, item.id) }
+            }
+        } else {
+            repository.deleteExpense(oldRecord)
+            currentUser.value?.let { firestoreSyncRepository.deleteExpenseFromCloud(it.uid, oldRecord.id) }
+        }
+
+        val newPairId = UUID.randomUUID().toString().take(8)
+        val userNoteClean = newNote.trim()
+        val noteSuffix = if (userNoteClean.isNotBlank()) " | $userNoteClean" else ""
+
+        val outRecord = ExpenseRecord(
+            title = "轉帳至 ${newToAccount.name}",
+            amount = newAmount,
+            type = ExpenseType.TRANSFER_OUT,
+            category = ExpenseCategory.OTHER,
+            paymentMethod = newFromAccount.method,
+            timestamp = newTimestamp,
+            dateString = newDateString,
+            note = "[pair:$newPairId][from:${newFromAccount.id}][to:${newToAccount.id}] 轉至 ${newToAccount.name}$noteSuffix"
+        )
+        val inRecord = ExpenseRecord(
+            title = "轉帳自 ${newFromAccount.name}",
+            amount = newAmount,
+            type = ExpenseType.TRANSFER_IN,
+            category = ExpenseCategory.OTHER,
+            paymentMethod = newToAccount.method,
+            timestamp = newTimestamp + 1,
+            dateString = newDateString,
+            note = "[pair:$newPairId][from:${newFromAccount.id}][to:${newToAccount.id}] 來自 ${newFromAccount.name}$noteSuffix"
+        )
+
+        repository.insertExpense(outRecord)
+        repository.insertExpense(inRecord)
+        currentUser.value?.let { firestoreSyncRepository.uploadAllToCloud(it.uid) }
+        _userMessage.value = "已更新轉帳記錄：$${newAmount.toInt()}（${newFromAccount.name} ➔ ${newToAccount.name}）"
+
+        sendNotification(
+            title = "✏️ 轉帳記錄已更新",
+            message = "已更新轉帳：從「${newFromAccount.name}」轉出 $${newAmount.toInt()} 至「${newToAccount.name}」｜ 日期：$newDateString",
+            type = NotificationType.EXPENSE,
+            actionRoute = "expense",
+            sendSystemPush = _notificationPreferences.value.expenseTransactionNoticeEnabled
+        )
+    }
+
     fun deleteExpense(expense: ExpenseRecord) = viewModelScope.launch {
-        repository.deleteExpense(expense)
-        currentUser.value?.let { firestoreSyncRepository.deleteExpenseFromCloud(it.uid, expense.id) }
-        _userMessage.value = "已刪除記錄"
+        val pairId = Regex("""\[pair:([^]]+)]""").find(expense.note)?.groupValues?.getOrNull(1)
+        if (pairId != null) {
+            val all = repository.getAllExpensesOnce()
+            val paired = all.filter { it.note.contains("[pair:$pairId]") }
+            for (item in paired) {
+                repository.deleteExpense(item)
+                currentUser.value?.let { firestoreSyncRepository.deleteExpenseFromCloud(it.uid, item.id) }
+            }
+            _userMessage.value = "已刪除轉帳記錄"
+        } else {
+            repository.deleteExpense(expense)
+            currentUser.value?.let { firestoreSyncRepository.deleteExpenseFromCloud(it.uid, expense.id) }
+            _userMessage.value = "已刪除記錄"
+        }
 
         val isExpense = expense.type == ExpenseType.EXPENSE
         val itemTitle = expense.title.ifBlank { expense.category.label }
