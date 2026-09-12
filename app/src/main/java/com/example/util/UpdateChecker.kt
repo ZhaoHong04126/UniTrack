@@ -7,12 +7,14 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 
+@Suppress("unused")
 data class UpdateInfo(
     val latestVersion: String,
     val releaseUrl: String,
     val releaseNotes: String,
 )
 
+@Suppress("unused")
 object UpdateChecker {
     private const val TAG = "UpdateChecker"
     private const val OWNER = "ZhaoHong04126"
@@ -34,7 +36,7 @@ object UpdateChecker {
 
             val body = client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return@withContext null
-                response.body?.string() ?: return@withContext null
+                response.body.string()
             }
 
             val json = JSONObject(body)
@@ -60,7 +62,7 @@ object UpdateChecker {
     }
 
     /**
-     * Semver 比較：把版本字串拆成數字陣列，無法解析則回落字串比對。
+     * 語意化版本 (Semantic Versioning) 比較：把版本字串拆成數字陣列，無法解析則回落字串比對。
      */
     private fun isNewerVersion(remote: String, local: String): Boolean {
         val remoteParts = remote.split(".").mapNotNull { it.toIntOrNull() }

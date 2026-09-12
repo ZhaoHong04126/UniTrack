@@ -146,6 +146,10 @@ class StudentRepository(
         expenseDao.setBudget(budget)
     }
 
+    suspend fun deleteBudget(budget: MonthlyBudget) = withContext(Dispatchers.IO) {
+        expenseDao.deleteBudget(budget)
+    }
+
     // Calendar Events
     val allCalendarEvents: Flow<List<CalendarEvent>> = calendarDao?.getAllEvents() ?: kotlinx.coroutines.flow.flowOf(emptyList())
 

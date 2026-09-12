@@ -51,6 +51,9 @@ interface ExpenseDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun setBudget(budget: MonthlyBudget)
 
+    @Delete
+    suspend fun deleteBudget(budget: MonthlyBudget)
+
     @Query("DELETE FROM monthly_budgets")
     suspend fun deleteAllBudgets()
 
@@ -75,6 +78,7 @@ interface ExpenseDao {
         for (b in local) {
             if (b.yearMonth !in downloadedMonths) {
                 // Remove local budgets that don't exist on cloud
+                deleteBudget(b)
             }
         }
         for (b in downloadedBudgets) {

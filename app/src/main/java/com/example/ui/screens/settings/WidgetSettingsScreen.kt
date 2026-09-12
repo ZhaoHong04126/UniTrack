@@ -17,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -37,7 +36,6 @@ fun WidgetSettingsScreen(
     onNavigateToTimetable: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
     val todayClasses by viewModel.todayClasses.collectAsStateWithLifecycle()
     val currentSemesterCourses by viewModel.currentSemesterCourses.collectAsStateWithLifecycle()
     val plan by viewModel.graduationPlan.collectAsStateWithLifecycle()
