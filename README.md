@@ -5,10 +5,10 @@
 [![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose%20%7C%20Material%203-4285F4?logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
 [![Room](https://img.shields.io/badge/Storage-Room%20(SQLite)-00599C?logo=sqlite&logoColor=white)](https://developer.android.com/training/data-storage/room)
 [![Firebase](https://img.shields.io/badge/Backend-Firebase%20(Auth%20%2B%20Firestore)-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com/)
-[![Version](https://img.shields.io/badge/Version-v2.2.0-3B82F6)](https://github.com/ZhaoHong04126/UniTrack)
+[![Version](https://img.shields.io/badge/Version-v2.3.0-3B82F6)](https://github.com/ZhaoHong04126/UniTrack)
 
 > **專為大學生量身打造的全方位學業與生活管理助理。**  
-> 集結「智慧週課表 & 考勤筆記」、「正課與課輔/實習時段獨立管理」、「整合行事曆與待辦日程」、「系統級上課推播提醒 (AlarmManager)」、「桌面今日課表小工具」、「畢業學分稽核與門檻檢核」、「GPA / 學業儀表板」、「個人記帳與月度預算（含自訂交易時間）」、「通知中心與雲端原子事務同步」、「深淺色主題切換」於一體，支援 100% 純本機離線隱私保護與 Firebase 雲端雙向同步。經由 R8 深度修剪，安裝包極致輕量 (11.5MB)。
+> 集結「智慧週課表 & 考勤筆記」、「正課與課輔/實習時段獨立管理」、「整合行事曆與待辦日程」、「系統級上課推播提醒 (AlarmManager)」、「桌面今日課表小工具」、「畢業學分稽核與門檻檢核」、「GPA / 學業儀表板」、「個人記帳、帳戶互轉與月度預算（含自訂交易時間與預算刪除）」、「通知中心與雲端原子事務同步」、「深淺色主題切換」於一體，支援 100% 純本機離線隱私保護與 Firebase 雲端雙向同步。經由 R8 深度修剪，安裝包極致輕量 (11.5MB)。
 
 ---
 
@@ -29,8 +29,8 @@
   - [3. 整合行事曆與個人待辦日程 (Calendar & Tasks)](#3-整合行事曆與個人待辦日程-calendar--tasks)
   - [4. 成績登錄與 GPA 試算 (Grades & GPA)](#4-成績登錄與-gpa-試算-grades--gpa)
   - [5. 畢業審查與學分稽核 (Graduation Audit)](#5-畢業審查與學分稽核-graduation-audit)
-  - [6. 個人記帳、精準時間與多帳戶管理 (Expense & Budget)](#6-個人記帳精準時間與多帳戶管理-expense--budget)
-  - [7. 通知中心、帳號與雲端安全同步 (Auth, Notification & Sync)](#7-通知中心帳號與雲端安全同步-auth-notification--sync)
+  - [6. 個人記帳、精準時間、帳戶互轉與預算管理 (Expense & Budget)](#6-個人記帳精準時間帳戶互轉與預算管理-expense--budget)
+  - [7. 通知中心、版本偵測與雲端安全同步 (Auth, Notification & Sync)](#7-通知中心版本偵測與雲端安全同步-auth-notification--sync)
   - [8. 外觀主題與個人化設定 (Theme & Appearance)](#8-外觀主題與個人化設定-theme--appearance)
   - [9. 桌面小工具 (App Widgets)](#9-桌面小工具-app-widgets)
 - [🧪 測試與品質保證](#-測試與品質保證)
@@ -52,6 +52,14 @@
   * 支援「每週」、「單週」、「雙週」與「指定週次」（如第 1~8 週、第 9~16 週或任意自訂週次選取）。
   * 各時段（正課、課輔）可各自獨立設定不同的上課週次模式。
   * 週課表、行事曆與桌面小工具 (`TodayScheduleWidget`) 依開學週次動態過濾並精準呈現當週課堂，全面支援 Firestore 雲端雙向同步。
+* 💳 **多帳戶間自由轉帳與資金調撥 (Account Transfer)**：
+  * 新增專屬帳戶轉帳對話框 (`AccountTransferDialog`)，支援在現金、銀行、信用卡、LINE Pay 等帳戶間一鍵轉帳。
+  * 支援 `TRANSFER_OUT`（轉出）與 `TRANSFER_IN`（轉入）成對雙向關聯，清楚呈現資金流向。
+  * **預算精確隔離**：內部資金調撥精確反映於各帳戶累積餘額，並自動排除於月度總花費與預算進度條外，杜絕虛增開銷。
+* 🗑️ **月度預算彈性自訂與刪除 (Budget Management)**：
+  * 支援設定月度總預算與動態預警進度條；新增**刪除預算**功能，隨時解除預算限制回歸自由記帳。
+* 🚀 **版本自動檢查與更新服務 (UpdateChecker)**：
+  * 串接 GitHub Releases API，可自動偵測雲端最新釋出版本與前 10 行更新日誌，隨時獲取最新功能。
 * ⏰ **系統級上課推播提醒與開機自動重排 (AlarmManager)**：
   * 結合 Android 底層 `AlarmManager`，課前精準發送系統級推播提醒（如課前 15 分鐘），避免錯過重要課堂。
   * 註冊開機廣播接收器 (`BootCompletedReceiver`)，設備重啟後自動重新排程全部提醒，穩定可靠。
@@ -117,7 +125,18 @@
 
 ### 🔖 版本歷程記錄
 
-#### 🌟 v2.2.0 (最新發布)
+#### 🌟 v2.3.0 (最新發布)
+- 💳 **帳戶轉帳功能與費用處理流程全面升級**：
+  - 新增 `AccountTransferDialog` 帳戶轉帳對話框，支援不同支付帳戶間快速調撥資金（如提款、儲值悠遊卡、銀行帳戶互轉）。
+  - `ExpenseType` 新增 `TRANSFER_OUT`（轉出）與 `TRANSFER_IN`（轉入），雙向關聯紀錄在收支明細中一目了然。
+  - 轉帳紀錄精準納入各帳戶餘額試算，並自月度開銷預算中自動剔除，保障記帳統計真實性。
+  - 在 `StudentViewModel` 實作 `transferBetweenAccounts` 與 `updateTransfer`，提供編輯、撤銷與刪除轉帳的完整管理流程。
+- 🗑️ **月度預算彈性刪除功能**：
+  - 在 `ExpenseDao` 與 `StudentRepository` 新增 `deleteBudget` / `deleteMonthlyBudget` 方法，支援隨時清除特定年月份之預算設定。
+- 🚀 **GitHub Release 版本自動偵測服務**：
+  - 新增 `UpdateChecker` 工具模組，自動比對 GitHub 最新發布版本並提取更新日誌，便於後續版本提示與線上更新。
+
+#### 🌟 v2.2.0
 - 🧑‍🏫 **課輔 / 實習時段獨立管理 (Tutorial Class - Room DB v9)**：
   - 資料庫升級至 Version 9（`MIGRATION_8_9`），`Course` 資料實體新增 `isTutorial` 欄位。
   - 課程新增/編輯對話框支援一鍵新增「🧑‍🏫 課輔 / 實習時段 (TA)」，自訂專屬上課時間、教室與週次模式，且自動設定為 0 學分。
@@ -297,16 +316,16 @@ UniTrack+/
 │   │   │   │   │   │   ├── timetable/            # 課表視圖、小時制時間/節次切換、課輔時段、考勤上課日標示、隨堂筆記、成績登記
 │   │   │   │   │   │   ├── calendar/             # 全新整合行事曆 (週/月視圖、課表與日程整合、待辦打勾管理)
 │   │   │   │   │   │   ├── graduation/           # 畢業審查、學分分類檢核 (支援自訂/刪除分類、排除課輔、重修標註)、學分設定、畢業門檻
-│   │   │   │   │   │   ├── expense/              # 個人記帳、交易時間選取、月曆視圖、年月選擇、多帳戶管理
+│   │   │   │   │   │   ├── expense/              # 個人記帳、交易時間選取、月曆視圖、多帳戶管理與帳戶互轉 (AccountTransferDialog)
 │   │   │   │   │   │   ├── notification/         # 通知中心、分類篩選、未讀標記、滑動刪除、雲端雙向清空
 │   │   │   │   │   │   └── settings/             # 帳號設定、主題模式 (深/淺/系統)、桌面小工具設定、測試推播、雲端同步
 │   │   │   │   │   ├── theme/                    # Material 3 色彩系統、深淺色切換、字型排版與主題配置
 │   │   │   │   │   └── viewmodel/                # StudentViewModel (全域狀態、學期智慧排序、上課推播排程與業務核心)
-│   │   │   │   │   └── util/                     # NotificationScheduler, NotificationHelper, TimetableImageGenerator, DateTimeUtils
+│   │   │   │   │   └── util/                     # NotificationScheduler, NotificationHelper, UpdateChecker, TimetableImageGenerator, DateTimeUtils
 │   │   │   │   └── res/                          # 應用程式資源 (圖標、字串、主題樣式、raw/keep.xml)
 │   │   └── test/                                 # Robolectric 單元測試與 Roborazzi 截圖測試
 │   ├── proguard-rules.pro                        # R8 / ProGuard 混淆與保留規則
-│   └── build.gradle.kts                          # App 模組建置設定 (R8 啟用、資源修剪、v2.2.0)
+│   └── build.gradle.kts                          # App 模組建置設定 (R8 啟用、資源修剪、v2.3.0)
 ├── logo/                                         # 官方專屬品牌標誌 (圓形、方形、透明背景之向量 SVG 與 PNG)
 ├── docs/
 │   └── images/                                   # README 相關螢幕截圖與展示資源
@@ -447,21 +466,27 @@ UniTrack+/
 
 ---
 
-### 6. 個人記帳、精準時間與多帳戶管理 (Expense & Budget)
+### 6. 個人記帳、精準時間、帳戶互轉與預算管理 (Expense & Budget)
 * **雙檢視模式與年月選擇**：支援「列表視圖」與「月曆視圖 (Calendar View)」，搭配「年月選擇器」隨時回溯任意歷史月份之消費明細與月曆收支。
 * **精準交易時間選取**：記帳對話框提供日期與時間 (`TimePickerDialog`) 獨立選取機制，可自訂消費發生時與分，收支時間軸更加精準。
 * **自訂多支付帳戶管理 (Multi-Account)**：
   * 支援自訂新增/編輯/刪除/排序支付帳戶（現金、各銀行帳戶、LINE Pay、街口、信用卡等）。
   * 支援設定**啟用起始年月 (Start Year-Month)**，精準計算歷史累積餘額。
   * 支援預設帳戶設定與雲端跨裝置同步。
-* **快速記帳與預算警戒**：提供餐飲、交通、娛樂、學習、住宿等豐富標籤；總支出金額以玫瑰色負號標記；設定每月總預算，以動態進度條即時警示花費進度防範超支。
+* **帳戶間資金互轉與成對紀錄 (`AccountTransferDialog`)**：
+  * 支援多帳戶自由轉帳，提供專屬轉帳對話框，直覺設定來源帳戶、目標帳戶、轉帳金額、交易日期與備註。
+  * 底層自動建立成對之「轉出 (`TRANSFER_OUT`)」與「轉入 (`TRANSFER_IN`)」記錄，精確即時反映各帳戶最新餘額。
+  * **轉帳智慧排除月度預算**：轉帳屬於個人內部資金調度而非實質消費，系統自動將轉帳收支排除於每月消費總額與預算進度條之外，確保消費統計與超支警示真實無誤。
+* **快速記帳、預算警戒與彈性預算刪除**：
+  * 提供餐飲、交通、娛樂、學習、住宿等豐富標籤；總支出金額以玫瑰色負號標記；設定每月總預算，以動態進度條即時警示花費進度防範超支。
+  * **月度預算支援直接刪除 (`deleteBudget`)**：若特定月份無需預算上限或設定有誤，可一鍵移除該月預算限制，恢復無預算上限狀態。
 
 <!-- 📸 [照片標記 6.1：記帳明細、月曆視圖與預算進度條截圖] -->
 <!-- <p align="center"><img src="docs/images/expense_detail.png" width="360" alt="Expense Detail" /></p> -->
 
 ---
 
-### 7. 通知中心、帳號與雲端安全同步 (Auth, Notification & Sync)
+### 7. 通知中心、帳號、版本偵測與雲端安全同步 (Auth, Notification & Sync)
 * **系統級課程推播與定時排程 (AlarmManager)**：
   * 整合 Android 系統底層 `AlarmManager`，課前精準發送上課推播提醒（預設課前 15 分鐘）。
   * 註冊開機廣播接收器 (`BootCompletedReceiver`)，設備重新開機時自動重新排程所有上課提醒。
@@ -475,7 +500,10 @@ UniTrack+/
   * **分類篩選與頁面聯動**：支援依類型標籤過濾，點擊卡片直接跳轉至對應功能頁面。
 * **現代化 Google 登入 (Credential Manager)**：
   * 升級至 Google 最新 Android 憑證管理員與 Google ID Token 授權，提供清晰友善的錯誤導引訊息。
-* **個人檔案與首次登入記錄**：支援自訂頭像與暱稱保存；記錄首次登入時間戳記 (`createdAt`)；清楚標示當前版本號 (`v2.2.0`)。
+* **個人檔案與首次登入記錄**：支援自訂頭像與暱稱保存；記錄首次登入時間戳記 (`createdAt`)；清楚標示當前版本號 (`v2.3.0`)。
+* **GitHub 最新版本自動偵測服務 (`UpdateChecker`)**：
+  * 內建版本更新檢查機制，採用非同步排程請求 GitHub Releases API (`/repos/ZhaoHong04126/UniTrack/releases/latest`)。
+  * 於設定或應用程式啟動時自動比對目前版本與線上最新發布版本，具備更新日誌摘要解析與版本更新提示引導。
 * **免登入離線優先**：無需連網即可享受 100% 完整功能，所有資料本機加密保存。
 * **雲端安全同步與跨裝置相容 (Cloud Sync)**：支援 Google / Email 帳號驗證；具備智慧防覆蓋保護機制；課程資料庫完整支援同步課輔 (`isTutorial`)、重複週次 (`repeatWeeks`) 與模式 (`repeatMode`)，跨裝置無縫同步。
 * **標準 JSON 檔案匯出/匯入**：提供純文字 JSON 匯出與匯入功能，方便本機備份、跨設備遷移或手動分析。
