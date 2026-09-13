@@ -78,7 +78,9 @@ data class ExpenseMonthlySummary(
     val budgetAmount: Double,
     val remainingBudget: Double,
     val budgetUsagePercentage: Float,
-    val categoryBreakdown: Map<ExpenseCategory, Double>
+    val categoryBreakdown: Map<ExpenseCategory, Double>,
+    val categoryBudgets: Map<ExpenseCategory, Double> = emptyMap(),
+    val categoryBudgetStatuses: List<CategoryBudgetStatus> = emptyList()
 )
 
 @Suppress("unused")
@@ -1261,9 +1263,29 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         val cumInc = cumulativeExpenses.filter { it.type == ExpenseType.INCOME || it.type == ExpenseType.TRANSFER_IN }.sumOf { it.amount }
         val totalAccountBalance = if (activeAccounts.isEmpty() && cumulativeExpenses.isEmpty()) 0.0 else totalInitialBalance + (cumInc - cumExp)
 
-        val budget = budgets.firstOrNull { it.yearMonth == month }?.budgetAmount ?: 10000.0
+        val budgetRecord = budgets.firstOrNull { it.yearMonth == month }
+        val budget = budgetRecord?.budgetAmount ?: 10000.0
+        val categoryBudgets = parseCategoryBudgetsJson(budgetRecord?.categoryBudgetsJson ?: "{}")
         val remaining = budget - totalExp
         val usagePercentage = if (budget > 0) ((totalExp / budget) * 100.0).coerceIn(0.0, 100.0).toFloat() else 0f
+
+        val categoryBudgetStatuses = categoryBudgets.map { (cat, catBudget) ->
+            val spent = catMap[cat] ?: 0.0
+            val rem = catBudget - spent
+            val usage = if (catBudget > 0) ((spent / catBudget) * 100.0).toFloat() else 0f
+            val roundedUsage = round(usage * 10f) / 10f
+            val isOver = spent > catBudget
+            val isWarning = roundedUsage >= 80f && !isOver
+            CategoryBudgetStatus(
+                category = cat,
+                budgetAmount = catBudget,
+                spentAmount = spent,
+                remainingAmount = rem,
+                usagePercentage = roundedUsage,
+                isOverBudget = isOver,
+                isWarning = isWarning
+            )
+        }.sortedWith(compareByDescending<CategoryBudgetStatus> { it.isOverBudget }.thenByDescending { it.isWarning }.thenByDescending { it.usagePercentage })
 
         ExpenseMonthlySummary(
             yearMonth = month,
@@ -1273,7 +1295,9 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             budgetAmount = budget,
             remainingBudget = remaining,
             budgetUsagePercentage = round(usagePercentage * 10f) / 10f,
-            categoryBreakdown = catMap
+            categoryBreakdown = catMap,
+            categoryBudgets = categoryBudgets,
+            categoryBudgetStatuses = categoryBudgetStatuses
         )
     }.stateIn(
         viewModelScope,
@@ -1286,7 +1310,9 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             budgetAmount = 10000.0,
             remainingBudget = 10000.0,
             budgetUsagePercentage = 0f,
-            categoryBreakdown = emptyMap()
+            categoryBreakdown = emptyMap(),
+            categoryBudgets = emptyMap(),
+            categoryBudgetStatuses = emptyList()
         )
     )
 
@@ -1739,17 +1765,44 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         val monthExpenses = expenses.filter { it.dateString.startsWith(month) }
         val totalExp = monthExpenses.filter { it.type == ExpenseType.EXPENSE }.sumOf { it.amount }
         val budgets = repository.getAllBudgetsOnce()
-        val budget = budgets.firstOrNull { it.yearMonth == month }?.budgetAmount ?: 10000.0
+        val budgetRecord = budgets.firstOrNull { it.yearMonth == month }
+        val budget = budgetRecord?.budgetAmount ?: 10000.0
+        val categoryBudgets = parseCategoryBudgetsJson(budgetRecord?.categoryBudgetsJson ?: "{}")
         val prefs = _notificationPreferences.value
-        if (budget > 0 && prefs.masterEnabled && prefs.expenseAlertEnabled) {
-            val usagePct = ((totalExp / budget) * 100).toInt()
-            if (usagePct >= prefs.expenseAlertThresholdPercent) {
-                sendNotification(
-                    title = "⚠️ 記帳預算警示 ($month)",
-                    message = "本月累積支出 $${totalExp.toInt()}，已達設定預算 $${budget.toInt()} 的 ${usagePct}%！",
-                    type = NotificationType.EXPENSE,
-                    actionRoute = "expense"
-                )
+        if (prefs.masterEnabled && prefs.expenseAlertEnabled) {
+            if (budget > 0) {
+                val usagePct = ((totalExp / budget) * 100).toInt()
+                if (usagePct >= prefs.expenseAlertThresholdPercent) {
+                    sendNotification(
+                        title = "⚠️ 記帳預算警示 ($month)",
+                        message = "本月累積支出 $${totalExp.toInt()}，已達設定預算 $${budget.toInt()} 的 ${usagePct}%！",
+                        type = NotificationType.EXPENSE,
+                        actionRoute = "expense"
+                    )
+                }
+            }
+
+            // 細項分類預算警示（80% 提前亮黃燈提醒、100% 超支紅燈警告）
+            categoryBudgets.forEach { (category, catBudget) ->
+                if (catBudget > 0) {
+                    val catSpent = monthExpenses.filter { it.type == ExpenseType.EXPENSE && it.category == category }.sumOf { it.amount }
+                    val catUsagePct = ((catSpent / catBudget) * 100).toInt()
+                    if (catSpent > catBudget) {
+                        sendNotification(
+                            title = "🔴 細項預算超支警示：${category.label}",
+                            message = "本月「${category.label}」已支出 $${catSpent.toInt()}，超出預算上限 $${catBudget.toInt()}（${catUsagePct}%）！",
+                            type = NotificationType.EXPENSE,
+                            actionRoute = "expense"
+                        )
+                    } else if (catUsagePct >= 80) {
+                        sendNotification(
+                            title = "🟡 細項預算提醒：${category.label} 達 ${catUsagePct}%",
+                            message = "本月「${category.label}」已支出 $${catSpent.toInt()}（上限 $${catBudget.toInt()}），即將達到上限！",
+                            type = NotificationType.EXPENSE,
+                            actionRoute = "expense"
+                        )
+                    }
+                }
             }
         }
     }
@@ -1935,11 +1988,16 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         _userMessage.value = "已成功為 $month 月匯入 20 筆測試資料！"
     }
 
-    fun setMonthlyBudget(amount: Double) = viewModelScope.launch {
+    fun setMonthlyBudget(amount: Double, categoryBudgets: Map<ExpenseCategory, Double> = emptyMap()) = viewModelScope.launch {
         val month = _selectedExpenseMonth.value
-        repository.setBudget(MonthlyBudget(yearMonth = month, budgetAmount = amount))
+        val json = formatCategoryBudgetsJson(categoryBudgets)
+        repository.setBudget(MonthlyBudget(yearMonth = month, budgetAmount = amount, categoryBudgetsJson = json))
         currentUser.value?.let { firestoreSyncRepository.uploadAllToCloud(it.uid) }
-        _userMessage.value = "已更新 $month 月預算為 $${amount.toInt()}"
+        _userMessage.value = if (categoryBudgets.isNotEmpty()) {
+            "已更新 $month 月預算為 $${amount.toInt()}（含 ${categoryBudgets.size} 項分類細項）"
+        } else {
+            "已更新 $month 月預算為 $${amount.toInt()}"
+        }
         checkExpenseBudgetAlert(month)
     }
 

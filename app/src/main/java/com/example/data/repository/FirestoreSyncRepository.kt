@@ -180,7 +180,8 @@ class FirestoreSyncRepository(
                     for (b in budgets) {
                         val bMap = hashMapOf(
                             "yearMonth" to b.yearMonth,
-                            "budgetAmount" to b.budgetAmount
+                            "budgetAmount" to b.budgetAmount,
+                            "categoryBudgetsJson" to b.categoryBudgetsJson
                         )
                         budgetsCol.document(b.yearMonth).set(bMap, SetOptions.merge()).await()
                     }
@@ -438,7 +439,8 @@ class FirestoreSyncRepository(
                     for (doc in budgetsSnapshot.documents) {
                         val ym = doc.getString("yearMonth") ?: doc.id
                         val amount = doc.getDouble("budgetAmount") ?: 12000.0
-                        downloadedBudgets.add(MonthlyBudget(yearMonth = ym, budgetAmount = amount))
+                        val catBudgetsJson = doc.getString("categoryBudgetsJson") ?: "{}"
+                        downloadedBudgets.add(MonthlyBudget(yearMonth = ym, budgetAmount = amount, categoryBudgetsJson = catBudgetsJson))
                     }
                 }
                 expenseDao.syncAllBudgets(downloadedBudgets)

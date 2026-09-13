@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -770,7 +771,7 @@ fun AddEditExpenseDialog(
     }
 }
 
-private fun getCategoryIcon(category: ExpenseCategory): ImageVector {
+fun getCategoryIcon(category: ExpenseCategory): ImageVector {
     return when (category) {
         ExpenseCategory.FOOD -> Icons.Default.Restaurant
         ExpenseCategory.BOOKS_STUDY -> Icons.AutoMirrored.Filled.MenuBook
@@ -784,58 +785,363 @@ private fun getCategoryIcon(category: ExpenseCategory): ImageVector {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BudgetDialog(
+fun BudgetBottomSheet(
     currentBudget: Double,
+    currentCategoryBudgets: Map<ExpenseCategory, Double> = emptyMap(),
     onDismiss: () -> Unit,
-    onSave: (Double) -> Unit
+    onSave: (totalBudget: Double, categoryBudgets: Map<ExpenseCategory, Double>) -> Unit
 ) {
-    var budgetText by remember { mutableStateOf(if (currentBudget > 0) currentBudget.toInt().toString() else "") }
+    var budgetText by remember {
+        mutableStateOf(if (currentBudget > 0) currentBudget.toInt().toString() else "")
+    }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("設定每月預算上限", fontWeight = FontWeight.Bold) },
-        text = {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = "設定當月可支配生活開銷預算，APP 將即時追蹤剩餘額度並提醒超支：",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                OutlinedTextField(
-                    value = budgetText,
-                    onValueChange = { input ->
-                        if (input.isEmpty() || input.all { it.isDigit() }) {
-                            budgetText = input
-                        }
-                    },
-                    label = { Text("月預算額度 ($)") },
-                    placeholder = { Text("請輸入預算金額") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    val amount = budgetText.toDoubleOrNull() ?: 10000.0
-                    onSave(amount)
-                },
-                enabled = (budgetText.toDoubleOrNull() ?: 0.0) > 0
-            ) {
-                Text("確認設定")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("取消")
+    val budgetCategories = remember {
+        listOf(
+            ExpenseCategory.FOOD,
+            ExpenseCategory.ENTERTAINMENT,
+            ExpenseCategory.DAILY,
+            ExpenseCategory.BOOKS_STUDY,
+            ExpenseCategory.TRANSPORT,
+            ExpenseCategory.RENT_UTILITY,
+            ExpenseCategory.OTHER
+        )
+    }
+
+    val categoryInputs = remember {
+        mutableStateMapOf<ExpenseCategory, String>().apply {
+            budgetCategories.forEach { cat ->
+                val existing = currentCategoryBudgets[cat]
+                put(cat, if (existing != null && existing > 0) existing.toInt().toString() else "")
             }
         }
-    )
+    }
+
+    val categoryTotal = categoryInputs.values.sumOf { it.toDoubleOrNull() ?: 0.0 }
+    val totalBudget = budgetText.toDoubleOrNull() ?: 0.0
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        dragHandle = {
+            BottomSheetDefaults.DragHandle(
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+            )
+        }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 24.dp)
+        ) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(SapphirePrimary.copy(alpha = 0.12f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AccountBalanceWallet,
+                            contentDescription = null,
+                            tint = SapphirePrimary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Column {
+                        Text(
+                            text = "預算上限設定",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "每月總預算與各大分類上限",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                IconButton(onClick = onDismiss) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "關閉",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Column(
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Total monthly budget section
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = "全月總支出預算",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "（必填）",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = SapphirePrimary
+                            )
+                        }
+
+                        OutlinedTextField(
+                            value = budgetText,
+                            onValueChange = { input ->
+                                if (input.isEmpty() || input.all { it.isDigit() }) {
+                                    budgetText = input
+                                }
+                            },
+                            prefix = {
+                                Text("$ ", fontWeight = FontWeight.Bold, color = SapphirePrimary)
+                            },
+                            placeholder = { Text("請輸入總預算金額") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        // Quick presets
+                        Row(
+                            modifier = Modifier.horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            listOf(8000, 10000, 12000, 15000, 20000).forEach { preset ->
+                                FilterChip(
+                                    selected = budgetText == preset.toString(),
+                                    onClick = { budgetText = preset.toString() },
+                                    label = { Text("$$preset") },
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Category Budgets Section
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text(
+                                        text = "細項分類預算",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = AmberWarning.copy(alpha = 0.15f)
+                                    ) {
+                                        Text(
+                                            text = "80% 提前提醒",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = AmberWarning,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text = "各分類獨立限額，未設定則由總預算控管",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            if (categoryTotal > 0) {
+                                TextButton(
+                                    onClick = {
+                                        budgetCategories.forEach { categoryInputs[it] = "" }
+                                    },
+                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
+                                ) {
+                                    Text("清空細項", style = MaterialTheme.typography.labelSmall, color = RoseAccent)
+                                }
+                            }
+                        }
+
+                        // Summary chip
+                        if (categoryTotal > 0) {
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.surface,
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "細項預算合計",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Text(
+                                            text = "$${categoryTotal.toInt()}",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (totalBudget > 0 && categoryTotal > totalBudget) RoseAccent else MaterialTheme.colorScheme.onSurface
+                                        )
+                                        if (totalBudget > 0) {
+                                            Text(
+                                                text = "/ 總預算 $${totalBudget.toInt()}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Category rows
+                        budgetCategories.forEach { cat ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(MaterialTheme.colorScheme.surface)
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(34.dp)
+                                        .clip(CircleShape)
+                                        .background(getCategoryColor(cat).copy(alpha = 0.15f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = getCategoryIcon(cat),
+                                        contentDescription = cat.label,
+                                        tint = getCategoryColor(cat),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+
+                                Text(
+                                    text = cat.label,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.weight(1f)
+                                )
+
+                                OutlinedTextField(
+                                    value = categoryInputs[cat] ?: "",
+                                    onValueChange = { input ->
+                                        if (input.isEmpty() || input.all { it.isDigit() }) {
+                                            categoryInputs[cat] = input
+                                        }
+                                    },
+                                    prefix = {
+                                        Text("$ ", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    },
+                                    placeholder = {
+                                        Text("未限額", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outlineVariant)
+                                    },
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier.width(130.dp),
+                                    textStyle = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Action Buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("取消")
+                }
+
+                Button(
+                    onClick = {
+                        val amount = totalBudget.takeIf { it > 0 } ?: 10000.0
+                        val catBudgets = categoryInputs.mapNotNull { (cat, str) ->
+                            val v = str.toDoubleOrNull()
+                            if (v != null && v > 0) cat to v else null
+                        }.toMap()
+                        onSave(amount, catBudgets)
+                    },
+                    enabled = totalBudget > 0,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = SapphirePrimary)
+                ) {
+                    Text("儲存設定")
+                }
+            }
+        }
+    }
 }

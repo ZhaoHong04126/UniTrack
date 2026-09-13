@@ -295,8 +295,49 @@ data class ExpenseRecord(
 data class MonthlyBudget(
     @PrimaryKey
     val yearMonth: String, // e.g. "2026-08"
-    val budgetAmount: Double = 12000.0
+    val budgetAmount: Double = 12000.0,
+    val categoryBudgetsJson: String = "{}"
 )
+
+data class CategoryBudgetStatus(
+    val category: ExpenseCategory,
+    val budgetAmount: Double,
+    val spentAmount: Double,
+    val remainingAmount: Double,
+    val usagePercentage: Float,
+    val isOverBudget: Boolean,
+    val isWarning: Boolean // >= 80% && < 100%
+)
+
+fun parseCategoryBudgetsJson(jsonString: String): Map<ExpenseCategory, Double> {
+    if (jsonString.isBlank() || jsonString == "{}") return emptyMap()
+    val map = mutableMapOf<ExpenseCategory, Double>()
+    try {
+        val jsonObj = org.json.JSONObject(jsonString)
+        val keys = jsonObj.keys()
+        while (keys.hasNext()) {
+            val key = keys.next()
+            try {
+                val cat = ExpenseCategory.valueOf(key)
+                val amount = jsonObj.getDouble(key)
+                if (amount > 0) {
+                    map[cat] = amount
+                }
+            } catch (_: Exception) {}
+        }
+    } catch (_: Exception) {}
+    return map
+}
+
+fun formatCategoryBudgetsJson(budgets: Map<ExpenseCategory, Double>): String {
+    val jsonObj = org.json.JSONObject()
+    budgets.forEach { (cat, amount) ->
+        if (amount > 0) {
+            jsonObj.put(cat.name, amount)
+        }
+    }
+    return jsonObj.toString()
+}
 
 @Entity(tableName = "notifications")
 data class AppNotification(

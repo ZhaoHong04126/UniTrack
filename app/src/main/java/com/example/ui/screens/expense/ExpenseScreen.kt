@@ -1,5 +1,6 @@
 package com.example.ui.screens.expense
 
+import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -41,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -79,6 +81,7 @@ fun ExpenseScreen(
     var showAddDialog by remember { mutableStateOf(false) }
     var editingExpense by remember { mutableStateOf<ExpenseRecord?>(null) }
     var showBudgetDialog by remember { mutableStateOf(false) }
+    var isCategoryBudgetsExpanded by rememberSaveable { mutableStateOf(true) }
     var showYearMonthPicker by remember { mutableStateOf(false) }
     var showFilterBottomSheet by remember { mutableStateOf(false) }
     var showAddAccountDialog by remember { mutableStateOf(false) }
@@ -141,14 +144,14 @@ fun ExpenseScreen(
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    androidx.compose.animation.AnimatedVisibility(
+                    AnimatedVisibility(
                         visible = isFabExpanded,
-                        enter = androidx.compose.animation.fadeIn() +
-                                androidx.compose.animation.slideInVertically { it / 2 } +
-                                androidx.compose.animation.scaleIn(transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 1f)),
-                        exit = androidx.compose.animation.fadeOut() +
-                               androidx.compose.animation.slideOutVertically { it / 2 } +
-                               androidx.compose.animation.scaleOut(transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 1f))
+                        enter = fadeIn() +
+                                slideInVertically { it / 2 } +
+                                scaleIn(transformOrigin = TransformOrigin(1f, 1f)),
+                        exit = fadeOut() +
+                               slideOutVertically { it / 2 } +
+                               scaleOut(transformOrigin = TransformOrigin(1f, 1f))
                     ) {
                         Surface(
                             shape = RoundedCornerShape(16.dp),
@@ -369,6 +372,221 @@ fun ExpenseScreen(
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+
+                            // 細項分類預算區塊
+                            if (summary.categoryBudgetStatuses.isNotEmpty()) {
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(vertical = 4.dp),
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
+                                )
+
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .clickable { isCategoryBudgetsExpanded = !isCategoryBudgetsExpanded }
+                                            .padding(vertical = 2.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Text(
+                                                text = "細項分類預算 (${summary.categoryBudgetStatuses.size})",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                            val overCount = summary.categoryBudgetStatuses.count { it.isOverBudget }
+                                            val warningCount = summary.categoryBudgetStatuses.count { it.isWarning }
+                                            if (overCount > 0) {
+                                                Surface(
+                                                    shape = RoundedCornerShape(4.dp),
+                                                    color = RoseAccent.copy(alpha = 0.15f)
+                                                ) {
+                                                    Text(
+                                                        text = "${overCount}項超支",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = RoseAccent,
+                                                        fontWeight = FontWeight.Bold,
+                                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                    )
+                                                }
+                                            } else if (warningCount > 0) {
+                                                Surface(
+                                                    shape = RoundedCornerShape(4.dp),
+                                                    color = AmberWarning.copy(alpha = 0.15f)
+                                                ) {
+                                                    Text(
+                                                        text = "${warningCount}項注意",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = AmberWarning,
+                                                        fontWeight = FontWeight.Bold,
+                                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                        ) {
+                                            Text(
+                                                text = if (isCategoryBudgetsExpanded) "收合" else "展開",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Icon(
+                                                imageVector = if (isCategoryBudgetsExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    }
+
+                                    AnimatedVisibility(
+                                        visible = isCategoryBudgetsExpanded,
+                                        enter = fadeIn() + expandVertically(),
+                                        exit = fadeOut() + shrinkVertically()
+                                    ) {
+                                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            summary.categoryBudgetStatuses.forEach { catStatus ->
+                                                val statusColor = when {
+                                                    catStatus.isOverBudget -> RoseAccent
+                                                    catStatus.isWarning -> AmberWarning
+                                                    else -> EmeraldAccent
+                                                }
+                                                val statusText = when {
+                                                    catStatus.isOverBudget -> "超支"
+                                                    catStatus.isWarning -> "注意 (>=80%)"
+                                                    else -> "良好"
+                                                }
+
+                                                Column(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .clip(RoundedCornerShape(10.dp))
+                                                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.65f))
+                                                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                                ) {
+                                                    Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Row(
+                                                            verticalAlignment = Alignment.CenterVertically,
+                                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                                        ) {
+                                                            Box(
+                                                                modifier = Modifier
+                                                                    .size(24.dp)
+                                                                    .clip(CircleShape)
+                                                                    .background(getCategoryColor(catStatus.category).copy(alpha = 0.15f)),
+                                                                contentAlignment = Alignment.Center
+                                                            ) {
+                                                                Icon(
+                                                                    imageVector = getCategoryIcon(catStatus.category),
+                                                                    contentDescription = catStatus.category.label,
+                                                                    tint = getCategoryColor(catStatus.category),
+                                                                    modifier = Modifier.size(13.dp)
+                                                                )
+                                                            }
+                                                            Text(
+                                                                text = catStatus.category.label,
+                                                                style = MaterialTheme.typography.bodySmall,
+                                                                fontWeight = FontWeight.SemiBold
+                                                            )
+                                                            Surface(
+                                                                shape = RoundedCornerShape(4.dp),
+                                                                color = statusColor.copy(alpha = 0.15f)
+                                                            ) {
+                                                                Text(
+                                                                    text = statusText,
+                                                                    style = MaterialTheme.typography.labelSmall,
+                                                                    color = statusColor,
+                                                                    fontWeight = FontWeight.Bold,
+                                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                                )
+                                                            }
+                                                        }
+
+                                                        Text(
+                                                            text = if (catStatus.isOverBudget) {
+                                                                "已超 $${(-catStatus.remainingAmount).toInt()}"
+                                                            } else {
+                                                                "剩 $${catStatus.remainingAmount.toInt()}"
+                                                            },
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = if (catStatus.isOverBudget) RoseAccent else MaterialTheme.colorScheme.onSurface
+                                                        )
+                                                    }
+
+                                                    // Category mini progress bar
+                                                    val progress = (catStatus.usagePercentage / 100f).coerceIn(0f, 1f)
+                                                    LinearProgressIndicator(
+                                                        progress = { progress },
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .height(5.dp)
+                                                            .clip(RoundedCornerShape(3.dp)),
+                                                        color = statusColor,
+                                                        trackColor = MaterialTheme.colorScheme.surfaceVariant
+                                                    )
+
+                                                    Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement = Arrangement.SpaceBetween
+                                                    ) {
+                                                        Text(
+                                                            text = "執行率 ${catStatus.usagePercentage}%",
+                                                            style = MaterialTheme.typography.labelSmall,
+                                                            color = statusColor,
+                                                            fontWeight = FontWeight.Medium
+                                                        )
+                                                        Text(
+                                                            text = "$${catStatus.spentAmount.toInt()} / $${catStatus.budgetAmount.toInt()}",
+                                                            style = MaterialTheme.typography.labelSmall,
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                // Prompt to set category budgets
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable { showBudgetDialog = true }
+                                        .padding(vertical = 2.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "+ 設定分類細項預算（餐飲、娛樂獨立上限）",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Default.ChevronRight,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -1176,11 +1394,12 @@ fun ExpenseScreen(
     }
 
     if (showBudgetDialog) {
-        BudgetDialog(
+        BudgetBottomSheet(
             currentBudget = summary.budgetAmount,
+            currentCategoryBudgets = summary.categoryBudgets,
             onDismiss = { showBudgetDialog = false },
-            onSave = { newBudget ->
-                viewModel.setMonthlyBudget(newBudget)
+            onSave = { newBudget, newCategoryBudgets ->
+                viewModel.setMonthlyBudget(newBudget, newCategoryBudgets)
                 showBudgetDialog = false
             }
         )
@@ -2971,7 +3190,7 @@ private fun ExpenseLineTrendChart(
     }
 }
 
-private fun getCategoryColor(category: ExpenseCategory): Color {
+fun getCategoryColor(category: ExpenseCategory): Color {
     return when (category) {
         ExpenseCategory.FOOD -> Color(0xFFFF6B6B)
         ExpenseCategory.BOOKS_STUDY -> Color(0xFF4D7CFE)
