@@ -41,6 +41,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Locale
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,6 +65,23 @@ fun TimetableScreen(
         viewModel.getSemesterTotalWeeks(selectedSemester)
     }
 
+    val coroutineScope = rememberCoroutineScope()
+
+    val realCurrentWeek = remember(currentStartDateStr, currentTotalWeeks) {
+        try {
+            val formatter = DateTimeFormatter.ofPattern("yyyy.MM.dd")
+            val startDate = LocalDate.parse(currentStartDateStr, formatter)
+            val today = LocalDate.now()
+            val daysDiff = ChronoUnit.DAYS.between(startDate, today)
+            if (daysDiff >= 0) {
+                val weekNum = (daysDiff / 7).toInt() + 1
+                if (weekNum <= currentTotalWeeks) weekNum else -1
+            } else {
+                -2 // 未開學
+            }
+        } catch (_: Exception) { -1 }
+    }
+
     val countdownBadgeText = remember(currentStartDateStr, currentTotalWeeks) {
         try {
             val formatter = DateTimeFormatter.ofPattern("yyyy.MM.dd")
@@ -76,7 +94,7 @@ fun TimetableScreen(
                 else -> {
                     val daysPassed = -daysDiff
                     val weekNum = (daysPassed / 7).toInt() + 1
-                    if (weekNum <= currentTotalWeeks) "第 $weekNum 週" else "學期結束"
+                    if (weekNum <= currentTotalWeeks) "整學期 (第 $weekNum 週)" else "學期結束"
                 }
             }
         } catch (_: Exception) {
@@ -108,8 +126,23 @@ fun TimetableScreen(
             } else 0
         } catch (_: Exception) { 0 }
     }
-    val weekPagerState = rememberPagerState(initialPage = initialWeekIndex) { currentTotalWeeks }
+    val weekPagerState = key(selectedSemester) {
+        rememberPagerState(initialPage = initialWeekIndex) { currentTotalWeeks }
+    }
     val currentWeek = (weekPagerState.currentPage + 1).coerceAtMost(currentTotalWeeks)
+    val isViewingRealCurrentWeek = (currentWeek == realCurrentWeek)
+
+    val weekBadgeText = if (!isWeeklyMode) {
+        countdownBadgeText
+    } else {
+        if (currentStartDateStr.isBlank()) {
+            "設定開學日"
+        } else if (isViewingRealCurrentWeek) {
+            "第 $currentWeek 週 (本週)"
+        } else {
+            "第 $currentWeek 週"
+        }
+    }
 
     val daysCount = if (showWeekend) 7 else 5
     val dayNames = if (showWeekend) {
@@ -231,21 +264,48 @@ fun TimetableScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    // Countdown Badge (開學 D-13 / 第 X 週)
+                    // Week / Countdown Badge (左右滑動即時切換顯示該週週次)
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                        color = if (isWeeklyMode && isViewingRealCurrentWeek) {
+                            SapphirePrimary.copy(alpha = 0.15f)
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                        },
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
                             .clickable { showTimeSettingsSheet = true }
                     ) {
                         Text(
-                            text = countdownBadgeText,
+                            text = weekBadgeText,
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = if (isWeeklyMode && isViewingRealCurrentWeek) SapphirePrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                         )
+                    }
+
+                    // 快速返回當前週次按鈕 (非本週時顯示)
+                    if (isWeeklyMode && !isViewingRealCurrentWeek && realCurrentWeek in 1..currentTotalWeeks) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = SapphirePrimary.copy(alpha = 0.12f),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable {
+                                    coroutineScope.launch {
+                                        weekPagerState.animateScrollToPage(realCurrentWeek - 1)
+                                    }
+                                }
+                        ) {
+                            Text(
+                                text = "回本週",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = SapphirePrimary,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                            )
+                        }
                     }
 
                     // Credits Badge (X 學分)
