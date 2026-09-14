@@ -82,13 +82,13 @@ class WeeklyGridTimetableWidget : AppWidgetProvider() {
                     ?: DefaultData.getCurrentAcademicSemester()
 
                 val prefs = context.getSharedPreferences("unitrack_prefs", Context.MODE_PRIVATE)
-                val startDateStr = prefs.getString("semester_start_date_$currentSemester", null)
-                val totalWeeks = prefs.getInt("semester_total_weeks_$currentSemester", 18)
+                val startDateStr = DefaultData.getSemesterStartDate(prefs, currentSemester)
+                val totalWeeks = DefaultData.getSemesterTotalWeeks(prefs, currentSemester)
                 val showWeekend = prefs.getBoolean("pref_show_weekend", false)
 
                 val calendar = Calendar.getInstance()
                 val dayOfWeekIndex = TodayScheduleWidget.getDayOfWeekIndex(calendar)
-                val currentWeek = TodayScheduleWidget.calculateCurrentWeek(startDateStr, totalWeeks)
+                val currentWeek = TodayScheduleWidget.calculateCurrentWeek(startDateStr, totalWeeks, currentSemester)
 
                 views.setTextViewText(R.id.tv_widget_grid_title, "$currentSemester 週課表")
                 views.setTextViewText(R.id.tv_widget_grid_week_badge, "第 $currentWeek 週")

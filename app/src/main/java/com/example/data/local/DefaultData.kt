@@ -61,6 +61,49 @@ object DefaultData {
     }
 
     /**
+     * 取得特定學期的預設開學日 (第一學期 9/7 起算之週一，第二學期 2/16 起算之週一)
+     */
+    fun getDefaultSemesterStartDate(semester: String): String {
+        val semYear = semester.substringBefore("-").filter { it.isDigit() }.toIntOrNull() ?: 114
+        val semTerm = semester.substringAfter("-").filter { it.isDigit() }.toIntOrNull() ?: 1
+        val westernYear = semYear + 1911
+        return try {
+            if (semTerm == 1) {
+                var d = java.time.LocalDate.of(westernYear, 9, 7)
+                while (d.dayOfWeek != java.time.DayOfWeek.MONDAY) {
+                    d = d.plusDays(1)
+                }
+                d.format(java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd"))
+            } else {
+                var d = java.time.LocalDate.of(westernYear + 1, 2, 16)
+                while (d.dayOfWeek != java.time.DayOfWeek.MONDAY) {
+                    d = d.plusDays(1)
+                }
+                d.format(java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd"))
+            }
+        } catch (_: Throwable) {
+            if (semTerm == 1) "$westernYear.09.07" else "${westernYear + 1}.02.16"
+        }
+    }
+
+    /**
+     * 自 SharedPreferences 讀取開學日，若未設定則回傳預設開學日
+     */
+    fun getSemesterStartDate(prefs: android.content.SharedPreferences, semester: String): String {
+        val key = "semester_start_date_$semester"
+        val saved = prefs.getString(key, null)
+        if (!saved.isNullOrBlank()) return saved
+        return getDefaultSemesterStartDate(semester)
+    }
+
+    /**
+     * 自 SharedPreferences 讀取學期總週數，若未設定則預設 18 週
+     */
+    fun getSemesterTotalWeeks(prefs: android.content.SharedPreferences, semester: String): Int {
+        return prefs.getInt("semester_total_weeks_$semester", 18)
+    }
+
+    /**
      * 解析學期權重以利排序與時間比較
      * 例如 114-1 -> 114.1, 114-2 -> 114.2
      */

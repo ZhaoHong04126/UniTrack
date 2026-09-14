@@ -204,4 +204,46 @@ class TodayScheduleWidgetTest {
         assertEquals(500, bitmap.width)
         assertEquals(300, bitmap.height)
     }
+
+    @Test
+    fun testDefaultSemesterStartDate() {
+        val sem115Term1 = com.example.data.local.DefaultData.getDefaultSemesterStartDate("115-1")
+        assertEquals("2026.09.07", sem115Term1)
+
+        val sem115Term2 = com.example.data.local.DefaultData.getDefaultSemesterStartDate("115-2")
+        assertEquals("2027.02.22", sem115Term2)
+    }
+
+    @Test
+    fun testCalculateCurrentWeek_withExplicitDates() {
+        val today = java.time.LocalDate.now()
+        val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd")
+
+        // 開學當週 -> 第 1 週
+        val week1Date = today.format(formatter)
+        assertEquals(1, TodayScheduleWidget.calculateCurrentWeek(week1Date, 18))
+
+        // 開學 8 天後 -> 第 2 週
+        val week2Date = today.minusDays(8).format(formatter)
+        assertEquals(2, TodayScheduleWidget.calculateCurrentWeek(week2Date, 18))
+
+        // 開學 15 天後 -> 第 3 週
+        val week3Date = today.minusDays(15).format(formatter)
+        assertEquals(3, TodayScheduleWidget.calculateCurrentWeek(week3Date, 18))
+    }
+
+    @Test
+    fun testCalculateCurrentWeek_withSemesterFallback() {
+        val calculatedWeek = TodayScheduleWidget.calculateCurrentWeek(null, 18, "115-1")
+        // Default start date for 115-1 is 2026.09.07
+        val defaultStart = java.time.LocalDate.of(2026, 9, 7)
+        val today = java.time.LocalDate.now()
+        val expectedWeek = if (today.isBefore(defaultStart)) {
+            1
+        } else {
+            val daysDiff = java.time.temporal.ChronoUnit.DAYS.between(defaultStart, today)
+            ((daysDiff / 7).toInt() + 1).coerceIn(1, 18)
+        }
+        assertEquals(expectedWeek, calculatedWeek)
+    }
 }

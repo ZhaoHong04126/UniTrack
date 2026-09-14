@@ -169,29 +169,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     val semesterTimeConfigVersion: StateFlow<Int> = _semesterTimeConfigVersion.asStateFlow()
 
     fun getSemesterStartDate(semester: String): String {
-        val key = "semester_start_date_$semester"
-        val saved = prefs.getString(key, null)
-        if (!saved.isNullOrBlank()) return saved
-        val semYear = semester.substringBefore("-").filter { it.isDigit() }.toIntOrNull() ?: 114
-        val semTerm = semester.substringAfter("-").filter { it.isDigit() }.toIntOrNull() ?: 1
-        val westernYear = semYear + 1911
-        return try {
-            if (semTerm == 1) {
-                var d = java.time.LocalDate.of(westernYear, 9, 7)
-                while (d.dayOfWeek != java.time.DayOfWeek.MONDAY) {
-                    d = d.plusDays(1)
-                }
-                d.format(java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd"))
-            } else {
-                var d = java.time.LocalDate.of(westernYear + 1, 2, 16)
-                while (d.dayOfWeek != java.time.DayOfWeek.MONDAY) {
-                    d = d.plusDays(1)
-                }
-                d.format(java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd"))
-            }
-        } catch (_: Throwable) {
-            if (semTerm == 1) "$westernYear.09.07" else "${westernYear + 1}.02.16"
-        }
+        return DefaultData.getSemesterStartDate(prefs, semester)
     }
 
     fun getSemesterEndDate(semester: String): String {
@@ -211,7 +189,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun getSemesterTotalWeeks(semester: String): Int {
-        return prefs.getInt("semester_total_weeks_$semester", 18)
+        return DefaultData.getSemesterTotalWeeks(prefs, semester)
     }
 
     fun getSemesterScheduleStatus(semester: String): SemesterScheduleStatus {

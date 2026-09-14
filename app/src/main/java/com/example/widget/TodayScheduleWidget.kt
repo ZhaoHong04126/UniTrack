@@ -54,11 +54,18 @@ class TodayScheduleWidget : AppWidgetProvider() {
             }
         }
 
-        fun calculateCurrentWeek(startDateStr: String?, totalWeeks: Int): Int {
-            if (startDateStr.isNullOrBlank()) return 1
+        fun calculateCurrentWeek(startDateStr: String?, totalWeeks: Int, semester: String? = null): Int {
+            val effectiveStartDate = if (!startDateStr.isNullOrBlank()) {
+                startDateStr
+            } else if (!semester.isNullOrBlank()) {
+                DefaultData.getDefaultSemesterStartDate(semester)
+            } else {
+                null
+            }
+            if (effectiveStartDate.isNullOrBlank()) return 1
             return try {
                 val formatter = DateTimeFormatter.ofPattern("yyyy.MM.dd")
-                val startDate = LocalDate.parse(startDateStr, formatter)
+                val startDate = LocalDate.parse(effectiveStartDate, formatter)
                 val today = LocalDate.now()
                 val daysDiff = ChronoUnit.DAYS.between(startDate, today)
                 if (daysDiff < 0) {
@@ -260,13 +267,13 @@ class TodayScheduleWidget : AppWidgetProvider() {
                     ?: DefaultData.getCurrentAcademicSemester()
 
                 val prefs = context.getSharedPreferences("unitrack_prefs", Context.MODE_PRIVATE)
-                val startDateStr = prefs.getString("semester_start_date_$currentSemester", null)
-                val totalWeeks = prefs.getInt("semester_total_weeks_$currentSemester", 18)
+                val startDateStr = DefaultData.getSemesterStartDate(prefs, currentSemester)
+                val totalWeeks = DefaultData.getSemesterTotalWeeks(prefs, currentSemester)
 
                 val calendar = Calendar.getInstance()
                 val dayOfWeekIndex = getDayOfWeekIndex(calendar)
                 val dayOfWeekName = getDayOfWeekName(dayOfWeekIndex)
-                val currentWeek = calculateCurrentWeek(startDateStr, totalWeeks)
+                val currentWeek = calculateCurrentWeek(startDateStr, totalWeeks, currentSemester)
 
                 val month = calendar.get(Calendar.MONTH) + 1
                 val day = calendar.get(Calendar.DAY_OF_MONTH)
