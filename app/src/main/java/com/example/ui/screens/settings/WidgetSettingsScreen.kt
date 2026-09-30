@@ -1,8 +1,6 @@
 package com.example.ui.screens.settings
 
-import android.graphics.Bitmap
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,7 +12,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -24,8 +21,6 @@ import com.example.ui.components.SectionHeader
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.StudentViewModel
 import com.example.widget.TodayScheduleWidget
-import com.example.widget.WeeklyGridBitmapRenderer
-import com.example.widget.WeeklyOverviewBitmapRenderer
 import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -37,12 +32,8 @@ fun WidgetSettingsScreen(
     modifier: Modifier = Modifier
 ) {
     val todayClasses by viewModel.todayClasses.collectAsStateWithLifecycle()
-    val currentSemesterCourses by viewModel.currentSemesterCourses.collectAsStateWithLifecycle()
     val plan by viewModel.graduationPlan.collectAsStateWithLifecycle()
-    val showWeekend by viewModel.showWeekend.collectAsStateWithLifecycle()
     val semesterTimeConfigVersion by viewModel.semesterTimeConfigVersion.collectAsStateWithLifecycle()
-
-    var selectedPreviewTab by remember { mutableIntStateOf(0) }
 
     val currentSemester = plan.currentSemester.ifBlank { com.example.data.local.DefaultData.getCurrentAcademicSemester() }
     val currentStartDateStr = remember(currentSemester, semesterTimeConfigVersion) {
@@ -64,30 +55,6 @@ fun WidgetSettingsScreen(
     val nowMinutes = calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE)
     val nextClassStatus = remember(todayClasses, nowMinutes) {
         TodayScheduleWidget.findNextOrOngoingClass(todayClasses, nowMinutes)
-    }
-
-    // Weekly Grid Bitmap (Always rendered)
-    val weeklyGridBitmap: Bitmap = remember(currentSemesterCourses, dayOfWeekIndex, currentWeek, showWeekend) {
-        WeeklyGridBitmapRenderer.renderWeeklyGrid(
-            courses = currentSemesterCourses,
-            currentDayOfWeek = dayOfWeekIndex,
-            currentWeek = currentWeek,
-            showWeekend = showWeekend,
-            width = 1000,
-            height = 1400
-        )
-    }
-
-    // Weekly Overview Mini Cards Bitmap (Always rendered)
-    val weeklyOverviewBitmap: Bitmap = remember(currentSemesterCourses, dayOfWeekIndex, currentWeek, showWeekend) {
-        WeeklyOverviewBitmapRenderer.renderOverviewCards(
-            courses = currentSemesterCourses,
-            currentDayOfWeek = dayOfWeekIndex,
-            currentWeek = currentWeek,
-            showWeekend = showWeekend,
-            width = 1000,
-            height = 600
-        )
     }
 
     Scaffold(
@@ -124,45 +91,23 @@ fun WidgetSettingsScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Widget Type Switcher Tabs
+            // Widget Live Preview
             SectionHeader(title = "小工具樣式預覽")
 
-            SingleChoiceSegmentedButtonRow(
-                modifier = Modifier.fillMaxWidth()
+            // Today Schedule Widget Preview
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
-                val tabTitles = listOf("今日課表", "全週網格", "今日+週概覽")
-                tabTitles.forEachIndexed { index, title ->
-                    SegmentedButton(
-                        selected = selectedPreviewTab == index,
-                        onClick = { selectedPreviewTab = index },
-                        shape = SegmentedButtonDefaults.itemShape(index = index, count = tabTitles.size)
-                    ) {
-                        Text(
-                            text = title,
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = if (selectedPreviewTab == index) FontWeight.Bold else FontWeight.Normal
-                        )
-                    }
-                }
-            }
-
-            // Live Preview Container
-            when (selectedPreviewTab) {
-                0 -> {
-                    // Preview 1: Today Schedule Widget
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(14.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
                             // Header Row
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -347,151 +292,7 @@ fun WidgetSettingsScreen(
                             }
                         }
                     }
-                }
-                1 -> {
-                    // Preview 2: Full Week Grid Timetable Widget (TimeSpread Style)
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = "📅 $currentSemester 週課表全景",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Surface(
-                                    shape = RoundedCornerShape(6.dp),
-                                    color = SapphirePrimary
-                                ) {
-                                    Text(
-                                        text = "第 $currentWeek 週",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                    )
-                                }
-                            }
 
-                            Image(
-                                bitmap = weeklyGridBitmap.asImageBitmap(),
-                                contentDescription = "一週網格課表預覽",
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(260.dp)
-                            )
-                        }
-                    }
-                }
-                2 -> {
-                    // Preview 3: Today Focus & Weekly Overview Widget
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            // Header
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = dateText,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Surface(
-                                    shape = RoundedCornerShape(6.dp),
-                                    color = SapphirePrimary
-                                ) {
-                                    Text(
-                                        text = "第 $currentWeek 週",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                    )
-                                }
-                            }
-
-                            // Focus item
-                            if (nextClassStatus != null) {
-                                Surface(
-                                    shape = RoundedCornerShape(10.dp),
-                                    color = Color(0xFFF0F7FF),
-                                    border = BorderStroke(1.dp, Color(0xFFBFDBFE)),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(8.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        Surface(
-                                            shape = RoundedCornerShape(6.dp),
-                                            color = SapphirePrimary
-                                        ) {
-                                            Text(
-                                                text = if (nextClassStatus.isOngoing) "⚡ 進行中" else "⏱️ 下一堂",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                fontWeight = FontWeight.Bold,
-                                                color = Color.White,
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                            )
-                                        }
-                                        Column {
-                                            Text(
-                                                text = nextClassStatus.course.name,
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                            Text(
-                                                text = "${nextClassStatus.timeDisplay} • ${nextClassStatus.course.location.ifBlank { "教室未定" }}",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-
-                            // 5-day mini overview cards
-                            Image(
-                                bitmap = weeklyOverviewBitmap.asImageBitmap(),
-                                contentDescription = "本週摘要預覽",
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(180.dp)
-                            )
-                        }
-                    }
-                }
-            }
 
             // Quick Actions Card
             SectionHeader(title = "快速操作")

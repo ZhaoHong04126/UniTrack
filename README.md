@@ -5,10 +5,10 @@
 [![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose%20%7C%20Material%203-4285F4?logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
 [![Room](https://img.shields.io/badge/Storage-Room%20(SQLite)-00599C?logo=sqlite&logoColor=white)](https://developer.android.com/training/data-storage/room)
 [![Firebase](https://img.shields.io/badge/Backend-Firebase%20(Auth%20%2B%20Firestore)-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com/)
-[![Version](https://img.shields.io/badge/Version-v2.4.0-3B82F6)](https://github.com/ZhaoHong04126/UniTrack)
+[![Version](https://img.shields.io/badge/Version-v2.5.0-3B82F6)](https://github.com/ZhaoHong04126/UniTrack)
 
 > **專為大學生量身打造的全方位學業與生活管理助理。**  
-> 集結「智慧週課表 & 考勤筆記」、「正課與課輔/實習時段獨立管理」、「整合行事曆與待辦日程」、「系統級上課推播提醒 (AlarmManager)」、「桌面今日課表小工具」、「畢業學分稽核與門檻檢核」、「GPA / 學業儀表板」、「個人記帳、帳戶互轉與分類預算監控（含自訂交易時間與預算刪除）」、「通知中心與雲端原子事務同步」、「深淺色主題切換」於一體，支援 100% 純本機離線隱私保護與 Firebase 雲端雙向同步。經由 R8 深度修剪，安裝包極致輕量 (11.5MB)。
+> 集結「智慧週課表 & 考勤雲端同步筆記」、「正課與課輔/實習時段獨立管理」、「整合行事曆與待辦日程」、「系統級上課推播提醒 (AlarmManager)」、「桌面今日課表小工具」、「畢業學分稽核與門檻檢核」、「GPA / 學業儀表板」、「個人記帳、帳戶互轉與分類預算監控（含自訂交易時間與預算刪除）」、「通知中心與雲端原子事務同步」、「深淺色主題切換」於一體，支援 100% 純本機離線隱私保護與 Firebase 雲端雙向同步。經由 R8 深度修剪，安裝包極致輕量 (11.5MB)。
 
 ---
 
@@ -69,15 +69,15 @@
   * 註冊開機廣播接收器 (`BootCompletedReceiver`)，設備重啟後自動重新排程全部提醒，穩定可靠。
   * 通知偏好設定頁提供**測試發送推播**功能，方便隨時檢驗通知權限與呈現效果。
 * 🧩 **桌面今日課表小工具 (App Widget)**：
-  * 提供「今日課表」桌面小工具 (`TodayScheduleWidget`)，無需開啟 App 即可於手機主畫面速覽今日課堂、節次、教室與時間。
-  * 整合專屬小工具設定頁面 (`WidgetSettingsScreen`)，且小工具週次計算動態適配開學日與總週數。
+  * 精簡重構為高效純粹的「今日課表」桌面小工具 (`TodayScheduleWidget`)，無需開啟 App 即可於手機主畫面速覽今日課堂、節次、教室、時間與下一堂課焦點提示。
+  * 整合專屬小工具設定頁面 (`WidgetSettingsScreen`)，小工具週次計算動態適配開學日與總週數，支援一鍵手動刷新。
 * 🗓️ **整合行事曆與待辦日程 (Calendar & Tasks)**：
   * **雙重視圖模式**：支援「月視圖 (Month View)」與「週視圖 (Week View)」無縫切換。
   * **學期課表自動整合**：課表課程無縫映射至每日行事曆時間軸，免除手動重排。
   * **現代化底部彈出式面板**：日程新增/編輯改採 Modal Bottom Sheet 設計，單手操作更輕鬆。
   * **個人重要日程與待辦**：支援自訂「學習、作業、考試、個人、活動、放假」等六大類別，具備色票標籤、倒數提醒與備註。
   * **待辦清單 (TODO)**：行程卡片支援點擊一鍵打勾標記完成/未完成，直覺好掌控。
-* 📝 **考勤上課日期精準預測與隨堂筆記**：點選課表即刻展開詳情面板，**自動推算並標示每週對應之實際即將上課日期與出席狀態**（出席、遲到、曠課、請假）與統計圖表；支援依週次與標籤分類管理隨堂筆記。
+* 📝 **考勤上課日期精準預測、隨堂筆記與雲端同步**：點選課表即刻展開詳情面板，**自動推算並標示每週對應之實際即將上課日期與出席狀態**（出席、遲到、曠課、請假）與統計圖表；**全面支援 Cloud Firestore 雲端雙向同步**、自動補傳回填與帳號切換自動清理；支援依週次與標籤分類管理隨堂筆記。
 * 🎓 **深度學分審查與畢業稽核 (Room DB v9)**：
   * 涵蓋校共同、院核心、系專業（基礎/核心/專業模組）、通識、自由選修等全方位分類。
   * **支援自訂分類與已刪除分類過濾 (`deletedCategories`)**，並在審查清單中**清楚標示重修課程**與通過學分。
@@ -95,7 +95,7 @@
   * **多支付帳戶管理**：支援自訂現金、銀行帳戶、電子支付，具備**啟用起始年月**設定與**歷史累積餘額精準運算**。
   * **預算警戒機制**：月度預算動態消耗進度條、超支即時提醒與支出玫瑰色負號標記。
 * 🔄 **雲端原子事務同步 (Atomic Transaction Sync)**：
-  * 課程、記帳與畢業門檻同步導入 Room `@Transaction` 原子事務，保證雲端雙向同步時的資料完整性與強一致性。
+  * 課程（含課輔、出席紀錄、重複週次）、記帳與畢業門檻同步導入 Room `@Transaction` 原子事務，保證雲端雙向同步時的資料完整性與強一致性。
   * 整合 Firebase Auth 與 Cloud Firestore，具備智慧防覆蓋保護機制，支援多裝置一鍵備份與還原。
 * 🔔 **通知中心與雲端雙向持久化**：
   * **本地 Room 資料庫整合**：所有通知完整落地儲存，支援**未讀計數**與紅點標示。
@@ -130,7 +130,17 @@
 
 ### 🔖 版本歷程記錄
 
-#### 🌟 v2.4.0 (最新發布)
+#### 🌟 v2.5.0 (最新發布)
+- 🔄 **課程出席記錄 (Course Attendance) 雲端雙向同步與生命週期管理**：
+  - 新增課程出席歷史紀錄 (`attendanceJson`) 於 Cloud Firestore 雲端雙向同步機制，點名出勤狀態（出席、遲到、曠課、請假）自動即時備份至雲端。
+  - 具備自動回填與防覆蓋保護機制：若雲端尚未包含出席欄位，自動偵測本機既有出席記錄並智慧補傳；若雲端已有資料則無縫還原至本機 SharedPreferences。
+  - 帳號生命週期與快取安全隔離：登出或切換不同帳號時，自動清除本機出席紀錄快取 (`course_attendance_*`)；刪除課程時連動清除對應出席記錄與雲端欄位。
+  - 增強出席 UI 反應性：畢業審查課程詳情面板 (`CourseAuditListScreen`) 深度綁定 `semesterTimeConfigVersion`，出席狀態更新與雲端同步完成後即時重新渲染。
+- 🧩 **桌面小工具系統精簡重構 (Streamlined Widgets)**：
+  - 精簡桌面小工具架構，全面聚焦於最實用、高反應的「UniTrack+ 今日課表」(`TodayScheduleWidget`)，移除冗餘的一週網格與概覽渲染器，顯著降低記憶體與背景繪製開銷。
+  - 最佳化小工具設定介面 (`WidgetSettingsScreen`) 與更新輔助類 (`WidgetUpdateHelper`)，提供更純粹的即時預覽、下一堂課焦點與快捷刷新控制。
+
+#### 🌟 v2.4.0
 - 📊 **分類預算管理與分級預警系統**：
   - 新增分類預算功能，支援依據消費類別（飲食、交通、娛樂、購物、學習、醫療、其他）設定專屬獨立限額。
   - 支出主畫面擴充分類預算進度卡片，即時呈現各類別已支出金額、剩餘額度、消耗百分比，並依超支狀況智慧排序。
@@ -328,7 +338,7 @@ UniTrack+/
 │   │   │   │   │   ├── model/                    # 資料實體 (Entities, CalendarEvent, Enums, AuthModels, CourseNote, CustomAccount, AppNotification)
 │   │   │   │   │   └── repository/               # StudentRepository, AuthRepository (Credential Manager), FirestoreSyncRepository
 │   │   │   │   ├── receiver/                     # 系統廣播接收器 (BootCompletedReceiver, CourseReminderReceiver)
-│   │   │   │   ├── widget/                       # 桌面小工具 (TodayScheduleWidget, WeeklyGridBitmapRenderer)
+│   │   │   │   ├── widget/                       # 桌面小工具 (TodayScheduleWidget, WidgetUpdateHelper)
 │   │   │   │   ├── ui/
 │   │   │   │   │   ├── components/               # 通用 UI 元件 (統計卡片、進度條、彈出對話框)
 │   │   │   │   │   ├── screens/
@@ -346,7 +356,7 @@ UniTrack+/
 │   │   │   │   └── res/                          # 應用程式資源 (圖標、字串、主題樣式、raw/keep.xml)
 │   │   └── test/                                 # Robolectric 單元測試與 Roborazzi 截圖測試
 │   ├── proguard-rules.pro                        # R8 / ProGuard 混淆與保留規則
-│   └── build.gradle.kts                          # App 模組建置設定 (R8 啟用、資源修剪、v2.3.0)
+│   └── build.gradle.kts                          # App 模組建置設定 (R8 啟用、資源修剪、v2.5.0)
 ├── logo/                                         # 官方專屬品牌標誌 (圓形、方形、透明背景之向量 SVG 與 PNG)
 ├── docs/
 │   └── images/                                   # README 相關螢幕截圖與展示資源
@@ -430,9 +440,10 @@ UniTrack+/
   * 依據當前系統日期**自動判定並選取主要學期**，省去頻繁手動切換學期之麻煩。
   * 支援多學期動態切換、開學與結束日期精準設定、單雙週過濾與批次排課；支援**學期刪除**（連動清除課程並同步雲端）。
 * **課程錄入體驗優化**：點擊新增按鈕展開課程編輯抽屜 (`AddEditCourseDialog`)，新增 **0.0 ~ 10.0 學分下拉選單**，避免手動鍵盤誤觸；排版圓角與高度陰影全面優化。
-* **考勤點名管理 (Attendance Tracking)**：
+* **考勤點名管理 (Attendance Tracking) 與雲端同步**：
   * **上課日期精準推估**：自動結合開學日期精算每週上課對應之實際月日，即時預覽即將到達的課堂日期與出缺席紀錄。
   * 提供每週課堂出席狀態登記（出席、遲到、曠課、請假），並自動統計出席率與各類考勤次數。
+  * **雲端雙向持久化同步**：出席記錄深度整合 Cloud Firestore，支援即時自動備份、自動補傳回填與跨裝置同步還原；登出/切換帳號或刪除課程時自動連動清理快取。
 * **課程隨堂筆記 (Course Notes)**：
   * 支援分類管理：`一般`、`作業`、`考試`、`公告`、`重點`。
   * 可關聯特定週次與時間戳記，方便期中/期末考前快速複習。
@@ -522,12 +533,12 @@ UniTrack+/
   * **分類篩選與頁面聯動**：支援依類型標籤過濾，點擊卡片直接跳轉至對應功能頁面。
 * **現代化 Google 登入 (Credential Manager)**：
   * 升級至 Google 最新 Android 憑證管理員與 Google ID Token 授權，提供清晰友善的錯誤導引訊息。
-* **個人檔案與首次登入記錄**：支援自訂頭像與暱稱保存；記錄首次登入時間戳記 (`createdAt`)；清楚標示當前版本號 (`v2.3.0`)。
+* **個人檔案與首次登入記錄**：支援自訂頭像與暱稱保存；記錄首次登入時間戳記 (`createdAt`)；清楚標示當前版本號 (`v2.5.0`)。
 * **GitHub 最新版本自動偵測服務 (`UpdateChecker`)**：
   * 內建版本更新檢查機制，採用非同步排程請求 GitHub Releases API (`/repos/ZhaoHong04126/UniTrack/releases/latest`)。
   * 於設定或應用程式啟動時自動比對目前版本與線上最新發布版本，具備更新日誌摘要解析與版本更新提示引導。
 * **免登入離線優先**：無需連網即可享受 100% 完整功能，所有資料本機加密保存。
-* **雲端安全同步與跨裝置相容 (Cloud Sync)**：支援 Google / Email 帳號驗證；具備智慧防覆蓋保護機制；課程資料庫完整支援同步課輔 (`isTutorial`)、重複週次 (`repeatWeeks`) 與模式 (`repeatMode`)，跨裝置無縫同步。
+* **雲端安全同步與跨裝置相容 (Cloud Sync)**：支援 Google / Email 帳號驗證；具備智慧防覆蓋保護機制；課程資料庫完整支援同步課輔 (`isTutorial`)、重複週次 (`repeatWeeks`)、模式 (`repeatMode`) 與課程出席記錄 (`attendanceJson`)，跨裝置無縫同步。
 * **標準 JSON 檔案匯出/匯入**：提供純文字 JSON 匯出與匯入功能，方便本機備份、跨設備遷移或手動分析。
 
 <!-- 📸 [照片標記 7.1：通知中心介面截圖] -->
@@ -550,9 +561,11 @@ UniTrack+/
 
 ### 9. 桌面小工具 (App Widgets)
 * **今日課表桌面速覽 (`TodayScheduleWidget`)**：
-  * 無需開啟 App 即可於 Android 主畫面即時查看今日課堂安排、節次時段、教室與授課教師。
-  * 支援當日無課狀態友善提示、點擊即刻啟動 App 直達當日課堂詳情。
-  * 提供小工具專屬偏好設定介面 (`WidgetSettingsScreen`)。
+  * 精簡重構為高效純粹的桌面小工具，無需開啟 App 即可於 Android 主畫面即時查看今日課堂安排、節次時段、教室與授課教師。
+  * **智慧週次適配**：小工具即時根據學期開學日與總週數動態換算當前週次，精準過濾當週課程。
+  * **下一堂課焦點提醒**：即時高亮當前進行中或即將到來的課程，掌握下課與上課節奏。
+  * 支援當日無課狀態友善提示、一鍵快捷重新整理 (`widget_refresh_desc`)、點擊即刻啟動 App 直達當日課堂詳情。
+  * 提供小工具專屬偏好設定介面 (`WidgetSettingsScreen`)，提供即時外觀預覽與快捷操作。
 
 ---
 
@@ -578,7 +591,7 @@ UniTrack+/
 ## 🗺️ 未來展望 (Phase 2 Roadmap)
 
 * [ ] 🤖 **Gemini AI 智慧課表與隨堂助理**：重構課表截圖多模態解析流程，並支援課程筆記智慧摘要、個人化學習建議與期末備考指南。
-* [x] 🧩 **桌面小工具 (App Widgets)**：今日課表速覽 (`TodayScheduleWidget`) 已正式交付；後續將擴展快速記帳小工具。
+* [x] 🧩 **桌面小工具 (App Widgets)**：今日課表速覽 (`TodayScheduleWidget`) 全面最佳化並正式交付；後續將擴展快速記帳小工具。
 * [ ] 📸 **OCR / PDF 課表匯入**：支援上傳學校 PDF 課表或選課清單，自動解析並帶入課程資料。
 * [ ] 📊 **進階財務分析圖表**：月度/年度收支圓餅圖、趨勢折線圖與開銷排行榜。
 
