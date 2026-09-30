@@ -5,7 +5,7 @@
 [![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose%20%7C%20Material%203-4285F4?logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
 [![Room](https://img.shields.io/badge/Storage-Room%20(SQLite)-00599C?logo=sqlite&logoColor=white)](https://developer.android.com/training/data-storage/room)
 [![Firebase](https://img.shields.io/badge/Backend-Firebase%20(Auth%20%2B%20Firestore)-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com/)
-[![Version](https://img.shields.io/badge/Version-v2.5.0-3B82F6)](https://github.com/ZhaoHong04126/UniTrack)
+[![Version](https://img.shields.io/badge/Version-v2.5.1-3B82F6)](https://github.com/ZhaoHong04126/UniTrack)
 
 > **專為大學生量身打造的全方位學業與生活管理助理。**  
 > 集結「智慧週課表 & 考勤雲端同步筆記」、「正課與課輔/實習時段獨立管理」、「整合行事曆與待辦日程」、「系統級上課推播提醒 (AlarmManager)」、「桌面今日課表小工具」、「畢業學分稽核與門檻檢核」、「GPA / 學業儀表板」、「個人記帳、帳戶互轉與分類預算監控（含自訂交易時間與預算刪除）」、「通知中心與雲端原子事務同步」、「深淺色主題切換」於一體，支援 100% 純本機離線隱私保護與 Firebase 雲端雙向同步。經由 R8 深度修剪，安裝包極致輕量 (11.5MB)。
@@ -70,6 +70,7 @@
   * 通知偏好設定頁提供**測試發送推播**功能，方便隨時檢驗通知權限與呈現效果。
 * 🧩 **桌面今日課表小工具 (App Widget)**：
   * 精簡重構為高效純粹的「今日課表」桌面小工具 (`TodayScheduleWidget`)，無需開啟 App 即可於手機主畫面速覽今日課堂、節次、教室、時間與下一堂課焦點提示。
+  * **未登入狀態提示與智慧跳轉**：未登入狀態即時顯示「🔒 尚未登入帳號」空狀態卡片，點擊引導至登入畫面；登出或註銷時自動連動更新小工具。
   * 整合專屬小工具設定頁面 (`WidgetSettingsScreen`)，小工具週次計算動態適配開學日與總週數，支援一鍵手動刷新。
 * 🗓️ **整合行事曆與待辦日程 (Calendar & Tasks)**：
   * **雙重視圖模式**：支援「月視圖 (Month View)」與「週視圖 (Week View)」無縫切換。
@@ -130,15 +131,21 @@
 
 ### 🔖 版本歷程記錄
 
-#### 🌟 v2.5.0 (最新發布)
+#### 🌟 v2.5.1 (最新發布)
 - 🔄 **課程出席記錄 (Course Attendance) 雲端雙向同步與生命週期管理**：
   - 新增課程出席歷史紀錄 (`attendanceJson`) 於 Cloud Firestore 雲端雙向同步機制，點名出勤狀態（出席、遲到、曠課、請假）自動即時備份至雲端。
   - 具備自動回填與防覆蓋保護機制：若雲端尚未包含出席欄位，自動偵測本機既有出席記錄並智慧補傳；若雲端已有資料則無縫還原至本機 SharedPreferences。
   - 帳號生命週期與快取安全隔離：登出或切換不同帳號時，自動清除本機出席紀錄快取 (`course_attendance_*`)；刪除課程時連動清除對應出席記錄與雲端欄位。
   - 增強出席 UI 反應性：畢業審查課程詳情面板 (`CourseAuditListScreen`) 深度綁定 `semesterTimeConfigVersion`，出席狀態更新與雲端同步完成後即時重新渲染。
-- 🧩 **桌面小工具系統精簡重構 (Streamlined Widgets)**：
+- 🧩 **桌面小工具系統精簡重構與未登入提示 (Streamlined Widgets)**：
   - 精簡桌面小工具架構，全面聚焦於最實用、高反應的「UniTrack+ 今日課表」(`TodayScheduleWidget`)，移除冗餘的一週網格與概覽渲染器，顯著降低記憶體與背景繪製開銷。
+  - `TodayScheduleWidget` 新增未登入狀態自動檢核（Firebase Auth 與本機登入憑證），未登入時顯示專屬「🔒 尚未登入帳號」空狀態與提示，點擊桌面小工具直接跳轉至登入註冊頁面 (`auth`)。
+  - 登入狀態下今日若無課堂，友善提示「🎉 今日無課程」，點擊直達課表視圖 (`timetable`)。
+  - 帳號登出與帳號註銷時，自動連動發送桌面廣播即刻重繪小工具 (`WidgetUpdateHelper.updateAllWidgets`)，確保隱私資訊不殘留。
   - 最佳化小工具設定介面 (`WidgetSettingsScreen`) 與更新輔助類 (`WidgetUpdateHelper`)，提供更純粹的即時預覽、下一堂課焦點與快捷刷新控制。
+- ⚡ **轉帳記錄解析與列表渲染效能優化**：
+  - 將記帳明細列表 (`ExpenseScreen`) 與轉帳詳情對話框 (`AccountTransferDialog`) 中的 Regex 正規表達式提取為常數物件 (`TRANSFER_FROM_REGEX`、`TRANSFER_TO_REGEX`、`TRANSFER_PAIR_REGEX` 等），杜絕滑動列表與卡片渲染時重複編譯 Regex，顯著降低 CPU 開銷與卡頓。
+  - 健全轉帳帳戶名稱比對邏輯，支援依自訂帳戶 ID 與既有支付方式雙向解析。
 
 #### 🌟 v2.4.0
 - 📊 **分類預算管理與分級預警系統**：
@@ -356,7 +363,7 @@ UniTrack+/
 │   │   │   │   └── res/                          # 應用程式資源 (圖標、字串、主題樣式、raw/keep.xml)
 │   │   └── test/                                 # Robolectric 單元測試與 Roborazzi 截圖測試
 │   ├── proguard-rules.pro                        # R8 / ProGuard 混淆與保留規則
-│   └── build.gradle.kts                          # App 模組建置設定 (R8 啟用、資源修剪、v2.5.0)
+│   └── build.gradle.kts                          # App 模組建置設定 (R8 啟用、資源修剪、v2.5.1)
 ├── logo/                                         # 官方專屬品牌標誌 (圓形、方形、透明背景之向量 SVG 與 PNG)
 ├── docs/
 │   └── images/                                   # README 相關螢幕截圖與展示資源
@@ -508,7 +515,7 @@ UniTrack+/
 * **帳戶間資金互轉與成對紀錄 (`AccountTransferDialog`)**：
   * 支援多帳戶自由轉帳，提供專屬轉帳對話框，直覺設定來源帳戶、目標帳戶、轉帳金額、交易日期與備註。
   * 底層自動建立成對之「轉出 (`TRANSFER_OUT`)」與「轉入 (`TRANSFER_IN`)」記錄，精確即時反映各帳戶最新餘額。
-  * **單卡整合視覺化呈現**：收支明細列表自動將同筆轉帳之轉出與轉入合併為單一張卡片（`轉出帳戶 ➔ 轉入帳戶`），點選卡片開啟「內部資金調撥路線圖」對話框，清楚查看資金流向與雙帳戶資訊。
+  * **單卡整合視覺化呈現與解析效能優化**：收支明細列表自動將同筆轉帳之轉出與轉入合併為單一張卡片（`轉出帳戶 ➔ 轉入帳戶`），點選卡片開啟「內部資金調撥路線圖」對話框，清楚查看資金流向與雙帳戶資訊；轉帳標籤解析全面採用靜態常數 Regex，列表滑動流暢無卡頓。
   * **預算與圖表隔離機制**：轉帳屬於個人內部資金調度而非實質消費，系統自動將轉帳收支排除於每月消費總額、預算進度條與圓餅圖 (`ExpenseDonutChart`) 之外，確保消費統計與超支警示真實無誤。
 * **快速記帳、預算警戒與彈性預算刪除**：
   * 提供餐飲、交通、娛樂、學習、住宿等豐富標籤；總支出金額以玫瑰色負號標記；設定每月總預算，以動態進度條即時警示花費進度防範超支。
@@ -533,7 +540,7 @@ UniTrack+/
   * **分類篩選與頁面聯動**：支援依類型標籤過濾，點擊卡片直接跳轉至對應功能頁面。
 * **現代化 Google 登入 (Credential Manager)**：
   * 升級至 Google 最新 Android 憑證管理員與 Google ID Token 授權，提供清晰友善的錯誤導引訊息。
-* **個人檔案與首次登入記錄**：支援自訂頭像與暱稱保存；記錄首次登入時間戳記 (`createdAt`)；清楚標示當前版本號 (`v2.5.0`)。
+* **個人檔案與首次登入記錄**：支援自訂頭像與暱稱保存；記錄首次登入時間戳記 (`createdAt`)；清楚標示當前版本號 (`v2.5.1`)。
 * **GitHub 最新版本自動偵測服務 (`UpdateChecker`)**：
   * 內建版本更新檢查機制，採用非同步排程請求 GitHub Releases API (`/repos/ZhaoHong04126/UniTrack/releases/latest`)。
   * 於設定或應用程式啟動時自動比對目前版本與線上最新發布版本，具備更新日誌摘要解析與版本更新提示引導。
@@ -562,9 +569,10 @@ UniTrack+/
 ### 9. 桌面小工具 (App Widgets)
 * **今日課表桌面速覽 (`TodayScheduleWidget`)**：
   * 精簡重構為高效純粹的桌面小工具，無需開啟 App 即可於 Android 主畫面即時查看今日課堂安排、節次時段、教室與授課教師。
+  * **未登入狀態提示與安全隔離**：自動偵測登入狀態，未登入時呈現「🔒 尚未登入帳號」提示卡片，點擊一鍵跳轉至登入註冊畫面 (`auth`)；登出或註銷時自動觸發小工具重新整理以防資訊外洩。
   * **智慧週次適配**：小工具即時根據學期開學日與總週數動態換算當前週次，精準過濾當週課程。
   * **下一堂課焦點提醒**：即時高亮當前進行中或即將到來的課程，掌握下課與上課節奏。
-  * 支援當日無課狀態友善提示、一鍵快捷重新整理 (`widget_refresh_desc`)、點擊即刻啟動 App 直達當日課堂詳情。
+  * 支援當日無課狀態友善提示（「🎉 今日無課程」）、一鍵快捷重新整理 (`widget_refresh_desc`)、點擊即刻啟動 App 直達當日課堂詳情。
   * 提供小工具專屬偏好設定介面 (`WidgetSettingsScreen`)，提供即時外觀預覽與快捷操作。
 
 ---
