@@ -1282,13 +1282,13 @@ fun ExpenseScreen(
     }
 
     editingTransferRecord?.let { record ->
-        val fromId = Regex("""\[from:([^]]+)]""").find(record.note)?.groupValues?.getOrNull(1)
-        val toId = Regex("""\[to:([^]]+)]""").find(record.note)?.groupValues?.getOrNull(1)
-        val initialFromAcc = customAccounts.find { it.id == fromId }
-            ?: (if (record.type == ExpenseType.TRANSFER_OUT) customAccounts.find { it.method == record.paymentMethod } else null)
+        val initialFromAcc = TRANSFER_FROM_REGEX.find(record.note)?.groupValues?.getOrNull(1)?.let { id ->
+            customAccounts.find { it.id == id }
+        } ?: (if (record.type == ExpenseType.TRANSFER_OUT) customAccounts.find { it.method == record.paymentMethod } else null)
             ?: customAccounts.getOrNull(0)
-        val initialToAcc = customAccounts.find { it.id == toId }
-            ?: (if (record.type == ExpenseType.TRANSFER_IN) customAccounts.find { it.method == record.paymentMethod } else null)
+        val initialToAcc = TRANSFER_TO_REGEX.find(record.note)?.groupValues?.getOrNull(1)?.let { id ->
+            customAccounts.find { it.id == id }
+        } ?: (if (record.type == ExpenseType.TRANSFER_IN) customAccounts.find { it.method == record.paymentMethod } else null)
             ?: customAccounts.getOrNull(1)
             ?: customAccounts.getOrNull(0)
         val initialNote = if (record.note.contains(" | ")) record.note.substringAfter(" | ").trim() else ""
@@ -1546,14 +1546,19 @@ data class TransferDisplayInfo(
     val userNote: String
 )
 
-private fun parseTransferDisplayInfo(record: ExpenseRecord, accounts: List<PaymentAccount>): TransferDisplayInfo {
-    val fromId = Regex("""\[from:([^]]+)]""").find(record.note)?.groupValues?.getOrNull(1)
-    val toId = Regex("""\[to:([^]]+)]""").find(record.note)?.groupValues?.getOrNull(1)
+private val TRANSFER_FROM_REGEX = Regex("""\[from:([^]]+)]""")
+private val TRANSFER_TO_REGEX = Regex("""\[to:([^]]+)]""")
+private val TRANSFER_PAIR_REGEX = Regex("""\[pair:([^]]+)]""")
+private val TRANSFER_TAGS_REGEX = Regex("""\[(pair|from|to):[^]]+]""")
 
-    val fromAcc = accounts.find { it.id == fromId }
-        ?: if (record.type == ExpenseType.TRANSFER_OUT) accounts.find { it.method == record.paymentMethod } else null
-    val toAcc = accounts.find { it.id == toId }
-        ?: if (record.type == ExpenseType.TRANSFER_IN) accounts.find { it.method == record.paymentMethod } else null
+private fun parseTransferDisplayInfo(record: ExpenseRecord, accounts: List<PaymentAccount>): TransferDisplayInfo {
+    val fromAcc = TRANSFER_FROM_REGEX.find(record.note)?.groupValues?.getOrNull(1)?.let { id ->
+        accounts.find { it.id == id }
+    } ?: if (record.type == ExpenseType.TRANSFER_OUT) accounts.find { it.method == record.paymentMethod } else null
+
+    val toAcc = TRANSFER_TO_REGEX.find(record.note)?.groupValues?.getOrNull(1)?.let { id ->
+        accounts.find { it.id == id }
+    } ?: if (record.type == ExpenseType.TRANSFER_IN) accounts.find { it.method == record.paymentMethod } else null
 
     val fromName = fromAcc?.name
         ?: if (record.type == ExpenseType.TRANSFER_IN) record.title.removePrefix("轉帳自 ").trim()
@@ -1566,7 +1571,7 @@ private fun parseTransferDisplayInfo(record: ExpenseRecord, accounts: List<Payme
     val userNote = when {
         record.note.contains(" | ") -> record.note.substringAfter(" | ").trim()
         else -> {
-            val clean = record.note.replace(Regex("""\[(pair|from|to):[^]]+]"""), "").trim()
+            val clean = record.note.replace(TRANSFER_TAGS_REGEX, "").trim()
             if (clean.startsWith("轉至 ") || clean.startsWith("來自 ")) "" else clean
         }
     }
@@ -1581,7 +1586,7 @@ private fun parseTransferDisplayInfo(record: ExpenseRecord, accounts: List<Payme
 private fun filterRecordsForOverview(records: List<ExpenseRecord>): List<ExpenseRecord> {
     val transferPairs = records.filter { it.type == ExpenseType.TRANSFER_OUT || it.type == ExpenseType.TRANSFER_IN }
         .mapNotNull { r ->
-            Regex("""\[pair:([^]]+)]""").find(r.note)?.groupValues?.getOrNull(1)?.let { it to r }
+            TRANSFER_PAIR_REGEX.find(r.note)?.groupValues?.getOrNull(1)?.let { it to r }
         }
         .groupBy({ it.first }, { it.second })
 
@@ -1590,7 +1595,7 @@ private fun filterRecordsForOverview(records: List<ExpenseRecord>): List<Expense
 
     for (record in records) {
         if (record.type == ExpenseType.TRANSFER_OUT || record.type == ExpenseType.TRANSFER_IN) {
-            val pairId = Regex("""\[pair:([^]]+)]""").find(record.note)?.groupValues?.getOrNull(1)
+            val pairId = TRANSFER_PAIR_REGEX.find(record.note)?.groupValues?.getOrNull(1)
             if (pairId != null) {
                 if (handledPairIds.add(pairId)) {
                     // Prefer TRANSFER_OUT record to represent the single transfer card

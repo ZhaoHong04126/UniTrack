@@ -13,6 +13,8 @@ import com.example.data.local.AppDatabase
 import com.example.data.local.DefaultData
 import com.example.data.model.Course
 import com.example.util.NotificationHelper
+import com.google.firebase.FirebaseApp
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -246,40 +248,62 @@ class TodayScheduleWidget : AppWidgetProvider() {
     ) {
         val views = RemoteViews(context.packageName, R.layout.widget_today_schedule)
 
-        // 綁定點擊整個 Widget 跳轉至課表頁面
-        val mainIntent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            putExtra(NotificationHelper.EXTRA_NAV_ROUTE, "timetable")
-        }
-        val mainPendingIntent = PendingIntent.getActivity(
-            context,
-            0,
-            mainIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        views.setOnClickPendingIntent(R.id.widget_root, mainPendingIntent)
-
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val db = AppDatabase.getDatabase(context)
-                val graduationPlan = db.graduationDao().getGraduationPlanOnce()
-                val currentSemester = graduationPlan?.currentSemester?.ifBlank { null }
-                    ?: DefaultData.getCurrentAcademicSemester()
-
                 val prefs = context.getSharedPreferences("unitrack_prefs", Context.MODE_PRIVATE)
-                val startDateStr = DefaultData.getSemesterStartDate(prefs, currentSemester)
-                val totalWeeks = DefaultData.getSemesterTotalWeeks(prefs, currentSemester)
+                val lastUid = prefs.getString("last_logged_in_uid", null)
+                val isFirebaseLoggedIn = try {
+                    FirebaseApp.getApps(context).isNotEmpty() &&
+                        FirebaseAuth.getInstance().currentUser != null
+                } catch (_: Exception) {
+                    false
+                }
+                val isLoggedIn = isFirebaseLoggedIn || !lastUid.isNullOrBlank()
+
+                // 綁定點擊整個 Widget 跳轉至課表頁面或登入頁面
+                val mainIntent = Intent(context, MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    putExtra(NotificationHelper.EXTRA_NAV_ROUTE, if (isLoggedIn) "timetable" else "auth")
+                }
+                val mainPendingIntent = PendingIntent.getActivity(
+                    context,
+                    0,
+                    mainIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+                views.setOnClickPendingIntent(R.id.widget_root, mainPendingIntent)
 
                 val calendar = Calendar.getInstance()
                 val dayOfWeekIndex = getDayOfWeekIndex(calendar)
                 val dayOfWeekName = getDayOfWeekName(dayOfWeekIndex)
-                val currentWeek = calculateCurrentWeek(startDateStr, totalWeeks, currentSemester)
 
                 val month = calendar.get(Calendar.MONTH) + 1
                 val day = calendar.get(Calendar.DAY_OF_MONTH)
                 val dateText = String.format(Locale.getDefault(), "%d月%d日 %s", month, day, dayOfWeekName)
 
                 views.setTextViewText(R.id.tv_widget_date, dateText)
+
+                // 若尚未登入，顯示專屬未登入狀態提示
+                if (!isLoggedIn) {
+                    views.setTextViewText(R.id.tv_widget_week_badge, "未登入")
+                    views.setViewVisibility(R.id.layout_next_class_container, View.GONE)
+                    views.setViewVisibility(R.id.layout_courses_container, View.GONE)
+                    views.setViewVisibility(R.id.layout_empty_state, View.VISIBLE)
+                    views.setTextViewText(R.id.tv_empty_title, "🔒 尚未登入帳號")
+                    views.setTextViewText(R.id.tv_empty_desc, "點擊此處登入以查看專屬課表")
+                    appWidgetManager.updateAppWidget(appWidgetId, views)
+                    return@launch
+                }
+
+                val db = AppDatabase.getDatabase(context)
+                val graduationPlan = db.graduationDao().getGraduationPlanOnce()
+                val currentSemester = graduationPlan?.currentSemester?.ifBlank { null }
+                    ?: DefaultData.getCurrentAcademicSemester()
+
+                val startDateStr = DefaultData.getSemesterStartDate(prefs, currentSemester)
+                val totalWeeks = DefaultData.getSemesterTotalWeeks(prefs, currentSemester)
+                val currentWeek = calculateCurrentWeek(startDateStr, totalWeeks, currentSemester)
+
                 views.setTextViewText(R.id.tv_widget_week_badge, "第 $currentWeek 週")
 
                 // 查詢課程並過濾今日課程
@@ -296,6 +320,8 @@ class TodayScheduleWidget : AppWidgetProvider() {
                     views.setViewVisibility(R.id.layout_next_class_container, View.GONE)
                     views.setViewVisibility(R.id.layout_courses_container, View.GONE)
                     views.setViewVisibility(R.id.layout_empty_state, View.VISIBLE)
+                    views.setTextViewText(R.id.tv_empty_title, "🎉 今日無課程")
+                    views.setTextViewText(R.id.tv_empty_desc, "好好休息或點擊查看完整週課表")
                 } else {
                     views.setViewVisibility(R.id.layout_empty_state, View.GONE)
                     views.setViewVisibility(R.id.layout_courses_container, View.VISIBLE)

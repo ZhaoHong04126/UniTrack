@@ -490,6 +490,9 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                             sendSystemPush = false
                         )
                     }
+
+                    // 6. 登入成功並下載完成後，立即同步更新桌面 Widget
+                    WidgetUpdateHelper.updateAllWidgets(getApplication())
                 }
             }
         }
@@ -2206,6 +2209,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
                 // 立即將包含學生檔案同步上傳至 Firestore 雲端
                 firestoreSyncRepository.uploadAllToCloud(user.uid)
+                WidgetUpdateHelper.updateAllWidgets(getApplication())
 
                 showToast("註冊成功！歡迎加入 UniTrack+，${user.displayName ?: nameToSet}")
                 onResult?.invoke(true, null)
@@ -2248,6 +2252,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             _customSemesters.value = emptySet()
             _deletedSemesters.value = emptySet()
             _semesterTimeConfigVersion.value += 1
+            WidgetUpdateHelper.updateAllWidgets(getApplication())
             showToast("已成功登出帳號")
         }
     }
@@ -2277,6 +2282,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             }
             _customSemesters.value = emptySet()
             _deletedSemesters.value = emptySet()
+            WidgetUpdateHelper.updateAllWidgets(getApplication())
 
             // 3. 永久註銷並刪除 Firebase Auth 帳號與 Google 憑證
             val authDeleteResult = authRepository.deleteAccount(context)

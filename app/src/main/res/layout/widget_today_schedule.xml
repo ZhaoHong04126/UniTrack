@@ -131,6 +131,7 @@
             android:id="@+id/tv_empty_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:text="🎉 今日無課程"
             tools:text="🎉 今日無課程"
             android:textColor="@color/widget_primary_text"
             android:textSize="14sp"
@@ -141,6 +142,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
+            android:text="好好休息或點擊查看完整週課表"
             tools:text="好好休息或點擊查看完整週課表"
             android:textColor="@color/widget_text_muted"
             android:textSize="11sp" />

@@ -35,6 +35,9 @@ import com.example.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
+private val TRANSFER_FROM_REGEX = Regex("""\[from:([^]]+)]""")
+private val TRANSFER_TO_REGEX = Regex("""\[to:([^]]+)]""")
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AccountTransferDialog(
@@ -680,13 +683,12 @@ fun TransferDetailDialog(
     onEdit: (ExpenseRecord) -> Unit = {}
 ) {
     var showConfirmDelete by remember { mutableStateOf(false) }
-    val fromId = Regex("""\[from:([^]]+)]""").find(record.note)?.groupValues?.getOrNull(1)
-    val toId = Regex("""\[to:([^]]+)]""").find(record.note)?.groupValues?.getOrNull(1)
-
-    val fromAcc = accounts.find { it.id == fromId }
-        ?: if (record.type == ExpenseType.TRANSFER_OUT) accounts.find { it.method == record.paymentMethod } else null
-    val toAcc = accounts.find { it.id == toId }
-        ?: if (record.type == ExpenseType.TRANSFER_IN) accounts.find { it.method == record.paymentMethod } else null
+    val fromAcc = TRANSFER_FROM_REGEX.find(record.note)?.groupValues?.getOrNull(1)?.let { id ->
+        accounts.find { it.id == id }
+    } ?: if (record.type == ExpenseType.TRANSFER_OUT) accounts.find { it.method == record.paymentMethod } else null
+    val toAcc = TRANSFER_TO_REGEX.find(record.note)?.groupValues?.getOrNull(1)?.let { id ->
+        accounts.find { it.id == id }
+    } ?: if (record.type == ExpenseType.TRANSFER_IN) accounts.find { it.method == record.paymentMethod } else null
 
     val fromName = fromAcc?.name
         ?: if (record.type == ExpenseType.TRANSFER_IN) record.title.removePrefix("轉帳自 ").trim()
