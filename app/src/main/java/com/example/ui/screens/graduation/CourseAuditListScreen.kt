@@ -61,6 +61,7 @@ fun CourseAuditListScreen(
     val plan by viewModel.graduationPlan.collectAsStateWithLifecycle()
     val allCourses by viewModel.allCourses.collectAsStateWithLifecycle()
     val allSemesters by viewModel.allSemesters.collectAsStateWithLifecycle()
+    val semesterTimeConfigVersion by viewModel.semesterTimeConfigVersion.collectAsStateWithLifecycle()
 
     val existingSemesters = remember(allSemesters, allCourses) {
         (allCourses.filter { !it.isTutorial }.map { it.semester } + allSemesters).distinct()
@@ -396,7 +397,7 @@ fun CourseAuditListScreen(
     }
 
     selectedCourseDetail?.let { course ->
-        val attendanceMap = remember(course.id) {
+        val attendanceMap = remember(course.id, semesterTimeConfigVersion) {
             viewModel.getCourseAttendance(course.id)
         }
         val notesList = remember(course.id) {

@@ -15,6 +15,7 @@ import com.example.util.NotificationHelper
 import com.example.util.NotificationScheduler
 import com.example.widget.TodayScheduleWidget
 import com.example.widget.WidgetUpdateHelper
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -314,10 +315,17 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         attendance.forEach { (week, status) ->
             json.put(week.toString(), status)
         }
+        val jsonStr = json.toString()
         prefs.edit {
-            putString(key, json.toString())
+            putString(key, jsonStr)
         }
         _semesterTimeConfigVersion.value += 1
+        val user = currentUser.value
+        if (user != null) {
+            viewModelScope.launch(Dispatchers.IO) {
+                firestoreSyncRepository.saveCourseAttendanceToCloud(user.uid, courseId, jsonStr)
+            }
+        }
     }
 
     fun getCourseNotes(courseId: Long): List<CourseNote> {
@@ -425,6 +433,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                     if (lastUid != null && lastUid != profile.uid) {
                         repository.clearAllData()
                         prefs.edit {
+                            prefs.all.keys.filter { it.startsWith("course_attendance_") }.forEach { remove(it) }
                             remove("pref_custom_accounts")
                             remove("pref_custom_semesters")
                             remove("pref_deleted_semesters")
@@ -448,6 +457,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                     saveAccounts(normalized)
                     _customSemesters.value = prefs.getStringSet("pref_custom_semesters", emptySet()) ?: emptySet()
                     _deletedSemesters.value = prefs.getStringSet("pref_deleted_semesters", emptySet()) ?: emptySet()
+                    _semesterTimeConfigVersion.value += 1
 
                     // 3. 若雲端與本機皆無課程與記帳資料，自動載入範本學業與生活資料並上傳
                     val coursesNow = repository.getAllCoursesOnce()
@@ -1585,6 +1595,9 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
     fun deleteCourse(course: Course, sendNotify: Boolean = true) = viewModelScope.launch {
         repository.deleteCourse(course)
+        prefs.edit {
+            remove("course_attendance_${course.id}")
+        }
         val user = currentUser.value
         if (user != null) {
             firestoreSyncRepository.deleteCourseFromCloud(user.uid, course.id)
@@ -2225,6 +2238,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             // 3. 徹底清空本機 Room 資料庫（課表、記帳、預算、門檻、通知、個人檔案）
             repository.clearAllData()
             prefs.edit {
+                prefs.all.keys.filter { it.startsWith("course_attendance_") }.forEach { remove(it) }
                 remove("pref_custom_accounts")
                 remove("pref_custom_semesters")
                 remove("pref_deleted_semesters")
@@ -2233,6 +2247,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             _customAccounts.value = loadAccounts()
             _customSemesters.value = emptySet()
             _deletedSemesters.value = emptySet()
+            _semesterTimeConfigVersion.value += 1
             showToast("已成功登出帳號")
         }
     }
@@ -2295,6 +2310,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             _isSyncing.value = false
             result.onSuccess {
                 _lastSyncTime.value = System.currentTimeMillis()
+                _semesterTimeConfigVersion.value += 1
                 if (!silent) {
                     showToast("雲端資料同步完成！")
                 }
@@ -2345,6 +2361,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             _isSyncing.value = false
             result.onSuccess {
                 _lastSyncTime.value = System.currentTimeMillis()
+                _semesterTimeConfigVersion.value += 1
                 if (!silent) showToast("已從 Firebase 雲端成功還原資料！")
                 onResult?.invoke(true, null)
             }.onFailure { e ->

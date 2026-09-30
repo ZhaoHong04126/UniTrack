@@ -105,7 +105,8 @@ class FirestoreSyncRepository(
                 if (courses.isNotEmpty()) {
                     val coursesCol = userDocRef.collection("courses")
                     for (course in courses) {
-                        val courseMap = hashMapOf(
+                        val attendanceJson = prefs.getString("course_attendance_${course.id}", null)
+                        val courseMap = hashMapOf<String, Any?>(
                             "id" to course.id,
                             "name" to course.name,
                             "code" to course.code,
@@ -130,7 +131,8 @@ class FirestoreSyncRepository(
                             "notes" to course.notes,
                             "repeatWeeks" to course.repeatWeeks,
                             "repeatMode" to course.repeatMode,
-                            "isTutorial" to course.isTutorial
+                            "isTutorial" to course.isTutorial,
+                            "attendanceJson" to (attendanceJson ?: "")
                         )
                         coursesCol.document(course.id.toString()).set(courseMap, SetOptions.merge()).await()
                     }
@@ -361,6 +363,25 @@ class FirestoreSyncRepository(
                             isTutorial = resolvedIsTutorial
                         )
                         downloadedCourses.add(course)
+
+                        // 處理出席記錄同步
+                        if (doc.contains("attendanceJson")) {
+                            val remoteAttendance = doc.getString("attendanceJson")
+                            prefs.edit {
+                                if (!remoteAttendance.isNullOrBlank() && remoteAttendance != "{}") {
+                                    putString("course_attendance_$docId", remoteAttendance)
+                                } else {
+                                    remove("course_attendance_$docId")
+                                }
+                            }
+                        } else {
+                            // 若雲端尚未有 attendanceJson 欄位，檢查本機是否有既有出席紀錄並自動回填至雲端
+                            val localAttendance = prefs.getString("course_attendance_$docId", null)
+                            if (!localAttendance.isNullOrBlank() && localAttendance != "{}") {
+                                userDocRef.collection("courses").document(docId.toString())
+                                    .set(mapOf("attendanceJson" to localAttendance), SetOptions.merge())
+                            }
+                        }
                     }
                 }
                 // 2. 下載 Courses（使用原子事務同步，絕不清空本地表避免 UI 閃爍）
@@ -518,6 +539,20 @@ class FirestoreSyncRepository(
             firestore?.collection("users")?.document(userId)?.collection("courses")?.document(courseId.toString())?.delete()?.await()
         } catch (e: Exception) {
             Log.e(tag, "Failed to delete course $courseId from cloud", e)
+        }
+    }
+
+    suspend fun saveCourseAttendanceToCloud(userId: String, courseId: Long, attendanceJson: String) = withContext(Dispatchers.IO) {
+        if (userId.isBlank()) return@withContext
+        val db = firestore ?: return@withContext
+        try {
+            db.collection("users").document(userId)
+                .collection("courses").document(courseId.toString())
+                .set(mapOf("attendanceJson" to attendanceJson), SetOptions.merge())
+                .await()
+            Log.i(tag, "Attendance for course $courseId saved to cloud successfully")
+        } catch (e: Exception) {
+            Log.e(tag, "Failed to save attendance for course $courseId to cloud", e)
         }
     }
 
