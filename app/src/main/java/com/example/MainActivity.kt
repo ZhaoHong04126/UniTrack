@@ -262,10 +262,10 @@ class MainActivity : ComponentActivity() {
                                             if (currentRoute != dest.route) {
                                                 navController.navigate(dest.route) {
                                                     popUpTo(AppDestination.Dashboard.route) {
-                                                        saveState = true
+                                                        saveState = (dest.route != AppDestination.Dashboard.route)
                                                     }
                                                     launchSingleTop = true
-                                                    restoreState = true
+                                                    restoreState = (dest.route != AppDestination.Dashboard.route)
                                                 }
                                             }
                                         },
@@ -297,13 +297,31 @@ class MainActivity : ComponentActivity() {
                             DashboardScreen(
                                 viewModel = studentViewModel,
                                 onNavigateToTimetable = {
-                                    navController.navigate(AppDestination.Timetable.route)
+                                    navController.navigate(AppDestination.Timetable.route) {
+                                        popUpTo(AppDestination.Dashboard.route) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
                                 },
                                 onNavigateToGraduation = {
-                                    navController.navigate(AppDestination.Graduation.route)
+                                    navController.navigate(AppDestination.Graduation.route) {
+                                        popUpTo(AppDestination.Dashboard.route) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
                                 },
                                 onNavigateToExpense = {
-                                    navController.navigate(AppDestination.Expense.route)
+                                    navController.navigate(AppDestination.Expense.route) {
+                                        popUpTo(AppDestination.Dashboard.route) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
                                 },
                                 onNavigateToNotifications = {
                                     navController.navigate("notifications")
@@ -428,7 +446,13 @@ class MainActivity : ComponentActivity() {
                                 viewModel = studentViewModel,
                                 onNavigateBack = { navController.popBackStack() },
                                 onNavigateToTimetable = {
-                                    navController.navigate(AppDestination.Timetable.route)
+                                    navController.navigate(AppDestination.Timetable.route) {
+                                        popUpTo(AppDestination.Dashboard.route) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
                                 }
                             )
                         }

@@ -5,7 +5,7 @@
 [![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose%20%7C%20Material%203-4285F4?logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
 [![Room](https://img.shields.io/badge/Storage-Room%20(SQLite)-00599C?logo=sqlite&logoColor=white)](https://developer.android.com/training/data-storage/room)
 [![Firebase](https://img.shields.io/badge/Backend-Firebase%20(Auth%20%2B%20Firestore)-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com/)
-[![Version](https://img.shields.io/badge/Version-v2.5.1-3B82F6)](https://github.com/ZhaoHong04126/UniTrack)
+[![Version](https://img.shields.io/badge/Version-v2.5.2-3B82F6)](https://github.com/ZhaoHong04126/UniTrack)
 
 > **專為大學生量身打造的全方位學業與生活管理助理。**  
 > 集結「智慧週課表 & 考勤雲端同步筆記」、「正課與課輔/實習時段獨立管理」、「整合行事曆與待辦日程」、「系統級上課推播提醒 (AlarmManager)」、「桌面今日課表小工具」、「畢業學分稽核與門檻檢核」、「GPA / 學業儀表板」、「個人記帳、帳戶互轉與分類預算監控（含自訂交易時間與預算刪除）」、「通知中心與雲端原子事務同步」、「深淺色主題切換」於一體，支援 100% 純本機離線隱私保護與 Firebase 雲端雙向同步。經由 R8 深度修剪，安裝包極致輕量 (11.5MB)。
@@ -131,7 +131,14 @@
 
 ### 🔖 版本歷程記錄
 
-#### 🌟 v2.5.1 (最新發布)
+#### 🌟 v2.5.2 (最新發布)
+- 🧭 **底部導航欄與儀表板返回修復 (Navigation Architecture Fix)**：
+  - 修復在儀表板 (`DashboardScreen`) 點擊「完整課表」、「記帳本」、預算可用額度卡片或「詳細學分」後，點擊底部導航欄「儀表板」按鈕無反應無法返回首頁的導航堆疊異常。
+  - 重構 `MainActivity` 底部導航欄點擊回呼：當點擊儀表板時，自動清除頂部堆疊畫面 (`popUpTo(Dashboard) { saveState = false }`) 並安全返回根節點，同時避免對首頁執行多餘的 `restoreState` 導致導航失效。
+  - 將儀表板跳轉課表 (`Timetable`)、記帳本 (`Expense`) 與畢業審查 (`Graduation`) 全面升級為標準頂層分頁切換機制，保障各分頁狀態保存與單一實例 (`launchSingleTop = true`)。
+  - 增設專屬 Compose 導航單元測試集 (`NavigationReproTest`)，涵蓋 5 大導航情境，確保後續版本迭代之導航穩定性。
+
+#### 🌟 v2.5.1
 - 🔄 **課程出席記錄 (Course Attendance) 雲端雙向同步與生命週期管理**：
   - 新增課程出席歷史紀錄 (`attendanceJson`) 於 Cloud Firestore 雲端雙向同步機制，點名出勤狀態（出席、遲到、曠課、請假）自動即時備份至雲端。
   - 具備自動回填與防覆蓋保護機制：若雲端尚未包含出席欄位，自動偵測本機既有出席記錄並智慧補傳；若雲端已有資料則無縫還原至本機 SharedPreferences。
@@ -363,7 +370,7 @@ UniTrack+/
 │   │   │   │   └── res/                          # 應用程式資源 (圖標、字串、主題樣式、raw/keep.xml)
 │   │   └── test/                                 # Robolectric 單元測試與 Roborazzi 截圖測試
 │   ├── proguard-rules.pro                        # R8 / ProGuard 混淆與保留規則
-│   └── build.gradle.kts                          # App 模組建置設定 (R8 啟用、資源修剪、v2.5.1)
+│   └── build.gradle.kts                          # App 模組建置設定 (R8 啟用、資源修剪、v2.5.2)
 ├── logo/                                         # 官方專屬品牌標誌 (圓形、方形、透明背景之向量 SVG 與 PNG)
 ├── docs/
 │   └── images/                                   # README 相關螢幕截圖與展示資源
@@ -540,7 +547,7 @@ UniTrack+/
   * **分類篩選與頁面聯動**：支援依類型標籤過濾，點擊卡片直接跳轉至對應功能頁面。
 * **現代化 Google 登入 (Credential Manager)**：
   * 升級至 Google 最新 Android 憑證管理員與 Google ID Token 授權，提供清晰友善的錯誤導引訊息。
-* **個人檔案與首次登入記錄**：支援自訂頭像與暱稱保存；記錄首次登入時間戳記 (`createdAt`)；清楚標示當前版本號 (`v2.5.1`)。
+* **個人檔案與首次登入記錄**：支援自訂頭像與暱稱保存；記錄首次登入時間戳記 (`createdAt`)；清楚標示當前版本號 (`v2.5.2`)。
 * **GitHub 最新版本自動偵測服務 (`UpdateChecker`)**：
   * 內建版本更新檢查機制，採用非同步排程請求 GitHub Releases API (`/repos/ZhaoHong04126/UniTrack/releases/latest`)。
   * 於設定或應用程式啟動時自動比對目前版本與線上最新發布版本，具備更新日誌摘要解析與版本更新提示引導。
