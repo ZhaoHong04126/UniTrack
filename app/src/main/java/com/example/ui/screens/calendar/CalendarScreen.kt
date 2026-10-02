@@ -41,6 +41,10 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.temporal.WeekFields
 
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import kotlinx.coroutines.launch
+
 enum class CalendarViewType {
     WEEK, MONTH
 }
@@ -60,9 +64,25 @@ fun CalendarScreen(
     val currentSemester = plan.currentSemester.ifBlank { "114-1" }
 
     val today = remember { LocalDate.now() }
+    val coroutineScope = rememberCoroutineScope()
     var viewType by remember { mutableStateOf(CalendarViewType.MONTH) }
     var selectedDate by remember { mutableStateOf(today) }
-    var currentYearMonth by remember { mutableStateOf(YearMonth.from(today)) }
+
+    val baseMonth = remember { YearMonth.from(today) }
+    val initialMonthPage = 1200
+    val monthPagerState = rememberPagerState(initialPage = initialMonthPage) { 2400 }
+
+    val baseWeekSunday = remember { today.minusDays((today.dayOfWeek.value % 7).toLong()) }
+    val initialWeekPage = 5000
+    val weekPagerState = rememberPagerState(initialPage = initialWeekPage) { 10000 }
+
+    val currentYearMonth = remember(viewType, monthPagerState.currentPage, selectedDate) {
+        if (viewType == CalendarViewType.MONTH) {
+            baseMonth.plusMonths((monthPagerState.currentPage - initialMonthPage).toLong())
+        } else {
+            YearMonth.from(selectedDate)
+        }
+    }
 
     var showAddEventDialog by remember { mutableStateOf(false) }
     var eventCategoryToCreate by remember { mutableStateOf<CalendarEventCategory?>(null) }
@@ -72,19 +92,51 @@ fun CalendarScreen(
         selectedDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
     }
 
-    // Courses for selected date
-    val dayCourses = remember(selectedDateStr, currentSemester, allCourses, semesterTimeConfigVersion) {
-        viewModel.getCoursesForDate(selectedDateStr, currentSemester)
-    }
-
-    // Events for selected date
-    val dayEvents = remember(selectedDateStr, allCalendarEvents) {
-        allCalendarEvents.filter { it.date == selectedDateStr }
-    }
-
     // Week info for selected date
     val selectedWeekNum = remember(selectedDateStr, currentSemester, semesterTimeConfigVersion) {
         viewModel.getWeekNumberForDate(selectedDateStr, currentSemester)
+    }
+
+    // Sync selectedDate when month pager settles on a new page via swipe
+    LaunchedEffect(monthPagerState.currentPage) {
+        if (viewType == CalendarViewType.MONTH) {
+            val newMonth = baseMonth.plusMonths((monthPagerState.currentPage - initialMonthPage).toLong())
+            if (YearMonth.from(selectedDate) != newMonth) {
+                val targetDay = selectedDate.dayOfMonth.coerceAtMost(newMonth.lengthOfMonth())
+                selectedDate = newMonth.atDay(targetDay)
+            }
+        }
+    }
+
+    // Sync selectedDate when week pager settles on a new page via swipe
+    LaunchedEffect(weekPagerState.currentPage) {
+        if (viewType == CalendarViewType.WEEK) {
+            val sundayOfPage = baseWeekSunday.plusWeeks((weekPagerState.currentPage - initialWeekPage).toLong())
+            val saturdayOfPage = sundayOfPage.plusDays(6)
+            if (selectedDate !in sundayOfPage..saturdayOfPage) {
+                val dayOffset = (selectedDate.dayOfWeek.value % 7).toLong()
+                selectedDate = sundayOfPage.plusDays(dayOffset)
+            }
+        }
+    }
+
+    // Sync pagers when switching viewType (Week <-> Month)
+    LaunchedEffect(viewType) {
+        if (viewType == CalendarViewType.MONTH) {
+            val targetMonth = YearMonth.from(selectedDate)
+            val monthsDiff = (targetMonth.year - baseMonth.year) * 12 + (targetMonth.monthValue - baseMonth.monthValue)
+            val targetPage = initialMonthPage + monthsDiff
+            if (monthPagerState.currentPage != targetPage) {
+                monthPagerState.scrollToPage(targetPage)
+            }
+        } else {
+            val selectedSunday = selectedDate.minusDays((selectedDate.dayOfWeek.value % 7).toLong())
+            val weeksDiff = ((selectedSunday.toEpochDay() - baseWeekSunday.toEpochDay()) / 7).toInt()
+            val targetPage = initialWeekPage + weeksDiff
+            if (weekPagerState.currentPage != targetPage) {
+                weekPagerState.scrollToPage(targetPage)
+            }
+        }
     }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -97,21 +149,56 @@ fun CalendarScreen(
                 currentYearMonth = currentYearMonth,
                 selectedDate = selectedDate,
                 selectedWeekNum = selectedWeekNum,
-                onViewTypeChange = { viewType = it },
-                onPrevious = {
-                    if (viewType == CalendarViewType.MONTH) {
-                        currentYearMonth = currentYearMonth.minusMonths(1)
+                onViewTypeChange = { newType ->
+                    if (newType == CalendarViewType.MONTH) {
+                        val targetMonth = YearMonth.from(selectedDate)
+                        val monthsDiff = (targetMonth.year - baseMonth.year) * 12 + (targetMonth.monthValue - baseMonth.monthValue)
+                        val targetPage = initialMonthPage + monthsDiff
+                        coroutineScope.launch {
+                            monthPagerState.scrollToPage(targetPage)
+                        }
                     } else {
-                        selectedDate = selectedDate.minusWeeks(1)
-                        currentYearMonth = YearMonth.from(selectedDate)
+                        val selectedSunday = selectedDate.minusDays((selectedDate.dayOfWeek.value % 7).toLong())
+                        val weeksDiff = ((selectedSunday.toEpochDay() - baseWeekSunday.toEpochDay()) / 7).toInt()
+                        val targetPage = initialWeekPage + weeksDiff
+                        coroutineScope.launch {
+                            weekPagerState.scrollToPage(targetPage)
+                        }
+                    }
+                    viewType = newType
+                },
+                onPrevious = {
+                    coroutineScope.launch {
+                        if (viewType == CalendarViewType.MONTH) {
+                            monthPagerState.animateScrollToPage(monthPagerState.currentPage - 1)
+                        } else {
+                            weekPagerState.animateScrollToPage(weekPagerState.currentPage - 1)
+                        }
                     }
                 },
                 onNext = {
-                    if (viewType == CalendarViewType.MONTH) {
-                        currentYearMonth = currentYearMonth.plusMonths(1)
-                    } else {
-                        selectedDate = selectedDate.plusWeeks(1)
-                        currentYearMonth = YearMonth.from(selectedDate)
+                    coroutineScope.launch {
+                        if (viewType == CalendarViewType.MONTH) {
+                            monthPagerState.animateScrollToPage(monthPagerState.currentPage + 1)
+                        } else {
+                            weekPagerState.animateScrollToPage(weekPagerState.currentPage + 1)
+                        }
+                    }
+                },
+                onToday = {
+                    selectedDate = today
+                    coroutineScope.launch {
+                        if (viewType == CalendarViewType.MONTH) {
+                            val todayMonth = YearMonth.from(today)
+                            val monthsDiff = (todayMonth.year - baseMonth.year) * 12 + (todayMonth.monthValue - baseMonth.monthValue)
+                            val targetPage = initialMonthPage + monthsDiff
+                            monthPagerState.animateScrollToPage(targetPage)
+                        } else {
+                            val todaySunday = today.minusDays((today.dayOfWeek.value % 7).toLong())
+                            val weeksDiff = ((todaySunday.toEpochDay() - baseWeekSunday.toEpochDay()) / 7).toInt()
+                            val targetPage = initialWeekPage + weeksDiff
+                            weekPagerState.animateScrollToPage(targetPage)
+                        }
                     }
                 }
             )
@@ -133,55 +220,121 @@ fun CalendarScreen(
                 label = "CalendarViewSwitch"
             ) { targetView ->
                 if (targetView == CalendarViewType.MONTH) {
-                    // ---------------- MONTH VIEW ----------------
-                    MonthCalendarView(
-                        yearMonth = currentYearMonth,
-                        selectedDate = selectedDate,
-                        today = today,
-                        events = allCalendarEvents,
-                        courses = allCourses,
-                        currentSemester = currentSemester,
-                        viewModel = viewModel,
-                        onDateSelected = { date ->
-                            selectedDate = date
-                            currentYearMonth = YearMonth.from(date)
-                        },
-                        dayCourses = dayCourses,
-                        dayEvents = dayEvents,
-                        onToggleEventComplete = { viewModel.toggleCalendarEventCompletion(it) },
-                        onEditEvent = {
-                            editingEvent = it
-                            showAddEventDialog = true
-                        },
-                        onNavigateToTimetable = onNavigateToTimetable
-                    )
+                    // ---------------- MONTH VIEW WITH HORIZONTAL SWIPING ----------------
+                    HorizontalPager(
+                        state = monthPagerState,
+                        modifier = Modifier.fillMaxSize()
+                    ) { page ->
+                        val pageYearMonth = remember(page) {
+                            baseMonth.plusMonths((page - initialMonthPage).toLong())
+                        }
+                        val pageSelectedDate = if (YearMonth.from(selectedDate) == pageYearMonth) {
+                            selectedDate
+                        } else {
+                            val targetDay = selectedDate.dayOfMonth.coerceAtMost(pageYearMonth.lengthOfMonth())
+                            pageYearMonth.atDay(targetDay)
+                        }
+                        val pageSelectedDateStr = remember(pageSelectedDate) {
+                            pageSelectedDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                        }
+                        val pageDayCourses = remember(pageSelectedDateStr, currentSemester, allCourses, semesterTimeConfigVersion) {
+                            viewModel.getCoursesForDate(pageSelectedDateStr, currentSemester)
+                        }
+                        val pageDayEvents = remember(pageSelectedDateStr, allCalendarEvents) {
+                            allCalendarEvents.filter { it.date == pageSelectedDateStr }
+                        }
+
+                        MonthCalendarView(
+                            yearMonth = pageYearMonth,
+                            selectedDate = pageSelectedDate,
+                            today = today,
+                            events = allCalendarEvents,
+                            courses = allCourses,
+                            currentSemester = currentSemester,
+                            viewModel = viewModel,
+                            onDateSelected = { date ->
+                                selectedDate = date
+                                val targetMonth = YearMonth.from(date)
+                                val monthsDiff = (targetMonth.year - baseMonth.year) * 12 + (targetMonth.monthValue - baseMonth.monthValue)
+                                val targetPage = initialMonthPage + monthsDiff
+                                if (targetPage != monthPagerState.currentPage) {
+                                    coroutineScope.launch {
+                                        monthPagerState.animateScrollToPage(targetPage)
+                                    }
+                                }
+                            },
+                            dayCourses = pageDayCourses,
+                            dayEvents = pageDayEvents,
+                            onToggleEventComplete = { viewModel.toggleCalendarEventCompletion(it) },
+                            onEditEvent = {
+                                editingEvent = it
+                                showAddEventDialog = true
+                            },
+                            onNavigateToTimetable = onNavigateToTimetable
+                        )
+                    }
                 } else {
-                    // ---------------- WEEK VIEW ----------------
-                    WeekCalendarView(
-                        selectedDate = selectedDate,
-                        today = today,
-                        events = allCalendarEvents,
-                        currentSemester = currentSemester,
-                        viewModel = viewModel,
-                        dayCourses = dayCourses,
-                        dayEvents = dayEvents,
-                        onDateSelected = { date ->
-                            selectedDate = date
-                            currentYearMonth = YearMonth.from(date)
-                        },
-                        onQuickCategoryClick = { cat ->
-                            editingEvent = null
-                            eventCategoryToCreate = cat
-                            showAddEventDialog = true
-                        },
-                        onToggleEventComplete = { viewModel.toggleCalendarEventCompletion(it) },
-                        onEditEvent = {
-                            editingEvent = it
-                            showAddEventDialog = true
-                        },
-                        onDeleteEvent = { viewModel.deleteCalendarEvent(it) },
-                        onNavigateToTimetable = onNavigateToTimetable
-                    )
+                    // ---------------- WEEK VIEW WITH HORIZONTAL SWIPING ----------------
+                    HorizontalPager(
+                        state = weekPagerState,
+                        modifier = Modifier.fillMaxSize()
+                    ) { page ->
+                        val sundayOfPage = remember(page) {
+                            baseWeekSunday.plusWeeks((page - initialWeekPage).toLong())
+                        }
+                        val saturdayOfPage = remember(sundayOfPage) {
+                            sundayOfPage.plusDays(6)
+                        }
+                        val isSelectedInThisWeek = selectedDate in sundayOfPage..saturdayOfPage
+                        val pageSelectedDate = if (isSelectedInThisWeek) {
+                            selectedDate
+                        } else {
+                            val dayOffset = (selectedDate.dayOfWeek.value % 7).toLong()
+                            sundayOfPage.plusDays(dayOffset)
+                        }
+                        val pageSelectedDateStr = remember(pageSelectedDate) {
+                            pageSelectedDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                        }
+                        val pageDayCourses = remember(pageSelectedDateStr, currentSemester, allCourses, semesterTimeConfigVersion) {
+                            viewModel.getCoursesForDate(pageSelectedDateStr, currentSemester)
+                        }
+                        val pageDayEvents = remember(pageSelectedDateStr, allCalendarEvents) {
+                            allCalendarEvents.filter { it.date == pageSelectedDateStr }
+                        }
+
+                        WeekCalendarView(
+                            selectedDate = pageSelectedDate,
+                            today = today,
+                            events = allCalendarEvents,
+                            currentSemester = currentSemester,
+                            viewModel = viewModel,
+                            dayCourses = pageDayCourses,
+                            dayEvents = pageDayEvents,
+                            onDateSelected = { date ->
+                                selectedDate = date
+                                val targetSunday = date.minusDays((date.dayOfWeek.value % 7).toLong())
+                                val weeksDiff = ((targetSunday.toEpochDay() - baseWeekSunday.toEpochDay()) / 7).toInt()
+                                val targetPage = initialWeekPage + weeksDiff
+                                if (targetPage != weekPagerState.currentPage) {
+                                    coroutineScope.launch {
+                                        weekPagerState.animateScrollToPage(targetPage)
+                                    }
+                                }
+                            },
+                            onQuickCategoryClick = { cat ->
+                                editingEvent = null
+                                eventCategoryToCreate = cat
+                                showAddEventDialog = true
+                            },
+                            onToggleEventComplete = { viewModel.toggleCalendarEventCompletion(it) },
+                            onEditEvent = {
+                                editingEvent = it
+                                showAddEventDialog = true
+                            },
+                            onDeleteEvent = { viewModel.deleteCalendarEvent(it) },
+                            onNavigateToTimetable = onNavigateToTimetable
+                        )
+                    }
                 }
             }
         }
@@ -238,7 +391,8 @@ private fun CalendarUnifiedHeader(
     selectedWeekNum: Int?,
     onViewTypeChange: (CalendarViewType) -> Unit,
     onPrevious: () -> Unit,
-    onNext: () -> Unit
+    onNext: () -> Unit,
+    onToday: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -266,11 +420,32 @@ private fun CalendarUnifiedHeader(
             )
         }
 
-        // Controls on the right: [ 週 | 月 ], < >, 今天
+        // Controls on the right: 今日, [ 週 | 月 ], < >
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            // 今日按鈕
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickable(onClick = onToday)
+            ) {
+                Box(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "今日",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
             // [ 週 | 月 ] Segmented Toggle Pill
             Surface(
                 shape = RoundedCornerShape(10.dp),
