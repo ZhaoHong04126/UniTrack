@@ -11,7 +11,10 @@ import com.example.data.local.NotificationDao
 import com.example.data.model.*
 import com.google.firebase.FirebaseApp
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.SetOptions
+import android.os.Build
+import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -645,7 +648,7 @@ class FirestoreSyncRepository(
         try {
             val userDocRef = db.collection("users").document(userId)
 
-            val subcollections = listOf("profile", "courses", "thresholds", "expenses", "budgets", "notifications")
+            val subcollections = listOf("profile", "courses", "thresholds", "expenses", "budgets", "notifications", "devices", "login_events")
             for (sub in subcollections) {
                 try {
                     val snapshot = userDocRef.collection(sub).get().await()
@@ -669,6 +672,173 @@ class FirestoreSyncRepository(
         } catch (e: Exception) {
             Log.e(tag, "Delete all Cloud Firestore data failed", e)
             Result.failure(e)
+        }
+    }
+
+    // ========================================================
+    // 多裝置安全與登入事件 (Multi-device Security & Login Events)
+    // ========================================================
+
+    /**
+     * 註冊或更新本機裝置資訊至雲端 Firestore (users/{userId}/devices/{deviceId})
+     */
+    suspend fun registerCurrentDevice(
+        userId: String,
+        deviceId: String,
+        location: String
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        if (userId.isBlank() || deviceId.isBlank()) return@withContext Result.failure(IllegalArgumentException("用戶 ID 與裝置 ID 不得為空"))
+        val db = firestore ?: return@withContext Result.failure(IllegalStateException("Firestore 尚未初始化"))
+
+        try {
+            val deviceName = getCurrentDeviceName()
+            val deviceMap = hashMapOf(
+                "deviceId" to deviceId,
+                "deviceName" to deviceName,
+                "model" to Build.MODEL,
+                "osVersion" to "Android ${Build.VERSION.RELEASE}",
+                "appVersion" to "2.6.0",
+                "lastLoginTime" to System.currentTimeMillis(),
+                "lastLocation" to location
+            )
+            db.collection("users").document(userId)
+                .collection("devices").document(deviceId)
+                .set(deviceMap, SetOptions.merge()).await()
+
+            Log.i(tag, "Device $deviceId ($deviceName) registered successfully for user $userId")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(tag, "Register device failed", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * 單筆即時上傳通知至雲端 (避免全量資料庫備份阻塞推播發送)
+     */
+    suspend fun uploadNotificationToCloud(userId: String, notification: AppNotification) = withContext(Dispatchers.IO) {
+        if (userId.isBlank()) return@withContext
+        try {
+            val db = firestore ?: return@withContext
+            val notifMap = hashMapOf(
+                "id" to notification.id,
+                "title" to notification.title,
+                "message" to notification.message,
+                "type" to notification.type.name,
+                "timestamp" to notification.timestamp,
+                "isRead" to notification.isRead,
+                "actionRoute" to (notification.actionRoute ?: "")
+            )
+            db.collection("users").document(userId)
+                .collection("notifications").document(notification.id.toString())
+                .set(notifMap, SetOptions.merge()).await()
+        } catch (e: Exception) {
+            Log.w(tag, "Failed to upload notification to cloud: ${e.message}")
+        }
+    }
+
+    private var lastRecordedLoginTime: Long = 0L
+    private var lastRecordedLoginEventId: String = ""
+
+    /**
+     * 寫入一筆新的登入安全事件，供其他已登入裝置即時監聽通知
+     */
+    suspend fun recordLoginEvent(
+        userId: String,
+        deviceId: String,
+        location: String
+    ): Result<String> = withContext(Dispatchers.IO) {
+        if (userId.isBlank() || deviceId.isBlank()) return@withContext Result.failure(IllegalArgumentException("用戶 ID 與裝置 ID 不得為空"))
+        val db = firestore ?: return@withContext Result.failure(IllegalStateException("Firestore 尚未初始化"))
+
+        val now = System.currentTimeMillis()
+        // 防重複發送：10 秒內同一裝置重複通報視為同一事件，直接沿用前次 eventId
+        if (now - lastRecordedLoginTime < 10_000L && lastRecordedLoginEventId.isNotBlank()) {
+            Log.d(tag, "Skip duplicate login event broadcast within 10s: $lastRecordedLoginEventId")
+            return@withContext Result.success(lastRecordedLoginEventId)
+        }
+
+        try {
+            val eventId = "evt_" + UUID.randomUUID().toString().replace("-", "").take(16)
+            val deviceName = getCurrentDeviceName()
+
+            val eventMap = hashMapOf(
+                "eventId" to eventId,
+                "userId" to userId,
+                "deviceId" to deviceId,
+                "deviceName" to deviceName,
+                "location" to location,
+                "timestamp" to now,
+                "action" to "LOGIN"
+            )
+
+            // 1. 寫入 profile/security（profile 集合必受 Firestore 規則允許，且單一文件監聽速度極快、免索引）
+            db.collection("users").document(userId)
+                .collection("profile").document("security")
+                .set(eventMap, SetOptions.merge()).await()
+
+            // 2. 同步寫入 login_events 歷史記錄集合
+            runCatching {
+                db.collection("users").document(userId)
+                    .collection("login_events").document(eventId)
+                    .set(eventMap).await()
+            }
+
+            lastRecordedLoginTime = now
+            lastRecordedLoginEventId = eventId
+
+            Log.i(tag, "Login event $eventId from device $deviceName at $location broadcasted successfully")
+            Result.success(eventId)
+        } catch (e: Exception) {
+            Log.e(tag, "Record login event failed", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * 實時監聽安全警示文件 (users/{userId}/profile/security)
+     * 當有其他 3C 裝置 (deviceId != localDeviceId) 產生登入事件時，立即回調通知
+     */
+    fun listenToLoginEvents(
+        userId: String,
+        localDeviceId: String,
+        sessionStartTime: Long,
+        onNewLoginDetected: (LoginEvent) -> Unit
+    ): ListenerRegistration? {
+        if (userId.isBlank() || localDeviceId.isBlank()) return null
+        val db = firestore ?: return null
+
+        return try {
+            db.collection("users").document(userId)
+                .collection("profile").document("security")
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) {
+                        Log.w(tag, "Security alert listener error: ${error.message}")
+                        return@addSnapshotListener
+                    }
+                    if (snapshot == null || !snapshot.exists()) return@addSnapshotListener
+
+                    val eventDeviceId = snapshot.getString("deviceId").orEmpty()
+                    val eventId = snapshot.getString("eventId").orEmpty()
+                    val eventTime = snapshot.getLong("timestamp") ?: 0L
+
+                    // 若事件非來自本機，且時間屬於近期（允許 60 秒的時鐘容差或啟動之後）
+                    if (eventDeviceId.isNotBlank() && eventDeviceId != localDeviceId && eventTime > (sessionStartTime - 60_000L)) {
+                        val loginEvent = LoginEvent(
+                            eventId = eventId,
+                            userId = snapshot.getString("userId") ?: userId,
+                            deviceId = eventDeviceId,
+                            deviceName = snapshot.getString("deviceName") ?: "其他 3C 裝置",
+                            location = snapshot.getString("location") ?: "未知位置",
+                            timestamp = eventTime,
+                            action = snapshot.getString("action") ?: "LOGIN"
+                        )
+                        onNewLoginDetected(loginEvent)
+                    }
+                }
+        } catch (e: Exception) {
+            Log.w(tag, "Failed to attach login events listener", e)
+            null
         }
     }
 }

@@ -372,10 +372,11 @@ data class NotificationPreferences(
     val graduationCreditThresholdNotice: Boolean = true,
     val graduationGpaSettlementNotice: Boolean = true,
     val graduationAuditAlertNotice: Boolean = true,
-    // 4. 系統與備份
+    // 4. 系統、備份與安全
     val systemNoticeEnabled: Boolean = true,
     val systemCloudBackupNotice: Boolean = true,
     val systemUpdateNotice: Boolean = true,
+    val multiDeviceLoginAlertEnabled: Boolean = true,
     // 5. 提醒方式
     val vibrationEnabled: Boolean = true,
     val badgeEnabled: Boolean = true

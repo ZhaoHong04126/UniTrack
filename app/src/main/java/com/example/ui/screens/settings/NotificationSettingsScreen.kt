@@ -29,6 +29,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.StudentViewModel
+import com.example.util.LocationHelper
 import com.example.util.NotificationHelper
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,6 +46,10 @@ fun NotificationSettingsScreen(
         mutableStateOf(NotificationHelper.hasNotificationPermission(context))
     }
 
+    var isLocationPermissionGranted by remember {
+        mutableStateOf(LocationHelper.hasLocationPermission(context))
+    }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -56,8 +61,20 @@ fun NotificationSettingsScreen(
         }
     }
 
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { _ ->
+        isLocationPermissionGranted = LocationHelper.hasLocationPermission(context)
+        if (isLocationPermissionGranted) {
+            Toast.makeText(context, "已成功開啟位置權限，可於登入時記錄安全位置", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(context, "未開啟位置權限", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     LifecycleResumeEffect(Unit) {
         isSystemPermissionGranted = NotificationHelper.hasNotificationPermission(context)
+        isLocationPermissionGranted = LocationHelper.hasLocationPermission(context)
         onPauseOrDispose { }
     }
 
@@ -662,6 +679,112 @@ fun NotificationSettingsScreen(
                         onCheckedChange = {
                             viewModel.updateNotificationPreferences(preferences.copy(systemUpdateNotice = it))
                         }
+                    )
+                }
+            }
+
+            // Block 4.5: 帳號安全與多裝置登入警示
+            SectionCard(title = "帳號安全與多裝置登入通知", icon = Icons.Default.Security, iconTint = RoseAccent) {
+                NotificationOptionRow(
+                    icon = Icons.Default.Devices,
+                    iconTint = RoseAccent,
+                    title = "多裝置登入即時安全警示",
+                    subtitle = "當有第二台 3C 裝置登入您的相同帳號時主動推播警告",
+                    checked = preferences.multiDeviceLoginAlertEnabled && preferences.masterEnabled,
+                    enabled = preferences.masterEnabled,
+                    onCheckedChange = {
+                        viewModel.updateNotificationPreferences(preferences.copy(multiDeviceLoginAlertEnabled = it))
+                    }
+                )
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+
+                // 位置權限狀態與授權按鈕
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = (if (isLocationPermissionGranted) EmeraldAccent else AmberWarning).copy(alpha = 0.15f),
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = if (isLocationPermissionGranted) Icons.Default.LocationOn else Icons.Default.LocationOff,
+                                    contentDescription = null,
+                                    tint = if (isLocationPermissionGranted) EmeraldAccent else AmberWarning,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                        Column {
+                            Text(
+                                text = "登入地理位置權限",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = if (isLocationPermissionGranted) "已授權：登入時將自動記錄縣市安全位置" else "未授權：登入警示將無法精確標註縣市資訊",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    if (!isLocationPermissionGranted) {
+                        TextButton(
+                            onClick = {
+                                locationPermissionLauncher.launch(
+                                    arrayOf(
+                                        Manifest.permission.ACCESS_FINE_LOCATION,
+                                        Manifest.permission.ACCESS_COARSE_LOCATION
+                                    )
+                                )
+                            }
+                        ) {
+                            Text("授權定位", fontWeight = FontWeight.Bold, color = SapphirePrimary)
+                        }
+                    } else if (!LocationHelper.isLocationServiceEnabled(context)) {
+                        TextButton(
+                            onClick = { LocationHelper.openLocationSettings(context) }
+                        ) {
+                            Text("開啟GPS", fontWeight = FontWeight.Bold, color = AmberWarning)
+                        }
+                    }
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+
+                // 發送多裝置登入測試推播按鈕
+                OutlinedButton(
+                    onClick = {
+                        viewModel.sendTestMultiDeviceLoginNotification()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, RoseAccent.copy(alpha = 0.4f)),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = RoseAccent),
+                    enabled = preferences.masterEnabled && preferences.multiDeviceLoginAlertEnabled
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Security,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "發送多裝置登入測試警示",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }

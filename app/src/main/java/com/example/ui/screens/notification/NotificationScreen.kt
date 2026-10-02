@@ -584,7 +584,14 @@ private fun NotificationItemCard(
 ) {
     var isExpanded by rememberSaveable(notification.id) { mutableStateOf(false) }
 
-    val (icon, iconBgColor, iconTintColor) = when (notification.type) {
+    val isSecurityAlert = notification.title.contains("新裝置") || notification.title.contains("登入警示") || notification.title.contains("安全")
+    val (icon, iconBgColor, iconTintColor) = if (isSecurityAlert) {
+        Triple(
+            Icons.Default.Security,
+            RoseAccent.copy(alpha = 0.18f),
+            RoseAccent
+        )
+    } else when (notification.type) {
         NotificationType.COURSE -> Triple(
             Icons.Default.CalendarMonth,
             TealSecondary.copy(alpha = 0.15f),
@@ -626,7 +633,7 @@ private fun NotificationItemCard(
                 MaterialTheme.colorScheme.surface
         ),
         border = if (!notification.isRead)
-            BorderStroke(1.dp, SapphirePrimary.copy(alpha = 0.5f))
+            BorderStroke(1.dp, if (isSecurityAlert) RoseAccent.copy(alpha = 0.7f) else SapphirePrimary.copy(alpha = 0.5f))
         else
             BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
     ) {

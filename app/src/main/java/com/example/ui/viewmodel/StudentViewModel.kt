@@ -11,10 +11,12 @@ import com.example.data.model.*
 import com.example.data.repository.AuthRepository
 import com.example.data.repository.FirestoreSyncRepository
 import com.example.data.repository.StudentRepository
+import com.example.util.LocationHelper
 import com.example.util.NotificationHelper
 import com.example.util.NotificationScheduler
 import com.example.widget.TodayScheduleWidget
 import com.example.widget.WidgetUpdateHelper
+import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -94,6 +96,10 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
     val monthFormat = SimpleDateFormat("yyyy-MM", Locale.getDefault())
     val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+
+    val localDeviceId: String = getOrGenerateDeviceId(application.applicationContext)
+    private var loginEventListener: ListenerRegistration? = null
+    private val sessionStartTime: Long = System.currentTimeMillis()
 
     // Persistent App Preferences
     @Suppress("SpellCheckingInspection")
@@ -498,6 +504,32 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
                     // 6. 登入成功並下載完成後，立即同步更新桌面 Widget
                     WidgetUpdateHelper.updateAllWidgets(getApplication())
+
+                    // 7. 啟動跨裝置登入安全事件即時監聽 (若有第二臺裝置登入同帳號立即推播)
+                    loginEventListener?.remove()
+                    loginEventListener = firestoreSyncRepository.listenToLoginEvents(
+                        userId = profile.uid,
+                        localDeviceId = localDeviceId,
+                        sessionStartTime = sessionStartTime
+                    ) { loginEvent ->
+                        handleNewDeviceLoginEvent(loginEvent)
+                    }
+
+                    // 8. 於新會話啟動時自動通報本機裝置上線狀態 (確保雙機均已登入時開機互相即時觸發)
+                    viewModelScope.launch(Dispatchers.IO) {
+                        val sessionKey = "last_session_report_${profile.uid}"
+                        val lastReport = prefs.getLong(sessionKey, 0L)
+                        val nowTime = System.currentTimeMillis()
+                        if (nowTime - lastReport > 15_000L) {
+                            prefs.edit { putLong(sessionKey, nowTime) }
+                            val loc = LocationHelper.getCurrentLocationDescription(getApplication())
+                            firestoreSyncRepository.registerCurrentDevice(profile.uid, localDeviceId, loc)
+                            firestoreSyncRepository.recordLoginEvent(profile.uid, localDeviceId, loc)
+                        }
+                    }
+                } else {
+                    loginEventListener?.remove()
+                    loginEventListener = null
                 }
             }
         }
@@ -682,27 +714,38 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         if (!isTypeEnabled) return
 
         viewModelScope.launch {
-            val notifId = repository.insertNotification(
-                AppNotification(
-                    title = title,
-                    message = message,
-                    type = type,
-                    timestamp = System.currentTimeMillis(),
-                    actionRoute = actionRoute
-                )
+            val now = System.currentTimeMillis()
+            val notif = AppNotification(
+                title = title,
+                message = message,
+                type = type,
+                timestamp = now,
+                actionRoute = actionRoute
             )
-            currentUser.value?.let { user ->
-                firestoreSyncRepository.uploadAllToCloud(user.uid)
-            }
+            val notifId = repository.insertNotification(notif)
+            val savedNotif = notif.copy(id = notifId)
+
+            // 1. 優先立即發送系統推播通知（絕不受雲端同步或網路延遲阻塞）
             if (sendSystemPush) {
-                NotificationHelper.sendSystemNotification(
-                    context = getApplication(),
-                    title = title,
-                    message = message,
-                    type = type,
-                    actionRoute = actionRoute,
-                    notificationId = (notifId % 100000).toInt()
-                )
+                try {
+                    NotificationHelper.sendSystemNotification(
+                        context = getApplication(),
+                        title = title,
+                        message = message,
+                        type = type,
+                        actionRoute = actionRoute,
+                        notificationId = (notifId % 100000).toInt()
+                    )
+                } catch (e: Exception) {
+                    android.util.Log.e("StudentViewModel", "sendSystemNotification error: ${e.message}")
+                }
+            }
+
+            // 2. 非阻塞非同步上傳單筆通知至雲端
+            currentUser.value?.let { user ->
+                launch(Dispatchers.IO) {
+                    firestoreSyncRepository.uploadNotificationToCloud(user.uid, savedNotif)
+                }
             }
         }
     }
@@ -728,6 +771,68 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             },
             sendSystemPush = true
         )
+    }
+
+    private var lastHandledLoginEventId: String = ""
+    private var lastHandledDeviceId: String = ""
+    private var lastHandledEventTime: Long = 0L
+
+    /**
+     * 處理從 Firestore 監聽到的其他 3C 裝置登入安全事件
+     */
+    private fun handleNewDeviceLoginEvent(event: LoginEvent) {
+        val prefs = _notificationPreferences.value
+        if (!prefs.masterEnabled || !prefs.multiDeviceLoginAlertEnabled) return
+
+        // 防重複 1：檢查 eventId 是否完全相同
+        if (event.eventId.isNotBlank() && event.eventId == lastHandledLoginEventId) return
+
+        // 防重複 2：同一台裝置在 15 秒內的連續登入事件視為同一會話，進行防抖抑制
+        val now = System.currentTimeMillis()
+        if (event.deviceId.isNotBlank() && event.deviceId == lastHandledDeviceId && (now - lastHandledEventTime) < 15_000L) {
+            return
+        }
+
+        lastHandledLoginEventId = event.eventId
+        lastHandledDeviceId = event.deviceId
+        lastHandledEventTime = now
+
+        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+        val timeStr = sdf.format(Date(event.timestamp))
+
+        val title = "⚠️ 帳號新裝置登入警示"
+        val message = "偵測到您的帳號剛剛在另一部裝置【${event.deviceName}】登入。\n登入時間：$timeStr\n登入位置：${event.location}\n若非您本人操作，請儘速檢查帳號並變更密碼！"
+
+        sendNotification(
+            title = title,
+            message = message,
+            type = NotificationType.SYSTEM,
+            actionRoute = "notifications",
+            sendSystemPush = true
+        )
+    }
+
+    /**
+     * 手動發送多裝置登入安全推播測試
+     */
+    fun sendTestMultiDeviceLoginNotification(
+        simulatedDevice: String = "iPad Air (5th gen)",
+        simulatedLocation: String = "新北市板橋區"
+    ) {
+        val now = System.currentTimeMillis()
+        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+        val timeStr = sdf.format(Date(now))
+        val title = "⚠️ 帳號新裝置登入警示 (測試)"
+        val message = "偵測到您的帳號剛剛在另一部裝置【$simulatedDevice】登入。\n登入時間：$timeStr\n登入位置：$simulatedLocation\n若非您本人操作，請儘速檢查帳號並變更密碼！"
+
+        sendNotification(
+            title = title,
+            message = message,
+            type = NotificationType.SYSTEM,
+            actionRoute = "notifications",
+            sendSystemPush = true
+        )
+        showToast("已發送多裝置登入警示測試通知")
     }
 
     fun checkAndGenerateSmartNotifications() = viewModelScope.launch {
@@ -2171,6 +2276,12 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             result.onSuccess { user ->
                 val nameToSet = user.displayName?.ifBlank { null } ?: user.email?.substringBefore("@")
                 showToast("歡迎，${user.displayName ?: nameToSet ?: "同學"}！")
+                viewModelScope.launch {
+                    prefs.edit { putLong("last_session_report_${user.uid}", System.currentTimeMillis()) }
+                    val location = LocationHelper.getCurrentLocationDescription(context ?: getApplication())
+                    firestoreSyncRepository.registerCurrentDevice(user.uid, localDeviceId, location)
+                    firestoreSyncRepository.recordLoginEvent(user.uid, localDeviceId, location)
+                }
                 onResult?.invoke(true, null)
             }.onFailure { e ->
                 showToast(e.message ?: "Google 登入失敗")
@@ -2185,6 +2296,12 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             result.onSuccess { user ->
                 val nameToSet = user.displayName?.ifBlank { null } ?: email.substringBefore("@")
                 showToast("歡迎回來，${user.displayName ?: nameToSet}！")
+                viewModelScope.launch {
+                    prefs.edit { putLong("last_session_report_${user.uid}", System.currentTimeMillis()) }
+                    val location = LocationHelper.getCurrentLocationDescription(getApplication())
+                    firestoreSyncRepository.registerCurrentDevice(user.uid, localDeviceId, location)
+                    firestoreSyncRepository.recordLoginEvent(user.uid, localDeviceId, location)
+                }
                 onResult?.invoke(true, null)
             }.onFailure { e ->
                 showToast(e.message ?: "登入失敗")
@@ -2224,6 +2341,12 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
                 // 立即將包含學生檔案同步上傳至 Firestore 雲端
                 firestoreSyncRepository.uploadAllToCloud(user.uid)
+                viewModelScope.launch {
+                    prefs.edit { putLong("last_session_report_${user.uid}", System.currentTimeMillis()) }
+                    val location = LocationHelper.getCurrentLocationDescription(getApplication())
+                    firestoreSyncRepository.registerCurrentDevice(user.uid, localDeviceId, location)
+                    firestoreSyncRepository.recordLoginEvent(user.uid, localDeviceId, location)
+                }
                 WidgetUpdateHelper.updateAllWidgets(getApplication())
 
                 showToast("註冊成功！歡迎加入 UniTrack+，${user.displayName ?: nameToSet}")
@@ -2252,6 +2375,9 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             // 1. 立即清除手機下拉通知列中所有由本 App 發出的系統推播通知
             NotificationHelper.cancelAllNotifications(getApplication())
+            // 移除跨裝置登入監聽
+            loginEventListener?.remove()
+            loginEventListener = null
             // 2. 登出 Auth（立即重設狀態）
             authRepository.signOut()
             // 3. 徹底清空本機 Room 資料庫（課表、記帳、預算、門檻、通知、個人檔案）
@@ -2286,6 +2412,8 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
             // 清除手機通知列
             NotificationHelper.cancelAllNotifications(getApplication())
+            loginEventListener?.remove()
+            loginEventListener = null
 
             // 2. 清除手機本機 Room 資料庫（課表、記帳、預算、門檻、學業檔案）與使用者偏好
             repository.clearAllData()
@@ -2631,5 +2759,10 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             val pair = periodMap[fallbackPeriod] ?: (8 * 60 to 9 * 60)
             return if (isStart) pair.first else pair.second
         }
+    }
+
+    override fun onCleared() {
+        loginEventListener?.remove()
+        loginEventListener = null
     }
 }

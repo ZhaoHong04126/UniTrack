@@ -486,10 +486,11 @@ class StudentRepository(
             graduationCreditThresholdNotice = prefs.getBoolean("notif_graduation_credit_threshold", true),
             graduationGpaSettlementNotice = prefs.getBoolean("notif_graduation_gpa_settlement", true),
             graduationAuditAlertNotice = prefs.getBoolean("notif_graduation_audit_alert", true),
-            // 4. 系統與備份
+            // 4. 系統、備份與安全
             systemNoticeEnabled = prefs.getBoolean("notif_system_enabled", true),
             systemCloudBackupNotice = prefs.getBoolean("notif_system_cloud_backup", true),
             systemUpdateNotice = prefs.getBoolean("notif_system_update", true),
+            multiDeviceLoginAlertEnabled = prefs.getBoolean("notif_multi_device_login_alert", true),
             // 5. 提醒方式
             vibrationEnabled = prefs.getBoolean("notif_vibration_enabled", true),
             badgeEnabled = prefs.getBoolean("notif_badge_enabled", true)
@@ -518,10 +519,11 @@ class StudentRepository(
             putBoolean("notif_graduation_credit_threshold", preferences.graduationCreditThresholdNotice)
             putBoolean("notif_graduation_gpa_settlement", preferences.graduationGpaSettlementNotice)
             putBoolean("notif_graduation_audit_alert", preferences.graduationAuditAlertNotice)
-            // 4. 系統與備份
+            // 4. 系統、備份與安全
             putBoolean("notif_system_enabled", preferences.systemNoticeEnabled)
             putBoolean("notif_system_cloud_backup", preferences.systemCloudBackupNotice)
             putBoolean("notif_system_update", preferences.systemUpdateNotice)
+            putBoolean("notif_multi_device_login_alert", preferences.multiDeviceLoginAlertEnabled)
             // 5. 提醒方式
             putBoolean("notif_vibration_enabled", preferences.vibrationEnabled)
             putBoolean("notif_badge_enabled", preferences.badgeEnabled)

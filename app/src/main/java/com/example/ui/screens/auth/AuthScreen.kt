@@ -1,6 +1,10 @@
 package com.example.ui.screens.auth
 
+import android.Manifest
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import com.example.util.LocationHelper
 import androidx.compose.animation.*
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -830,9 +834,22 @@ private fun LoginPageView(
                 }
             }
 
+            val context = LocalContext.current
+            val locationPermissionLauncher = rememberLauncherForActivityResult(
+                ActivityResultContracts.RequestMultiplePermissions()
+            ) { _ -> }
+
             Button(
                 onClick = {
                     focusManager.clearFocus()
+                    if (!LocationHelper.hasLocationPermission(context)) {
+                        locationPermissionLauncher.launch(
+                            arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION
+                            )
+                        )
+                    }
                     viewModel.signInWithEmail(email, password) { success, errMsg ->
                         if (success) {
                             onAuthSuccess()
@@ -863,9 +880,16 @@ private fun LoginPageView(
             }
 
             // Google One-Tap Sign In
-            val context = LocalContext.current
             OutlinedButton(
                 onClick = {
+                    if (!LocationHelper.hasLocationPermission(context)) {
+                        locationPermissionLauncher.launch(
+                            arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION
+                            )
+                        )
+                    }
                     viewModel.signInWithGoogle(context) { success, _ ->
                         if (success) {
                             onAuthSuccess()
@@ -1209,9 +1233,22 @@ private fun RegisterPageView(
 
         Spacer(modifier = Modifier.height(6.dp))
 
+        val context = LocalContext.current
+        val locationPermissionLauncher = rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions()
+        ) { _ -> }
+
         Button(
             onClick = {
                 focusManager.clearFocus()
+                if (!LocationHelper.hasLocationPermission(context)) {
+                    locationPermissionLauncher.launch(
+                        arrayOf(
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        )
+                    )
+                }
                 viewModel.signUpWithEmail(
                     name = name,
                     email = email,
@@ -1242,9 +1279,16 @@ private fun RegisterPageView(
         }
 
         // Google One-Tap Sign In
-        val context = LocalContext.current
         OutlinedButton(
             onClick = {
+                if (!LocationHelper.hasLocationPermission(context)) {
+                    locationPermissionLauncher.launch(
+                        arrayOf(
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        )
+                    )
+                }
                 viewModel.signInWithGoogle(context) { success, _ ->
                     if (success) {
                         val currentPlan = viewModel.graduationPlan.value
