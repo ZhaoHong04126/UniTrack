@@ -622,15 +622,19 @@ fun TimetableScreen(
     val currentEndDateStr = remember(selectedSemester, semesterTimeConfigVersion) {
         viewModel.getSemesterEndDate(selectedSemester)
     }
+    val currentSyncToCalendar = remember(selectedSemester, semesterTimeConfigVersion) {
+        viewModel.getSemesterSyncToCalendar(selectedSemester)
+    }
 
     if (showTimeSettingsSheet) {
         SemesterTimeSettingsBottomSheet(
             initialStartDate = currentStartDateStr,
             initialEndDate = currentEndDateStr,
             initialShowTime = showTimeInsteadOfPeriod,
+            initialSyncToCalendar = currentSyncToCalendar,
             onDismiss = { showTimeSettingsSheet = false },
-            onSave = { startDate, endDate, totalWeeks, showTime ->
-                viewModel.saveSemesterTimeConfig(selectedSemester, startDate, endDate, totalWeeks)
+            onSave = { startDate, endDate, totalWeeks, showTime, syncToCalendar ->
+                viewModel.saveSemesterTimeConfig(selectedSemester, startDate, endDate, totalWeeks, syncToCalendar)
                 viewModel.setShowTimeInsteadOfPeriod(showTime)
                 showTimeSettingsSheet = false
             }
@@ -644,8 +648,9 @@ private fun SemesterTimeSettingsBottomSheet(
     initialStartDate: String,
     initialEndDate: String,
     initialShowTime: Boolean,
+    initialSyncToCalendar: Boolean = true,
     onDismiss: () -> Unit,
-    onSave: (startDate: String, endDate: String, totalWeeks: Int, showTime: Boolean) -> Unit
+    onSave: (startDate: String, endDate: String, totalWeeks: Int, showTime: Boolean, syncToCalendar: Boolean) -> Unit
 ) {
     val context = LocalContext.current
     var tempStartDate by remember(initialStartDate) { mutableStateOf(initialStartDate) }
@@ -661,6 +666,7 @@ private fun SemesterTimeSettingsBottomSheet(
         )
     }
     var tempShowTime by remember(initialShowTime) { mutableStateOf(initialShowTime) }
+    var tempSyncToCalendar by remember(initialSyncToCalendar) { mutableStateOf(initialSyncToCalendar) }
 
     val calculatedDuration = remember(tempStartDate, tempEndDate) {
         try {
@@ -832,6 +838,36 @@ private fun SemesterTimeSettingsBottomSheet(
                 }
             }
 
+            // Section 4: 加入到行事曆
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 12.dp)
+                ) {
+                    Text(
+                        text = "加入到行事曆",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "將開學日與結束日同步標記至行事曆",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Switch(
+                    checked = tempSyncToCalendar,
+                    onCheckedChange = { tempSyncToCalendar = it }
+                )
+            }
+
             // Duration Summary or Error Banner
             if (calculatedDuration.third != null) {
                 Surface(
@@ -869,7 +905,7 @@ private fun SemesterTimeSettingsBottomSheet(
             Button(
                 onClick = {
                     if (calculatedDuration.third == null) {
-                        onSave(tempStartDate, tempEndDate, calculatedDuration.second, tempShowTime)
+                        onSave(tempStartDate, tempEndDate, calculatedDuration.second, tempShowTime, tempSyncToCalendar)
                     }
                 },
                 enabled = calculatedDuration.third == null,
@@ -1286,23 +1322,7 @@ private fun CourseListItemCard(
 }
 
 private fun formatSemesterHeaderLabel(sem: String, admissionSemester: String): String {
-    val startYear = admissionSemester.substringBefore("-").filter { it.isDigit() }.toIntOrNull()
-    val year = sem.substringBefore("-").filter { it.isDigit() }.toIntOrNull()
-    val term = sem.substringAfter("-").filter { it.isDigit() }.toIntOrNull() ?: 1
-    if (startYear != null && year != null) {
-        val grade = when (val diff = year - startYear) {
-            0 -> "大一"
-            1 -> "大二"
-            2 -> "大三"
-            3 -> "大四"
-            else -> if (diff > 3) "延畢" else ""
-        }
-        val termStr = if (term == 1) "上" else "下"
-        if (grade.isNotEmpty()) {
-            return "$grade$termStr"
-        }
-    }
-    return sem
+    return com.example.data.local.DefaultData.formatSemesterHeaderLabel(sem, admissionSemester)
 }
 
 private fun isCourseInWeek(course: Course, week: Int): Boolean {

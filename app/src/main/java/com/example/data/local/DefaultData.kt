@@ -97,10 +97,59 @@ object DefaultData {
     }
 
     /**
+     * 自 SharedPreferences 讀取學期結束日，若未設定則依開學日加總週數推算
+     */
+    fun getSemesterEndDate(prefs: android.content.SharedPreferences, semester: String): String {
+        val key = "semester_end_date_$semester"
+        val saved = prefs.getString(key, null)
+        if (!saved.isNullOrBlank()) return saved
+        val startDateStr = getSemesterStartDate(prefs, semester)
+        val totalWeeks = getSemesterTotalWeeks(prefs, semester)
+        return try {
+            val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd")
+            val startDate = java.time.LocalDate.parse(startDateStr, formatter)
+            val endDate = startDate.plusWeeks(totalWeeks.toLong()).minusDays(1)
+            endDate.format(formatter)
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
+    /**
+     * 自 SharedPreferences 讀取是否將開學日與結束日同步至行事曆（預設為 true）
+     */
+    fun getSemesterSyncToCalendar(prefs: android.content.SharedPreferences, semester: String): Boolean {
+        return prefs.getBoolean("semester_sync_calendar_$semester", true)
+    }
+
+    /**
      * 自 SharedPreferences 讀取學期總週數，若未設定則預設 18 週
      */
     fun getSemesterTotalWeeks(prefs: android.content.SharedPreferences, semester: String): Int {
         return prefs.getInt("semester_total_weeks_$semester", 18)
+    }
+
+    /**
+     * 格式化學期標題（例如大二上、大三下等）
+     */
+    fun formatSemesterHeaderLabel(sem: String, admissionSemester: String): String {
+        val startYear = admissionSemester.substringBefore("-").filter { it.isDigit() }.toIntOrNull()
+        val year = sem.substringBefore("-").filter { it.isDigit() }.toIntOrNull()
+        val term = sem.substringAfter("-").filter { it.isDigit() }.toIntOrNull() ?: 1
+        if (startYear != null && year != null) {
+            val grade = when (val diff = year - startYear) {
+                0 -> "大一"
+                1 -> "大二"
+                2 -> "大三"
+                3 -> "大四"
+                else -> if (diff > 3) "延畢" else ""
+            }
+            val termStr = if (term == 1) "上" else "下"
+            if (grade.isNotEmpty()) {
+                return "$grade$termStr"
+            }
+        }
+        return sem
     }
 
     /**

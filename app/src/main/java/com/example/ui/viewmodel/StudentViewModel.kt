@@ -174,19 +174,11 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun getSemesterEndDate(semester: String): String {
-        val key = "semester_end_date_$semester"
-        val saved = prefs.getString(key, null)
-        if (!saved.isNullOrBlank()) return saved
-        val startDateStr = getSemesterStartDate(semester)
-        val totalWeeks = getSemesterTotalWeeks(semester)
-        return try {
-            val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd")
-            val startDate = java.time.LocalDate.parse(startDateStr, formatter)
-            val endDate = startDate.plusWeeks(totalWeeks.toLong()).minusDays(1)
-            endDate.format(formatter)
-        } catch (_: Exception) {
-            ""
-        }
+        return DefaultData.getSemesterEndDate(prefs, semester)
+    }
+
+    fun getSemesterSyncToCalendar(semester: String): Boolean {
+        return DefaultData.getSemesterSyncToCalendar(prefs, semester)
     }
 
     fun getSemesterTotalWeeks(semester: String): Int {
@@ -276,17 +268,30 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             val s = java.time.LocalDate.parse(startDate, formatter)
             s.plusWeeks(totalWeeks.toLong()).minusDays(1).format(formatter)
         } catch (_: Exception) { "" }
-        saveSemesterTimeConfig(semester, startDate, endDate, totalWeeks)
+        saveSemesterTimeConfig(semester, startDate, endDate, totalWeeks, getSemesterSyncToCalendar(semester))
     }
 
-    fun saveSemesterTimeConfig(semester: String, startDate: String, endDate: String, totalWeeks: Int) {
+    fun saveSemesterTimeConfig(
+        semester: String,
+        startDate: String,
+        endDate: String,
+        totalWeeks: Int,
+        syncToCalendar: Boolean = getSemesterSyncToCalendar(semester)
+    ) {
         prefs.edit {
             putString("semester_start_date_$semester", startDate)
             putString("semester_end_date_$semester", endDate)
             putInt("semester_total_weeks_$semester", totalWeeks.coerceIn(1, 30))
+            putBoolean("semester_sync_calendar_$semester", syncToCalendar)
         }
         _semesterTimeConfigVersion.value += 1
         WidgetUpdateHelper.updateAllWidgets(getApplication())
+        syncSemesterDatesToCalendar(semester, startDate, endDate, syncToCalendar)
+        if (syncToCalendar) {
+            _userMessage.value = "已儲存設定並同步開學日與結束日到行事曆"
+        } else {
+            _userMessage.value = "已儲存學期時間設定"
+        }
     }
 
     fun getCourseAttendance(courseId: Long): Map<Int, String> {
@@ -571,6 +576,16 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                             firestoreSyncRepository.uploadAllToCloud(user.uid)
                         }
                         WidgetUpdateHelper.updateAllWidgets(getApplication())
+                    }
+                }
+                // 自動檢查並同步各學期開學日與結束日到行事曆中
+                list.forEach { sem ->
+                    if (getSemesterSyncToCalendar(sem)) {
+                        val start = getSemesterStartDate(sem)
+                        val end = getSemesterEndDate(sem)
+                        if (start.isNotBlank() && end.isNotBlank()) {
+                            syncSemesterDatesToCalendar(sem, start, end, true)
+                        }
                     }
                 }
             }
@@ -2434,6 +2449,102 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     fun toggleCalendarEventCompletion(event: CalendarEvent) {
         viewModelScope.launch {
             repository.updateCalendarEvent(event.copy(isCompleted = !event.isCompleted))
+        }
+    }
+
+    /**
+     * 同步學期開學日與結束日到行事曆日程中
+     */
+    fun syncSemesterDatesToCalendar(
+        semester: String,
+        startDateStr: String,
+        endDateStr: String,
+        enabled: Boolean = true
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val existing = repository.getAllCalendarEventsOnce()
+                val existingStart = existing.firstOrNull {
+                    (it.notes.contains("[學期開學日]") && it.notes.contains(semester)) ||
+                            (it.notes.contains(semester) && it.title.endsWith("開學日"))
+                }
+                val existingEnd = existing.firstOrNull {
+                    (it.notes.contains("[學期結束日]") && it.notes.contains(semester)) ||
+                            (it.notes.contains(semester) && it.title.endsWith("結束日"))
+                }
+
+                if (enabled) {
+                    val admission = graduationPlan.value.admissionSemester
+                    val semesterLabel = DefaultData.formatSemesterHeaderLabel(semester, admission)
+                    val startTitle = if (semesterLabel.isNotBlank()) "$semesterLabel 開學日" else "開學日"
+                    val endTitle = if (semesterLabel.isNotBlank()) "$semesterLabel 結束日" else "學期結束日"
+
+                    // Standardize dates from yyyy.MM.dd or yyyy/MM/dd to yyyy-MM-dd
+                    val startFormatted = startDateStr.trim().replace(".", "-").replace("/", "-")
+                    val endFormatted = endDateStr.trim().replace(".", "-").replace("/", "-")
+
+                    if (startFormatted.isNotBlank() && startFormatted.matches(Regex("\\d{4}-\\d{2}-\\d{2}"))) {
+                        val needUpdate = existingStart == null ||
+                                existingStart.date != startFormatted ||
+                                existingStart.title != startTitle
+                        if (needUpdate) {
+                            val startEvent = existingStart?.copy(
+                                title = startTitle,
+                                date = startFormatted,
+                                isAllDay = true,
+                                category = CalendarEventCategory.STUDY,
+                                notes = "[學期開學日] $semester",
+                                colorHex = "#2563EB"
+                            ) ?: CalendarEvent(
+                                title = startTitle,
+                                date = startFormatted,
+                                isAllDay = true,
+                                category = CalendarEventCategory.STUDY,
+                                notes = "[學期開學日] $semester",
+                                colorHex = "#2563EB"
+                            )
+                            if (existingStart != null) {
+                                repository.updateCalendarEvent(startEvent)
+                            } else {
+                                repository.insertCalendarEvent(startEvent)
+                            }
+                        }
+                    }
+
+                    if (endFormatted.isNotBlank() && endFormatted.matches(Regex("\\d{4}-\\d{2}-\\d{2}"))) {
+                        val needUpdate = existingEnd == null ||
+                                existingEnd.date != endFormatted ||
+                                existingEnd.title != endTitle
+                        if (needUpdate) {
+                            val endEvent = existingEnd?.copy(
+                                title = endTitle,
+                                date = endFormatted,
+                                isAllDay = true,
+                                category = CalendarEventCategory.HOLIDAY,
+                                notes = "[學期結束日] $semester",
+                                colorHex = "#8B5CF6"
+                            ) ?: CalendarEvent(
+                                title = endTitle,
+                                date = endFormatted,
+                                isAllDay = true,
+                                category = CalendarEventCategory.HOLIDAY,
+                                notes = "[學期結束日] $semester",
+                                colorHex = "#8B5CF6"
+                            )
+                            if (existingEnd != null) {
+                                repository.updateCalendarEvent(endEvent)
+                            } else {
+                                repository.insertCalendarEvent(endEvent)
+                            }
+                        }
+                    }
+                } else {
+                    existingStart?.let { repository.deleteCalendarEvent(it) }
+                    existingEnd?.let { repository.deleteCalendarEvent(it) }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 

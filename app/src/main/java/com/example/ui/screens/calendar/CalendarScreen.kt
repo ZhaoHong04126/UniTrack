@@ -92,6 +92,13 @@ fun CalendarScreen(
         selectedDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
     }
 
+    val semesterStartDateStr = remember(currentSemester, semesterTimeConfigVersion) {
+        viewModel.getSemesterStartDate(currentSemester).trim().replace(".", "-").replace("/", "-")
+    }
+    val semesterEndDateStr = remember(currentSemester, semesterTimeConfigVersion) {
+        viewModel.getSemesterEndDate(currentSemester).trim().replace(".", "-").replace("/", "-")
+    }
+
     // Week info for selected date
     val selectedWeekNum = remember(selectedDateStr, currentSemester, semesterTimeConfigVersion) {
         viewModel.getWeekNumberForDate(selectedDateStr, currentSemester)
@@ -270,7 +277,9 @@ fun CalendarScreen(
                                 editingEvent = it
                                 showAddEventDialog = true
                             },
-                            onNavigateToTimetable = onNavigateToTimetable
+                            onNavigateToTimetable = onNavigateToTimetable,
+                            semesterStartDateStr = semesterStartDateStr,
+                            semesterEndDateStr = semesterEndDateStr
                         )
                     }
                 } else {
@@ -332,7 +341,9 @@ fun CalendarScreen(
                                 showAddEventDialog = true
                             },
                             onDeleteEvent = { viewModel.deleteCalendarEvent(it) },
-                            onNavigateToTimetable = onNavigateToTimetable
+                            onNavigateToTimetable = onNavigateToTimetable,
+                            semesterStartDateStr = semesterStartDateStr,
+                            semesterEndDateStr = semesterEndDateStr
                         )
                     }
                 }
@@ -554,7 +565,9 @@ private fun MonthCalendarView(
     dayEvents: List<CalendarEvent>,
     onToggleEventComplete: (CalendarEvent) -> Unit,
     onEditEvent: (CalendarEvent) -> Unit,
-    onNavigateToTimetable: () -> Unit
+    onNavigateToTimetable: () -> Unit,
+    semesterStartDateStr: String = "",
+    semesterEndDateStr: String = ""
 ) {
     val firstDayOfMonth = yearMonth.atDay(1)
     // Sunday as first day of week: Sunday = 7 -> 0, Monday = 1 -> 1, ..., Saturday = 6 -> 6
@@ -600,7 +613,9 @@ private fun MonthCalendarView(
                     ) {
                         weekCells.forEach { cell ->
                             val cellDateStr = cell.date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-                            val cellEvents = eventsByDate[cellDateStr] ?: emptyList()
+                            val cellEvents = (eventsByDate[cellDateStr] ?: emptyList()).sortedByDescending {
+                                it.notes.contains("[學期開學日]") || it.notes.contains("[學期結束日]")
+                            }
                             val hasClasses = remember(cellDateStr, currentSemester, courses) {
                                 viewModel.getCoursesForDate(cellDateStr, currentSemester).isNotEmpty()
                             }
@@ -659,6 +674,35 @@ private fun MonthCalendarView(
                                 text = "今天",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                    val selectedDateFormatted = selectedDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                    if (selectedDateFormatted == semesterStartDateStr) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = Color(0xFF2563EB).copy(alpha = 0.15f)
+                        ) {
+                            Text(
+                                text = "開學日",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFF2563EB),
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                    if (selectedDateFormatted == semesterEndDateStr) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = Color(0xFF8B5CF6).copy(alpha = 0.15f)
+                        ) {
+                            Text(
+                                text = "結束日",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFF8B5CF6),
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
@@ -776,9 +820,13 @@ private fun MonthDayCell(
                 // Show up to 2 items
                 events.take(2).forEach { event ->
                     val catColor = try {
-                        Color(event.category.defaultColorHex.toColorInt())
+                        Color(event.colorHex.ifBlank { event.category.defaultColorHex }.toColorInt())
                     } catch (_: Exception) {
-                        MaterialTheme.colorScheme.primary
+                        try {
+                            Color(event.category.defaultColorHex.toColorInt())
+                        } catch (_: Exception) {
+                            MaterialTheme.colorScheme.primary
+                        }
                     }
 
                     Box(
@@ -852,7 +900,9 @@ private fun WeekCalendarView(
     onToggleEventComplete: (CalendarEvent) -> Unit,
     onEditEvent: (CalendarEvent) -> Unit,
     onDeleteEvent: (CalendarEvent) -> Unit,
-    onNavigateToTimetable: () -> Unit
+    onNavigateToTimetable: () -> Unit,
+    semesterStartDateStr: String = "",
+    semesterEndDateStr: String = ""
 ) {
     // Determine start of current week (Sunday)
     val dayOfWeek = selectedDate.dayOfWeek
@@ -1005,6 +1055,7 @@ private fun WeekCalendarView(
 
         // Section: Events & Tasks for this day
         item(key = "day_events_header") {
+            val selectedDateFormatted = selectedDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1012,11 +1063,44 @@ private fun WeekCalendarView(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "行程與待辦 (${dayEvents.size})",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "行程與待辦 (${dayEvents.size})",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    if (selectedDateFormatted == semesterStartDateStr) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = Color(0xFF2563EB).copy(alpha = 0.15f)
+                        ) {
+                            Text(
+                                text = "開學日",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFF2563EB),
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                    if (selectedDateFormatted == semesterEndDateStr) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = Color(0xFF8B5CF6).copy(alpha = 0.15f)
+                        ) {
+                            Text(
+                                text = "結束日",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFF8B5CF6),
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
             }
         }
 
@@ -1160,9 +1244,13 @@ private fun CalendarEventItemRow(
 ) {
     var showMenu by remember { mutableStateOf(false) }
     val catColor = try {
-        Color(event.category.defaultColorHex.toColorInt())
+        Color(event.colorHex.ifBlank { event.category.defaultColorHex }.toColorInt())
     } catch (_: Exception) {
-        MaterialTheme.colorScheme.primary
+        try {
+            Color(event.category.defaultColorHex.toColorInt())
+        } catch (_: Exception) {
+            MaterialTheme.colorScheme.primary
+        }
     }
 
     Surface(
@@ -1192,12 +1280,17 @@ private fun CalendarEventItemRow(
             )
 
             // Category tag
+            val tagText = when {
+                event.notes.contains("[學期開學日]") -> "開學日"
+                event.notes.contains("[學期結束日]") -> "結束日"
+                else -> event.category.displayName
+            }
             Surface(
                 shape = RoundedCornerShape(6.dp),
                 color = catColor.copy(alpha = 0.15f)
             ) {
                 Text(
-                    text = event.category.displayName,
+                    text = tagText,
                     style = MaterialTheme.typography.labelSmall,
                     color = catColor,
                     fontWeight = FontWeight.Bold,
