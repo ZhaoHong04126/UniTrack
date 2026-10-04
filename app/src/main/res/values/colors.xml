@@ -25,4 +25,12 @@
     <color name="widget_item_bg">#FFFFFFFF</color>
     <color name="widget_badge_bg">#FF2563EB</color>
     <color name="widget_badge_text">#FFFFFFFF</color>
+
+    <!-- Expense Widget Specific Colors -->
+    <color name="widget_expense_danger">#FFDC2626</color>
+    <color name="widget_expense_danger_bg">#FFFEF2F2</color>
+    <color name="widget_expense_danger_border">#FFFECACA</color>
+    <color name="widget_expense_success">#FF059669</color>
+    <color name="widget_expense_success_bg">#FFECFDF5</color>
+    <color name="widget_expense_progress_bg">#FFE2E8F0</color>
 </resources>

@@ -44,6 +44,7 @@ import com.example.ui.screens.notification.NotificationScreen
 import com.example.ui.screens.settings.NotificationSettingsScreen
 import com.example.ui.screens.settings.SettingsScreen
 import com.example.ui.screens.settings.WidgetSettingsScreen
+import com.example.widget.ExpenseWidget
 import com.example.ui.screens.timetable.GradeEntryScreen
 import com.example.ui.screens.timetable.TimetableScreen
 import com.example.ui.theme.MyApplicationTheme
@@ -154,11 +155,17 @@ class MainActivity : ComponentActivity() {
                 }
 
                 val navController = rememberNavController()
+                var quickAction by remember { mutableStateOf<String?>(null) }
 
-                // Navigate if launched/opened from system notification
+                // Navigate if launched/opened from system notification or widget
                 val currentIntent = intent
                 LaunchedEffect(currentIntent) {
                     val targetRoute = currentIntent?.getStringExtra(NotificationHelper.EXTRA_NAV_ROUTE)
+                    val action = currentIntent?.getStringExtra(ExpenseWidget.EXTRA_QUICK_ACTION)
+                    if (!action.isNullOrBlank()) {
+                        quickAction = action
+                        currentIntent.removeExtra(ExpenseWidget.EXTRA_QUICK_ACTION)
+                    }
                     if (!targetRoute.isNullOrBlank()) {
                         navController.navigate(targetRoute) {
                             popUpTo(AppDestination.Dashboard.route) {
@@ -416,7 +423,11 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable(AppDestination.Expense.route) {
-                            ExpenseScreen(viewModel = studentViewModel)
+                            ExpenseScreen(
+                                viewModel = studentViewModel,
+                                autoOpenAddDialog = quickAction == ExpenseWidget.QUICK_ACTION_ADD_EXPENSE,
+                                onResetAutoOpenAddDialog = { quickAction = null }
+                            )
                         }
 
                         composable(AppDestination.Settings.route) {
@@ -447,6 +458,15 @@ class MainActivity : ComponentActivity() {
                                 onNavigateBack = { navController.popBackStack() },
                                 onNavigateToTimetable = {
                                     navController.navigate(AppDestination.Timetable.route) {
+                                        popUpTo(AppDestination.Dashboard.route) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                },
+                                onNavigateToExpense = {
+                                    navController.navigate(AppDestination.Expense.route) {
                                         popUpTo(AppDestination.Dashboard.route) {
                                             saveState = true
                                         }

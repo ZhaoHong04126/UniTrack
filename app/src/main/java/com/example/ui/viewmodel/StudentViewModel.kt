@@ -1745,6 +1745,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         if (expense.type == ExpenseType.EXPENSE) {
             checkExpenseBudgetAlert(expense.dateString)
         }
+        WidgetUpdateHelper.updateExpenseWidget(getApplication())
     }
 
     fun updateExpense(expense: ExpenseRecord) = viewModelScope.launch {
@@ -1766,6 +1767,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         if (expense.type == ExpenseType.EXPENSE) {
             checkExpenseBudgetAlert(expense.dateString)
         }
+        WidgetUpdateHelper.updateExpenseWidget(getApplication())
     }
 
     private fun checkExpenseBudgetAlert(dateString: String) = viewModelScope.launch {
@@ -1949,6 +1951,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             actionRoute = "expense",
             sendSystemPush = _notificationPreferences.value.expenseTransactionNoticeEnabled
         )
+        WidgetUpdateHelper.updateExpenseWidget(getApplication())
     }
 
     fun clearAllExpenses() = viewModelScope.launch {
@@ -1963,6 +1966,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             actionRoute = "expense",
             sendSystemPush = _notificationPreferences.value.expenseTransactionNoticeEnabled
         )
+        WidgetUpdateHelper.updateExpenseWidget(getApplication())
     }
 
     fun seedMockExpenses() = viewModelScope.launch {
@@ -1995,6 +1999,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         checkExpenseBudgetAlert(month)
         currentUser.value?.let { firestoreSyncRepository.uploadAllToCloud(it.uid) }
         _userMessage.value = "已成功為 $month 月匯入 20 筆測試資料！"
+        WidgetUpdateHelper.updateExpenseWidget(getApplication())
     }
 
     fun setMonthlyBudget(amount: Double, categoryBudgets: Map<ExpenseCategory, Double> = emptyMap()) = viewModelScope.launch {
@@ -2008,6 +2013,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             "已更新 $month 月預算為 $${amount.toInt()}"
         }
         checkExpenseBudgetAlert(month)
+        WidgetUpdateHelper.updateExpenseWidget(getApplication())
     }
 
 

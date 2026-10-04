@@ -15,10 +15,18 @@ object WidgetUpdateHelper {
     }
 
     /**
+     * 主動通知所有桌面「記帳本」小工具重新自資料庫載入最新收支與預算並刷新畫面。
+     */
+    fun updateExpenseWidget(context: Context) {
+        sendUpdateBroadcast(context, ExpenseWidget::class.java)
+    }
+
+    /**
      * 一次性更新所有 UniTrack+ 桌面小工具。
      */
     fun updateAllWidgets(context: Context) {
         updateTodayScheduleWidget(context)
+        updateExpenseWidget(context)
     }
 
     private fun sendUpdateBroadcast(context: Context, providerClass: Class<*>) {

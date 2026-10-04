@@ -50,6 +50,19 @@
                 android:resource="@xml/widget_today_schedule_info" />
         </receiver>
 
+        <!-- UniTrack+ Expense AppWidget -->
+        <receiver
+            android:name="com.example.widget.ExpenseWidget"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.example.widget.ACTION_REFRESH_EXPENSE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_expense_info" />
+        </receiver>
+
 
         <!-- UniTrack+ Course Reminder Alarm Receiver -->
         <receiver

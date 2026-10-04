@@ -71,15 +71,25 @@ import java.util.*
 @Composable
 fun ExpenseScreen(
     viewModel: StudentViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    autoOpenAddDialog: Boolean = false,
+    onResetAutoOpenAddDialog: () -> Unit = {}
 ) {
     val selectedMonth by viewModel.selectedExpenseMonth.collectAsStateWithLifecycle()
     val allExpenses by viewModel.allExpenses.collectAsStateWithLifecycle()
     val summary by viewModel.monthlyExpenseSummary.collectAsStateWithLifecycle()
     val customAccounts by viewModel.customAccounts.collectAsStateWithLifecycle()
 
-    var showAddDialog by remember { mutableStateOf(false) }
+    var showAddDialog by remember { mutableStateOf(autoOpenAddDialog) }
     var editingExpense by remember { mutableStateOf<ExpenseRecord?>(null) }
+
+    LaunchedEffect(autoOpenAddDialog) {
+        if (autoOpenAddDialog) {
+            editingExpense = null
+            showAddDialog = true
+            onResetAutoOpenAddDialog()
+        }
+    }
     var showBudgetDialog by remember { mutableStateOf(false) }
     var isCategoryBudgetsExpanded by rememberSaveable { mutableStateOf(true) }
     var showYearMonthPicker by remember { mutableStateOf(false) }

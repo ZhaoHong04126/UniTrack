@@ -4,4 +4,6 @@
     <string name="widget_today_schedule_name">UniTrack+ 今日課表</string>
     <string name="widget_today_schedule_desc">在桌面即時查看今日課堂、節次、教室與下一堂課提醒。</string>
     <string name="widget_refresh_desc">重新整理</string>
+    <string name="widget_expense_name">UniTrack+ 記帳本</string>
+    <string name="widget_expense_desc">在桌面即時掌握當月花費總額、預算進度、今日開銷與快速記帳。</string>
 </resources>
