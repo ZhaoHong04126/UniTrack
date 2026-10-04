@@ -5,7 +5,7 @@
 [![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose%20%7C%20Material%203-4285F4?logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
 [![Room](https://img.shields.io/badge/Storage-Room%20(SQLite)-00599C?logo=sqlite&logoColor=white)](https://developer.android.com/training/data-storage/room)
 [![Firebase](https://img.shields.io/badge/Backend-Firebase%20(Auth%20%2B%20Firestore)-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com/)
-[![Version](https://img.shields.io/badge/Version-v2.5.2-3B82F6)](https://github.com/ZhaoHong04126/UniTrack)
+[![Version](https://img.shields.io/badge/Version-v2.7.0-3B82F6)](https://github.com/ZhaoHong04126/UniTrack)
 
 > **專為大學生量身打造的全方位學業與生活管理助理。**  
 > 集結「智慧週課表 & 考勤雲端同步筆記」、「正課與課輔/實習時段獨立管理」、「整合行事曆與待辦日程」、「系統級上課推播提醒 (AlarmManager)」、「桌面今日課表與記帳小工具 (App Widgets)」、「畢業學分稽核與門檻檢核」、「GPA / 學業儀表板」、「個人記帳、帳戶互轉與分類預算監控（含自訂交易時間與預算刪除）」、「通知中心與雲端原子事務同步」、「深淺色主題切換」於一體，支援 100% 純本機離線隱私保護與 Firebase 雲端雙向同步。經由 R8 深度修剪，安裝包極致輕量 (11.5MB)。
@@ -131,7 +131,21 @@
 
 ### 🔖 版本歷程記錄
 
-#### 🌟 v2.5.2 (最新發布)
+#### 🌟 v2.7.0 (最新發布)
+- 💰 **全新「桌面記帳本小工具 (ExpenseWidget)」正式上線**：
+  - 支援 3×2 預設規格與自由縮放拉伸（相容 2×2 精簡模式與 4×2 完整模式）。
+  - **核心資訊動態呈現**：桌面即時顯示當月支出總額大數字、剩餘預算、水平進度條、消耗佔比與今日已支出小計。
+  - **超支動態變色預警**：支出超出當月設定預算時，小工具卡片自動轉換為警示紅框風格 (`widget_expense_budget_warning_bg`)，並標示超支差額。
+  - **最新收支明細條列**：展示近 3 筆交易紀錄（包含分類 Emoji 圖示、消費名稱、支付方式與相對日期、金額正負號色彩區隔）。
+  - **桌面一鍵快捷記帳**：右上方提供專屬 **➕「記一筆」Hero 按鈕**，點擊直接喚起 App 並自動彈出新增記帳視窗 (`autoOpenAddDialog`)，快速捕捉每筆消費。
+  - **未登入安全隱私保護**：未登入時安全顯示「🔒 尚未登入帳號」空狀態卡片，保護個人財務隱私，點擊一鍵跳轉登入頁面 (`auth`)。
+  - **全自動即時連動機制**：在 `StudentViewModel` 的新增、修改、刪除、清空記帳與設定預算等關鍵節點，透過 `WidgetUpdateHelper.updateExpenseWidget` 自動背景發送廣播刷新桌面小工具。
+  - **桌面小工具管理頁面強化 (`WidgetSettingsScreen`)**：提供高保真「記帳本小工具」即時預覽、前往記帳本捷徑以及「強制同步所有桌面小工具」廣播按鈕。
+  - **RemoteViews 規範修復與效能優化**：嚴格遵循 Android RemoteViews 視圖白名單（以 FrameLayout/LinearLayout 取代非法 View 標籤），並配置 `android:baselineAligned="false"` 消除二次度量警示。
+  - **Jetpack Compose 官方標準規範**：將 `WidgetSettingsScreen` 與 `ExpenseScreen` 的 `modifier: Modifier = Modifier` 調整為選擇性參數首位，消除 Android Studio Lint 警告。
+  - **專屬技術架構文件**：建立 [`docs/EXPENSE_WIDGET.md`](docs/EXPENSE_WIDGET.md)。
+
+#### 🌟 v2.5.2
 - 🧭 **底部導航欄與儀表板返回修復 (Navigation Architecture Fix)**：
   - 修復在儀表板 (`DashboardScreen`) 點擊「完整課表」、「記帳本」、預算可用額度卡片或「詳細學分」後，點擊底部導航欄「儀表板」按鈕無反應無法返回首頁的導航堆疊異常。
   - 重構 `MainActivity` 底部導航欄點擊回呼：當點擊儀表板時，自動清除頂部堆疊畫面 (`popUpTo(Dashboard) { saveState = false }`) 並安全返回根節點，同時避免對首頁執行多餘的 `restoreState` 導致導航失效。
@@ -352,7 +366,7 @@ UniTrack+/
 │   │   │   │   │   ├── model/                    # 資料實體 (Entities, CalendarEvent, Enums, AuthModels, CourseNote, CustomAccount, AppNotification)
 │   │   │   │   │   └── repository/               # StudentRepository, AuthRepository (Credential Manager), FirestoreSyncRepository
 │   │   │   │   ├── receiver/                     # 系統廣播接收器 (BootCompletedReceiver, CourseReminderReceiver)
-│   │   │   │   ├── widget/                       # 桌面小工具 (TodayScheduleWidget, WidgetUpdateHelper)
+│   │   │   │   ├── widget/                       # 桌面小工具 (TodayScheduleWidget, ExpenseWidget, WidgetUpdateHelper)
 │   │   │   │   ├── ui/
 │   │   │   │   │   ├── components/               # 通用 UI 元件 (統計卡片、進度條、彈出對話框)
 │   │   │   │   │   ├── screens/
@@ -370,9 +384,10 @@ UniTrack+/
 │   │   │   │   └── res/                          # 應用程式資源 (圖標、字串、主題樣式、raw/keep.xml)
 │   │   └── test/                                 # Robolectric 單元測試與 Roborazzi 截圖測試
 │   ├── proguard-rules.pro                        # R8 / ProGuard 混淆與保留規則
-│   └── build.gradle.kts                          # App 模組建置設定 (R8 啟用、資源修剪、v2.5.2)
+│   └── build.gradle.kts                          # App 模組建置設定 (R8 啟用、資源修剪、v2.7.0)
 ├── logo/                                         # 官方專屬品牌標誌 (圓形、方形、透明背景之向量 SVG 與 PNG)
 ├── docs/
+│   ├── EXPENSE_WIDGET.md                         # 桌面記帳小工具技術架構與生命週期說明文件
 │   └── images/                                   # README 相關螢幕截圖與展示資源
 ├── gradle/                                       # Gradle Wrapper 與 Version Catalog (libs.versions.toml)
 ├── .env.example                                  # 環境變數範本檔案
@@ -547,7 +562,7 @@ UniTrack+/
   * **分類篩選與頁面聯動**：支援依類型標籤過濾，點擊卡片直接跳轉至對應功能頁面。
 * **現代化 Google 登入 (Credential Manager)**：
   * 升級至 Google 最新 Android 憑證管理員與 Google ID Token 授權，提供清晰友善的錯誤導引訊息。
-* **個人檔案與首次登入記錄**：支援自訂頭像與暱稱保存；記錄首次登入時間戳記 (`createdAt`)；清楚標示當前版本號 (`v2.5.2`)。
+* **個人檔案與首次登入記錄**：支援自訂頭像與暱稱保存；記錄首次登入時間戳記 (`createdAt`)；清楚標示當前版本號 (`v2.7.0`)。
 * **GitHub 最新版本自動偵測服務 (`UpdateChecker`)**：
   * 內建版本更新檢查機制，採用非同步排程請求 GitHub Releases API (`/repos/ZhaoHong04126/UniTrack/releases/latest`)。
   * 於設定或應用程式啟動時自動比對目前版本與線上最新發布版本，具備更新日誌摘要解析與版本更新提示引導。
