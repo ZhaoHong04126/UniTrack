@@ -442,8 +442,8 @@ private fun AttendanceTabView(
             }
         }
 
-        // 方案 A：出缺席到了當天才顯示（只顯示日期在今天或之前的堂數，未來的週次等到上課當天才顯示）
-        val displayedSessions = allSessions.filter { !it.date.isAfter(today) }
+        // 方案 A：出缺席到了當天才顯示（只顯示日期在今天或之前的堂數，未來的週次等到上課當天才顯示，由新到舊排列）
+        val displayedSessions = allSessions.filter { !it.date.isAfter(today) }.sortedByDescending { it.date }
         val nextUpcomingSession = allSessions.firstOrNull { it.date.isAfter(today) }
 
         // Section Title
