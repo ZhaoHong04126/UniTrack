@@ -226,11 +226,10 @@ fun ExpenseScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(top = 12.dp, bottom = 16.dp)
         ) {
-            // Month Selector Header with View Toggle (List vs Calendar)
+            // Month Selector Header
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(
@@ -252,20 +251,6 @@ fun ExpenseScreen(
                             tint = SapphirePrimary,
                             modifier = Modifier.size(24.dp)
                         )
-                    }
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        // 列表 / 月曆 視圖切換鈕
-                        IconButton(
-                            onClick = { isCalendarView = !isCalendarView },
-                            modifier = Modifier.testTag("toggle_expense_view_button")
-                        ) {
-                            Icon(
-                                imageVector = if (isCalendarView) Icons.AutoMirrored.Filled.FormatListBulleted else Icons.Default.CalendarMonth,
-                                contentDescription = if (isCalendarView) "切換至列表視圖" else "切換至月曆視圖",
-                                tint = SapphirePrimary
-                            )
-                        }
                     }
                 }
             }
@@ -667,41 +652,61 @@ fun ExpenseScreen(
 
                     when (currentTab) {
                         0 -> {
-                            FilterChip(
-                                selected = selectedCategoryFilter != null,
-                                onClick = { showFilterBottomSheet = true },
-                                label = {
-                                    Text(
-                                        text = selectedCategoryFilter?.label ?: "篩選",
-                                        fontWeight = if (selectedCategoryFilter != null) FontWeight.SemiBold else FontWeight.Normal
-                                    )
-                                },
-                                leadingIcon = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                // 列表 / 月曆 視圖切換鈕（僅收支明細功能）
+                                IconButton(
+                                    onClick = { isCalendarView = !isCalendarView },
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .testTag("toggle_expense_view_button")
+                                ) {
                                     Icon(
-                                        imageVector = Icons.Default.Tune,
-                                        contentDescription = "篩選",
-                                        modifier = Modifier.size(16.dp)
+                                        imageVector = if (isCalendarView) Icons.AutoMirrored.Filled.FormatListBulleted else Icons.Default.CalendarMonth,
+                                        contentDescription = if (isCalendarView) "切換至列表視圖" else "切換至月曆視圖",
+                                        tint = SapphirePrimary,
+                                        modifier = Modifier.size(22.dp)
                                     )
-                                },
-                                trailingIcon = if (selectedCategoryFilter != null) {
-                                    {
-                                        Icon(
-                                            imageVector = Icons.Default.Close,
-                                            contentDescription = "清除篩選",
-                                            modifier = Modifier
-                                                .size(16.dp)
-                                                .clickable { selectedCategoryFilter = null }
+                                }
+
+                                FilterChip(
+                                    selected = selectedCategoryFilter != null,
+                                    onClick = { showFilterBottomSheet = true },
+                                    label = {
+                                        Text(
+                                            text = selectedCategoryFilter?.label ?: "篩選",
+                                            fontWeight = if (selectedCategoryFilter != null) FontWeight.SemiBold else FontWeight.Normal
                                         )
-                                    }
-                                } else null,
-                                shape = RoundedCornerShape(20.dp),
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = SapphirePrimary.copy(alpha = 0.12f),
-                                    selectedLabelColor = SapphirePrimary,
-                                    selectedLeadingIconColor = SapphirePrimary,
-                                    selectedTrailingIconColor = SapphirePrimary
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Tune,
+                                            contentDescription = "篩選",
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    },
+                                    trailingIcon = if (selectedCategoryFilter != null) {
+                                        {
+                                            Icon(
+                                                imageVector = Icons.Default.Close,
+                                                contentDescription = "清除篩選",
+                                                modifier = Modifier
+                                                    .size(16.dp)
+                                                    .clickable { selectedCategoryFilter = null }
+                                            )
+                                        }
+                                    } else null,
+                                    shape = RoundedCornerShape(20.dp),
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = SapphirePrimary.copy(alpha = 0.12f),
+                                        selectedLabelColor = SapphirePrimary,
+                                        selectedLeadingIconColor = SapphirePrimary,
+                                        selectedTrailingIconColor = SapphirePrimary
+                                    )
                                 )
-                            )
+                            }
                         }
                         1 -> {
                             FilterChip(
